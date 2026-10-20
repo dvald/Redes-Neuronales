@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratorio · I · La red neuronal como sistema — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .tile { background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: .8rem .9rem .85rem; }
+  .tile svg { display: block; width: 100%; height: auto; margin-bottom: .45rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  .tile h3 { margin: 0 0 .15rem !important; font-size: 1rem; }
+  .tile p { margin: 0; font-size: .9rem; line-height: 1.45; }
+  .cita { font-size: 1.12rem; font-style: italic; color: var(--ink); border-left: 4px solid var(--acento); background: #fff; padding: .55rem 1rem; margin: .9rem 0; border-radius: 0 8px 8px 0; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  .cita.grande { font-size: 1.32rem; text-align: center; border-left: none; border-top: 4px solid var(--acento); padding: 1rem 1.4rem; }
+  .sep { height: 1px; background: var(--line); margin: 1.3rem 0 1rem; }
+  .card h3.dilema { display: flex; align-items: center; gap: .55rem; font-size: 1.08rem; }
+  .card h3.dilema::before { content: "⚖"; display: inline-grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--acento-l); color: var(--acento); font-size: 1rem; flex: none; }
+  .tres { display: grid; grid-template-columns: 1fr .82fr 1fr; gap: .8rem; align-items: center; }
+  .tres svg { display: block; width: 100%; height: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .adv { display: grid; grid-template-columns: repeat(3, 1fr) 1.15fr; gap: 1rem; align-items: start; }
+  .adv figure { margin: 0; text-align: center; }
+  .adv canvas { display: block; width: 100%; aspect-ratio: 1 / 1; border-radius: 10px; border: 1px solid var(--line); image-rendering: pixelated; }
+  .adv figcaption { font-size: .88rem; color: var(--ink2); margin-top: .35rem; font-weight: 600; }
+  .adv svg { display: block; width: 100%; height: auto; }
+  canvas.cuadro { max-width: 460px; margin: 0 auto; }
+  .lado { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .lado > div > h3:first-child { margin-top: 0; }
+  .lado svg { display: block; width: 100%; height: auto; }
+  .kpis.peq .kpi { min-width: 7.5rem; padding: .45rem .75rem; }
+  .kpis.peq .kpi .v { font-size: 1.22rem; }
+  .kpi .s { font-size: .78rem; color: var(--ink2); }
+  .vista[hidden] { display: none !important; }
+  .ctl.ancho input[type=range] { width: 16rem; }
+  .ctl .botones { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .btn.peq { font-size: .8rem; padding: .3rem .65rem; }
+  .esc-arrastre svg { touch-action: none; }
+  .esc-arrastre .chip-arr { cursor: grab; }
+  .esc-arrastre .chip-arr:active { cursor: grabbing; }
+  .clic { cursor: pointer; }
+  .btn.gris[aria-pressed="true"] { background: var(--acento-l); border-color: var(--acento); color: var(--ink); }
+  .btn.gris[aria-pressed="true"]::before { content: "✓ "; }
+  .leyenda i.anillo { width: 11px; height: 11px; border-radius: 50%; background: #fff !important; border: 2px solid; }
+  .leyenda i.cuad { width: 11px; height: 11px; border-radius: 2px; }
+  .tabla.peq { font-size: .88rem; }
+  .tabla.peq td, .tabla.peq th { padding: .35rem .55rem; }
+  .pasos.horiz { display: flex; flex-wrap: wrap; gap: .3rem .5rem; }
+  .pasos.horiz li { flex: 1 1 10rem; font-size: .9rem; }
+  @media (max-width: 860px) { .tres, .adv, .lado { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="bloque-esc" data-pagina="lab_empresa.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">LABORATORIO · I</span>La red neuronal como sistema</h1>
+  <p>Lo que pasa cuando la red sale del cuaderno: escalar, mover datos, costes, evaluación real, robustez, privacidad y lo que viene.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del laboratorio">
+  <button class="tab" role="tab" id="t-ley" aria-controls="p-ley" aria-selected="true">1 · Progreso</button>
+  <button class="tab" role="tab" id="t-escala" aria-controls="p-escala" aria-selected="false">2 · Escalar</button>
+  <button class="tab" role="tab" id="t-mover" aria-controls="p-mover" aria-selected="false">3 · Mover datos</button>
+  <button class="tab" role="tab" id="t-iceberg" aria-controls="p-iceberg" aria-selected="false">4 · Iceberg</button>
+  <button class="tab" role="tab" id="t-inferencia" aria-controls="p-inferencia" aria-selected="false">5 · Inferencia</button>
+  <button class="tab" role="tab" id="t-roi" aria-controls="p-roi" aria-selected="false">6 · ROI</button>
+  <button class="tab" role="tab" id="t-datos" aria-controls="p-datos" aria-selected="false">7 · Evaluación</button>
+  <button class="tab" role="tab" id="t-robustez" aria-controls="p-robustez" aria-selected="false">8 · Robustez</button>
+  <button class="tab" role="tab" id="t-privacidad" aria-controls="p-privacidad" aria-selected="false">9 · Privacidad</button>
+  <button class="tab" role="tab" id="t-ciencia" aria-controls="p-ciencia" aria-selected="false">10 · Ciencia</button>
+</div>
+
+<main class="content">
+
+  <!-- ===================================================== 1 · PROGRESO -->
+  <section id="p-ley" class="panel">
+    <div class="card">
+      <h2>La nueva ley del progreso: datos × cómputo × modelo</h2>
+      <div class="meta"><span class="tag illus">Metáfora ilustrativa</span><span class="tag">Cifras publicadas (tabla)</span></div>
+      <p class="lead">La mayor parte del progreso reciente no viene de descubrir una ecuación mágica nueva, sino de escalar a la vez tres ingredientes.</p>
+      <div class="controles">
+        <div class="ctl"><label for="l1-d">Datos</label><input id="l1-d" type="range" min="1" max="10" step="0.1" value="4"><output id="l1-do">×4</output></div>
+        <div class="ctl"><label for="l1-c">Cómputo</label><input id="l1-c" type="range" min="1" max="10" step="0.1" value="4"><output id="l1-co">×4</output></div>
+        <div class="ctl"><label for="l1-m">Modelo</label><input id="l1-m" type="range" min="1" max="10" step="0.1" value="4"><output id="l1-mo">×4</output></div>
+        <button class="btn" id="l1-todos">▶ Escalar los tres</button>
+        <button class="btn gris" id="l1-solo">Solo un modelo más grande</button>
+        <button class="btn gris" id="l1-reset">Reiniciar</button>
+      </div>
+      <div class="escena"><svg id="l1-caja" aria-label="Caja isométrica cuyas aristas son datos, cómputo y modelo; su volumen es la capacidad"></svg></div>
+      <div class="grid2" style="margin-top:1rem">
+        <ul>
+          <li><strong>Datos:</strong> volúmenes masivos de información estructurada y no estructurada.</li>
+          <li><strong>Cómputo:</strong> escalado exponencial de la capacidad de cálculo (GPU y TPU).</li>
+          <li><strong>Modelo:</strong> arquitecturas capaces de absorber esa escala, como los Transformers.</li>
+        </ul>
+        <table class="tabla peq" aria-label="Dos hitos con cifras publicadas">
+          <thead><tr><th></th><th>AlexNet (2012)</th><th>GPT-3 (2020)</th></tr></thead>
+          <tbody>
+            <tr><td>Parámetros</td><td>60 M</td><td>175.000 M</td></tr>
+            <tr><td>Datos</td><td>1,2 M imágenes (ImageNet)</td><td>300.000 M tokens</td></tr>
+            <tr><td>Cómputo</td><td>2 GPU durante 5-6 días</td><td>≈ 3,1·10²³ operaciones</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> el volumen solo crece si crecen las tres aristas. Un modelo enorme sin datos ni cómputo se queda plano.</div>
+    </div>
+
+    <div class="card">
+      <h2>Entrenamiento frente a operación</h2>
+      <div class="meta"><span class="tag illus">Ejemplo ilustrativo</span></div>
+      <p class="lead">El mito: el éxito es una precisión alta en el laboratorio. La realidad: cuánto cuesta cada inferencia, si responde en milisegundos y si funciona 24/7 sin degradarse.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Mirar los modelos en…</span>
+          <div class="seg" role="group" aria-label="Contexto" id="l1-seg"><button type="button" data-v="lab" aria-pressed="true">El laboratorio</button><button type="button" data-v="prod" aria-pressed="false">Producción</button></div>
+        </div>
+      </div>
+      <div class="escena"><svg id="l1-mito" aria-label="Comparación de dos modelos en el laboratorio y en producción"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> un modelo que acierta mucho en pruebas pero cuesta una fortuna o tarda segundos en responder no sirve en producción.</div>
+    </div>
+
+    <div class="card">
+      <h2>Riesgos silenciosos: el 99 % que engaña</h2>
+      <div class="meta"><span class="tag illus">Ejemplo ilustrativo</span></div>
+      <p class="lead">Las «métricas tramposas»: un modelo con un 99 % de precisión puede fallar de forma catastrófica.</p>
+      <div class="controles">
+        <div class="seg" role="group" aria-label="Qué mirar" id="l1-riesgo">
+          <button type="button" data-v="global" aria-pressed="true">El 99 % global</button>
+          <button type="button" data-v="sesgo" aria-pressed="false">Sesgo</button>
+          <button type="button" data-v="ood" aria-pressed="false">Fuera de distribución</button>
+          <button type="button" data-v="priv" aria-pressed="false">Privacidad</button>
+        </div>
+        <div class="kpis peq" id="l1-kpis"></div>
+      </div>
+      <canvas id="l1-mosaico" class="lienzo" aria-label="Mosaico de 1.000 predicciones con aciertos y errores"></canvas>
+      <div class="leyenda"><span><i class="punto" style="background:#9cc0ea"></i>acierto</span><span><i class="punto" style="background:var(--bad)"></i>error (✕)</span><span><i class="anillo" style="border-color:var(--esc)"></i>registro memorizado (privacidad)</span></div>
+      <ul>
+        <li><strong>Sesgo:</strong> discriminación sistemática en los datos.</li>
+        <li><strong>OOD</strong> (<em>out of distribution</em>): fallos ante datos nuevos, distintos de los vistos.</li>
+        <li><strong>Privacidad:</strong> fuga de datos sensibles que ninguna métrica de acierto detecta.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> antes de celebrar un 99 %, mira por grupos, con datos nuevos y qué podría revelar el modelo.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 2 · ESCALAR -->
+  <section id="p-escala" class="panel" hidden>
+    <div class="card">
+      <h2>La economía de escalar: más grande suele ser mejor (y predecible)</h2>
+      <div class="meta"><span class="tag illus">Ley de escala orientativa</span><span class="tag real">Cuentas exactas sobre esa fórmula</span></div>
+      <p class="lead">Entrenar «más grande» suele mejorar los resultados sin una idea revolucionaria nueva: la pérdida baja de forma predecible al aumentar el cómputo (<em>scaling laws</em>).</p>
+      <div class="controles">
+        <div class="ctl ancho"><label for="e2-c">Presupuesto de cómputo</label><input id="e2-c" type="range" min="0" max="6" step="0.05" value="2"><output id="e2-co">×100</output></div>
+        <div class="ctl"><label for="e2-a">Exponente α</label><input id="e2-a" type="range" min="0.03" max="0.15" step="0.01" value="0.05"><output id="e2-ao">0,05</output></div>
+        <div class="ctl"><span class="etq">Ejes</span><div class="seg" role="group" aria-label="Tipo de ejes" id="e2-ejes"><button type="button" data-v="log" aria-pressed="true">Logarítmicos</button><button type="button" data-v="lin" aria-pressed="false">Lineales</button></div></div>
+      </div>
+      <div class="kpis peq" id="e2-kpis"></div>
+      <canvas id="e2-ley" class="lienzo" aria-label="Pérdida frente a cómputo según una ley de potencia"></canvas>
+      <div class="formula">L(C) = a · C<sup>−α</sup><span class="com">forma orientativa; α del orden de los publicados para modelos de lenguaje (≈ 0,05 para el cómputo en Kaplan et al., 2020)</span></div>
+      <p>En ejes logarítmicos una ley de potencia es una recta: por eso se puede prever cuánto mejorará un modelo antes de entrenarlo. En ejes lineales se ve el precio: rendimientos decrecientes.</p>
+      <div class="clave"><strong>Idea clave:</strong> muchas mejoras recientes son ingeniería + presupuesto + datos, no solo investigación pura. Eso decide quién puede competir.</div>
+    </div>
+
+    <div class="card">
+      <h2>El precio de la escala</h2>
+      <div class="meta"><span class="tag illus">Esquema</span></div>
+      <div class="grid4">
+        <div class="tile"><svg id="e2-i1" viewBox="0 0 200 90" aria-label="Icono de coste"></svg><h3>Coste</h3><p>Infraestructura millonaria.</p></div>
+        <div class="tile"><svg id="e2-i2" viewBox="0 0 200 90" aria-label="Icono de latencia"></svg><h3>Latencia</h3><p>Modelos lentos de servir.</p></div>
+        <div class="tile"><svg id="e2-i3" viewBox="0 0 200 90" aria-label="Icono de energía"></svg><h3>Energía</h3><p>Huella de carbono masiva.</p></div>
+        <div class="tile"><svg id="e2-i4" viewBox="0 0 200 90" aria-label="Icono de dependencia"></svg><h3>Dependencia</h3><p>Atado a una nube o a un fabricante de chips (<em>vendor lock-in</em>).</p></div>
+      </div>
+      <p class="cita">«La ventaja competitiva puede ser tener el pipeline y el cómputo, no el paper.»</p>
+      <div class="sep"></div>
+      <h3 class="dilema">Dilema: si te duplican el presupuesto de cómputo, ¿qué compromisos aceptas?</h3>
+      <div class="escena"><svg id="e2-dilema" aria-label="Matriz de compromisos de cuatro formas de gastar el doble de cómputo"></svg></div>
+      <p class="pie">Valoración cualitativa para el debate: ninguna columna gana en todo.</p>
+      <div class="clave"><strong>Idea clave:</strong> no hay respuestas fáciles; conviene tener esta conversación antes de escalar.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 3 · MOVER DATOS -->
+  <section id="p-mover" class="panel" hidden>
+    <div class="card">
+      <h2>Mover datos es caro</h2>
+      <div class="meta"><span class="tag">Cifras publicadas: Horowitz (2014)</span><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Las GPU y TPU aceleran muchísimo las multiplicaciones de matrices, pero el límite real suele ser la memoria y el ancho de banda.</p>
+      <div class="controles"><button class="btn" id="m3-play">▶ Traer un dato</button></div>
+      <div class="escena"><svg id="m3-energia" aria-label="Energía de calcular frente a energía de mover datos"></svg></div>
+      <p class="pie">Energía por operación con 32 bits en un chip de 45 nm (Horowitz, 2014; recogido por Han et al., 2016). Los valores cambian con la tecnología, la proporción se mantiene.</p>
+      <p>Como dicen las notas: tardas más en sacar los ingredientes de la nevera que en cocinar el plato.</p>
+      <div class="clave"><strong>Idea clave:</strong> leer un dato de la DRAM cuesta unas 170 veces más energía que multiplicarlo.</div>
+    </div>
+
+    <div class="card">
+      <h2>La autopista de los datos: RAM ↔ GPU ↔ GPU</h2>
+      <div class="meta"><span class="tag real">Cálculo real (aritmética)</span><span class="tag">Hardware de referencia: NVIDIA A100</span></div>
+      <p class="lead">El mismo bloque de datos tarda órdenes de magnitud distintos según el camino por el que viaje.</p>
+      <div class="controles">
+        <div class="ctl ancho"><label for="m3-gb">Datos a mover</label><input id="m3-gb" type="range" min="-2" max="2.3" step="any" value="1.14612804"><output id="m3-gbo">14 GB</output></div>
+        <div class="ctl"><span class="etq">Ejemplos</span><div class="botones"><button class="btn gris peq" id="m3-pre1">Pesos de 7.000 M parámetros en FP16 (14 GB)</button><button class="btn gris peq" id="m3-pre2">Lote de 32 imágenes 224×224 (19 MB)</button></div></div>
+      </div>
+      <div class="escena"><svg id="m3-autopista" aria-label="Caminos de los datos entre RAM, memoria de la GPU y otra GPU con sus tiempos"></svg></div>
+      <p class="pie">Picos teóricos: memoria HBM2e de una A100 de 80 GB ≈ 2.039 GB/s; NVLink de tercera generación ≈ 600 GB/s; PCIe 4.0 ×16 ≈ 32 GB/s por sentido. En la práctica se alcanza algo menos.</p>
+      <div class="clave"><strong>Idea clave:</strong> por eso se intenta que los datos lleguen a la GPU una vez y se reutilicen muchas.</div>
+    </div>
+
+    <div class="card">
+      <h2>¿Qué manda: los FLOPS o el ancho de banda?</h2>
+      <div class="meta"><span class="tag real">Cálculo real (aritmética)</span></div>
+      <p class="lead">Depende del trabajo: de cuántas operaciones hagas con cada byte que traes (la <em>intensidad aritmética</em>).</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Operación</span><div class="seg" role="group" aria-label="Operación" id="m3-op"><button type="button" data-v="mm" aria-pressed="true">Matriz × matriz</button><button type="button" data-v="mv" aria-pressed="false">Matriz × vector</button></div></div>
+        <div class="ctl"><label for="m3-n">Tamaño n (matrices n × n)</label><input id="m3-n" type="range" min="7" max="14" step="1" value="10"><output id="m3-no">1.024</output></div>
+        <div class="ctl"><span class="etq">Los datos están en…</span><div class="seg" role="group" aria-label="Origen de los datos" id="m3-src"><button type="button" data-v="hbm" aria-pressed="true">la GPU (HBM)</button><button type="button" data-v="pcie" aria-pressed="false">la RAM (PCIe)</button></div></div>
+      </div>
+      <div class="lado">
+        <div class="escena"><svg id="m3-balanza" aria-label="Balanza entre tiempo de mover datos y tiempo de calcular"></svg></div>
+        <canvas id="m3-techo" class="lienzo" aria-label="Modelo roofline: rendimiento alcanzable frente a intensidad aritmética"></canvas>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>techo con datos en la GPU (HBM)</span><span><i style="background:var(--s2)"></i>techo con datos en la RAM (PCIe)</span><span><i class="punto" style="background:var(--esc)"></i>la operación elegida</span></div>
+      <ul>
+        <li><strong>Matriz × matriz:</strong> 2n³ operaciones con 3n² números; al crecer n cada byte se reutiliza mucho y acaba mandando el cálculo.</li>
+        <li><strong>Matriz × vector</strong> (una sola petición a un modelo de lenguaje): unas 2 operaciones por cada peso leído; manda siempre la memoria.</li>
+        <li>En la gráfica, la rampa es «ancho de banda × intensidad» y el tramo plano, la potencia de cálculo (312 TFLOPS en FP16).</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> por eso tantas empresas optimizan memoria y ancho de banda antes que FLOPS: en inferencia, el cálculo espera a los datos.</div>
+    </div>
+
+    <div class="card">
+      <h2>Cuantización: menos bits, menos que mover</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Reducir la precisión de 32 a 16, 8 o 4 bits divide la memoria y el tráfico de datos a cambio de un pequeño error de redondeo.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Bits por peso</span><div class="seg" role="group" aria-label="Bits por peso" id="m3-bits"><button type="button" data-v="32" aria-pressed="true">32</button><button type="button" data-v="16" aria-pressed="false">16</button><button type="button" data-v="8" aria-pressed="false">8</button><button type="button" data-v="4" aria-pressed="false">4</button></div></div>
+        <div class="ctl ancho"><label for="m3-np">Parámetros del modelo</label><input id="m3-np" type="range" min="8" max="12" step="any" value="9.84509804"><output id="m3-npo">7.000 M</output></div>
+        <div class="ctl"><span class="etq">Ejemplos</span><div class="botones"><button class="btn gris peq" data-np="340e6">BERT-large · 340 M</button><button class="btn gris peq" data-np="7e9">7.000 M</button><button class="btn gris peq" data-np="175e9">GPT-3 · 175.000 M</button></div></div>
+      </div>
+      <div class="escena"><svg id="m3-bitsvg" aria-label="Bits de un peso según la precisión"></svg></div>
+      <div class="lado" style="margin-top:1rem">
+        <div class="escena"><svg id="m3-mem" aria-label="Memoria del modelo según los bits por peso"></svg></div>
+        <div><canvas id="m3-hist" class="lienzo" aria-label="Histograma de pesos originales y cuantizados"></canvas>
+        <div class="leyenda"><span><i class="cuad" style="background:#d5dde6"></i>4.000 pesos originales</span><span><i style="background:var(--esc)"></i>valores tras cuantizar</span></div></div>
+      </div>
+      <p>La memoria es parámetros × bytes por parámetro. El error se mide de verdad: 4.000 pesos de una normal cuantizados con una única escala por tensor (el esquema más simple; en la práctica se usan escalas por grupos y el error es menor).</p>
+      <div class="clave"><strong>Idea clave:</strong> cuantizar no es una moda: es mover menos datos y caber en menos memoria.</div>
+    </div>
+
+    <div class="card">
+      <h2>Batching: un viaje de los pesos, muchas peticiones</h2>
+      <div class="meta"><span class="tag real">Cálculo real (modelo simplificado)</span><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Para generar cada token hay que leer todos los pesos; si se atienden varias peticiones a la vez, ese viaje se reparte entre todas.</p>
+      <div class="controles">
+        <div class="ctl ancho"><label for="m3-b">Peticiones en el lote</label><input id="m3-b" type="range" min="0" max="9" step="1" value="4"><output id="m3-bo">16</output></div>
+        <div class="ctl"><span class="etq">Precisión de los pesos</span><div class="seg" role="group" aria-label="Precisión" id="m3-prec"><button type="button" data-v="16" aria-pressed="true">FP16</button><button type="button" data-v="8" aria-pressed="false">INT8</button><button type="button" data-v="4" aria-pressed="false">INT4</button></div></div>
+        <button class="btn" id="m3-bplay">⏸ Pausa</button>
+      </div>
+      <div class="escena"><svg id="m3-lote" aria-label="Los pesos viajan de la memoria a los núcleos una vez por paso y sirven a todo el lote"></svg></div>
+      <div class="kpis peq" id="m3-bkpis"></div>
+      <canvas id="m3-caudal" class="lienzo" aria-label="Caudal en tokens por segundo frente al tamaño del lote"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>FP16 (14 GB)</span><span><i style="background:var(--s2)"></i>INT8 (7 GB)</span><span><i style="background:var(--s3)"></i>INT4 (3,5 GB)</span></div>
+      <p class="pie">Modelo de 7.000 M parámetros en una A100: tiempo por paso = máx(leer los pesos, calcular). Sin caché KV ni otros costes, así que los valores reales son menores; la forma de la curva es la que importa.</p>
+      <div class="clave"><strong>Idea clave:</strong> hasta el codo, servir 64 peticiones cuesta casi lo mismo que servir una: el batching amortiza el coste de mover los pesos.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 4 · ICEBERG -->
+  <section id="p-iceberg" class="panel" hidden>
+    <div class="card">
+      <h2>El iceberg de costes</h2>
+      <div class="meta"><span class="tag illus">Esquema</span></div>
+      <p class="lead">El entrenamiento es lo más vistoso, pero a menudo no es lo más caro. Pasa el ratón por cada capa.</p>
+      <div class="controles"><button class="btn" id="i4-play">▶ Sumergirse</button></div>
+      <div class="escena alta"><svg id="i4-iceberg" aria-label="Iceberg: el entrenamiento asoma y debajo están los costes reales y ocultos"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> los costes reales (datos, etiquetado, inferencia continua) y los ocultos (observabilidad, deriva, cumplimiento) pueden superar con creces el coste de entrenar.</div>
+    </div>
+
+    <div class="card">
+      <h2>Cultura de calidad: observar, detectar, aprender</h2>
+      <div class="meta"><span class="tag illus">Simulación</span><span class="tag real">Indicador de deriva calculado de verdad</span></div>
+      <p class="lead">Detectar el problema antes de que lo reporte el usuario exige métricas profundas y alertas automáticas sobre los datos de entrada.</p>
+      <div class="controles">
+        <button class="btn" id="i4-sim">▶ Simular 80 días</button>
+        <div class="ctl"><label for="i4-d">Cambio en los datos (deriva)</label><input id="i4-d" type="range" min="0" max="1.5" step="0.05" value="0.8"><output id="i4-do">0,80 σ</output></div>
+        <div class="ctl"><label for="i4-u">Umbral de alerta (PSI)</label><input id="i4-u" type="range" min="0.05" max="0.5" step="0.01" value="0.25"><output id="i4-uo">0,25</output></div>
+        <div class="kpis peq" id="i4-kpis"></div>
+      </div>
+      <div class="lado">
+        <div><canvas id="i4-hist" class="lienzo" aria-label="Distribución de la entrada: referencia frente a día actual"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>datos de entrenamiento (referencia)</span><span><i class="cuad" style="background:var(--s2)"></i>datos del día</span></div></div>
+        <div><canvas id="i4-psi" class="lienzo" aria-label="Índice de estabilidad de la población por día con umbral de alerta"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>PSI diario</span><span><i style="background:var(--ink2)"></i>umbral</span><span><i class="punto" style="background:var(--esc)"></i>alerta automática</span></div></div>
+      </div>
+      <ol class="pasos horiz" id="i4-pasos">
+        <li>Despliegue</li><li>Cambian los datos de entrada</li><li>Alerta automática</li><li>Diagnóstico: qué parte se rompió</li><li>Corrección: reentrenar</li><li>Postmortem sin culpables</li>
+      </ol>
+      <p>Cada día se comparan 500 entradas nuevas con las de entrenamiento mediante el PSI (<em>population stability index</em>): PSI = Σ (actual − referencia) · ln(actual / referencia) sobre 10 intervalos. Regla práctica habitual: por debajo de 0,1, estable; por encima de 0,25, cambio importante.</p>
+      <div class="clave"><strong>Idea clave:</strong> postmortems sin culpables, observabilidad y alertas sobre la entrada y las predicciones. Sin esto se vuela a ciegas.</div>
+    </div>
+
+    <div class="card">
+      <h2>Lo menos glamuroso, lo más crítico</h2>
+      <div class="meta"><span class="tag illus">Mapa para el debate</span></div>
+      <p class="lead">¿Qué parte del stack recibe menos atención de la que merece?</p>
+      <div class="escena esc-arrastre"><svg id="i4-mapa" aria-label="Mapa de piezas del stack según visibilidad y criticidad; las piezas se pueden arrastrar"></svg></div>
+      <p class="pie">Posiciones de partida orientativas, según las notas: datos y monitorización arriba a la izquierda. Arrastra cada pieza donde la pondría tu equipo.</p>
+      <div class="clave"><strong>Idea clave:</strong> suele ser lo relacionado con datos y monitorización: nadie quiere trabajar en ello porque no luce, y ahí hay una oportunidad enorme.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 5 · INFERENCIA -->
+  <section id="p-inferencia" class="panel" hidden>
+    <div class="card">
+      <h2>El negocio de la inferencia: del mejor modelo al más eficiente</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">Precios y hardware orientativos</span></div>
+      <p class="lead">Cuando sirves a millones de usuarios, mandan la latencia, el coste por consulta y los SLA (acuerdos de nivel de servicio).</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Modelo</span><div class="seg" role="group" aria-label="Tamaño del modelo" id="n5-mod"><button type="button" data-v="70" aria-pressed="false">Grande · 70.000 M</button><button type="button" data-v="7" aria-pressed="true">Mediano · 7.000 M</button><button type="button" data-v="1" aria-pressed="false">Destilado · 1.000 M</button></div></div>
+        <div class="ctl"><span class="etq">Precisión</span><div class="seg" role="group" aria-label="Precisión" id="n5-prec"><button type="button" data-v="16" aria-pressed="true">FP16</button><button type="button" data-v="8" aria-pressed="false">INT8</button><button type="button" data-v="4" aria-pressed="false">INT4</button></div></div>
+        <div class="ctl"><label for="n5-b">Lote</label><input id="n5-b" type="range" min="0" max="8" step="1" value="5"><output id="n5-bo">32</output></div>
+        <div class="ctl"><label for="n5-q">Consultas al día</label><input id="n5-q" type="range" min="3" max="8" step="0.1" value="7"><output id="n5-qo">10.000.000</output></div>
+        <div class="ctl"><label for="n5-p">Precio de una GPU por hora</label><input id="n5-p" type="range" min="1" max="4" step="0.1" value="2"><output id="n5-po">2,00 €</output></div>
+      </div>
+      <div class="kpis peq" id="n5-kpis"></div>
+      <div class="escena"><svg id="n5-costes" aria-label="Coste por 1.000 consultas de cada combinación de modelo y precisión"></svg></div>
+      <div class="leyenda"><span><i class="cuad" style="background:var(--s1)"></i>FP16</span><span><i class="cuad" style="background:var(--s2)"></i>INT8</span><span><i class="cuad" style="background:var(--s3)"></i>INT4</span><span>· latencia de una respuesta de 300 tokens en gris</span></div>
+      <p class="pie">Supuestos: GPU tipo A100 de 80 GB (2.039 GB/s, 312 TFLOPS), tráfico uniforme, respuestas de 300 tokens, como mínimo una réplica encendida, sin caché KV ni sobrecostes. Sirve para comparar, no para presupuestar.</p>
+      <div class="clave"><strong>Idea clave:</strong> muchas empresas ganan más optimizando inferencias baratas y estables que entrenando el modelo más grande del mercado.</div>
+    </div>
+
+    <div class="card">
+      <h2>Modelos pequeños: destilación y cuantización</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Reducir el tamaño y la precisión numérica sin sacrificar drásticamente la calidad. El objetivo no es solo técnico: es reducir el gasto operativo (OpEx) por consulta.</p>
+      <div class="controles"><button class="btn" id="n5-dest">▶ Destilar</button></div>
+      <div class="tres">
+        <svg id="n5-prof" aria-label="Red profesora grande"></svg>
+        <svg id="n5-probs" aria-label="Probabilidades suaves del profesor y del alumno"></svg>
+        <svg id="n5-alum" aria-label="Red alumna pequeña"></svg>
+      </div>
+      <p>El alumno aprende de las probabilidades suaves del profesor (un perro se parece más a un lobo que a un gato), no solo de la etiqueta correcta. Después, cuantizar sus pesos reduce aún más la memoria.</p>
+    </div>
+
+    <div class="card">
+      <h2>Dilema: si tu KPI es el coste por 1.000 consultas, ¿qué sacrificas?</h2>
+      <div class="meta"><span class="tag illus">Dilema sin respuesta correcta</span></div>
+      <p class="lead">Arrastra el punto hacia lo que quieres proteger: calidad, frescura o personalización. Se encienden las palancas de ahorro que te quedan.</p>
+      <div class="escena esc-arrastre"><svg id="n5-tri" aria-label="Triángulo de compromisos entre calidad, frescura y personalización"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> no hay respuesta universal; depende del caso de uso, pero la decisión hay que tomarla de forma consciente.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 6 · ROI -->
+  <section id="p-roi" class="panel" hidden>
+    <div class="card">
+      <h2>Casos de uso que pagan nóminas</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Dónde está el ROI real: sistemas de alto volumen que hacen predicción + decisión bajo restricciones.</p>
+      <div class="grid4">
+        <div class="tile"><svg id="r6-a" viewBox="0 0 240 150" aria-label="Recomendación y anuncios"></svg><h3>Recomendación y anuncios</h3><p>El núcleo de monetización de las grandes tecnológicas.</p></div>
+        <div class="tile"><svg id="r6-b" viewBox="0 0 240 150" aria-label="Búsqueda y ranking"></svg><h3>Búsqueda y ranking</h3><p>Ordenar la información relevante es crítico.</p></div>
+        <div class="tile"><svg id="r6-c" viewBox="0 0 240 150" aria-label="Detección de fraude"></svg><h3>Detección de fraude</h3><p>Decisiones en milisegundos para aprobar transacciones.</p></div>
+        <div class="tile"><svg id="r6-d" viewBox="0 0 240 150" aria-label="Visión industrial y voz"></svg><h3>Visión industrial y voz</h3><p>Automatización física y de atención al cliente.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>¿Por qué un 1 % puede valer millones y un 10 % no valer nada?</h2>
+      <div class="meta"><span class="tag real">Cálculo real</span><span class="tag illus">Cifras orientativas</span></div>
+      <p class="lead">El valor de una mejora es volumen × valor de cada transacción × mejora. El área de cada cuadrado es el valor al año.</p>
+      <div class="grid2">
+        <div class="controles">
+          <strong style="flex-basis:100%">A · Ranking de un gran buscador</strong>
+          <div class="ctl"><label for="r6-av">Transacciones al día</label><input id="r6-av" type="range" min="0" max="24" step="1" value="21"><output id="r6-avo">100.000.000</output></div>
+          <div class="ctl"><label for="r6-ae">Valor de cada una</label><input id="r6-ae" type="range" min="0" max="12" step="1" value="3"><output id="r6-aeo">0,01 €</output></div>
+          <div class="ctl"><label for="r6-am">Mejora</label><input id="r6-am" type="range" min="0.5" max="20" step="0.5" value="1"><output id="r6-amo">1 %</output></div>
+        </div>
+        <div class="controles">
+          <strong style="flex-basis:100%">B · Asistente interno de un departamento</strong>
+          <div class="ctl"><label for="r6-bv">Transacciones al día</label><input id="r6-bv" type="range" min="0" max="24" step="1" value="3"><output id="r6-bvo">100</output></div>
+          <div class="ctl"><label for="r6-be">Valor de cada una</label><input id="r6-be" type="range" min="0" max="12" step="1" value="8"><output id="r6-beo">0,50 €</output></div>
+          <div class="ctl"><label for="r6-bm">Mejora</label><input id="r6-bm" type="range" min="0.5" max="20" step="0.5" value="10"><output id="r6-bmo">10 %</output></div>
+        </div>
+      </div>
+      <div class="escena"><svg id="r6-valor" aria-label="Dos cuadrados cuya área es el valor anual de cada mejora"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> un 1 % en millones de búsquedas es mucho dinero; un 10 % en cien consultas al día puede ser irrelevante económicamente.</div>
+    </div>
+
+    <div class="card">
+      <h2>Evaluación frente a realidad: A/B, canary y modo sombra</h2>
+      <div class="meta"><span class="tag illus">Simulación</span></div>
+      <p class="lead">El valor no es acertar una predicción aislada, sino decidir bien bajo restricciones de riesgo, coste y experiencia de usuario.</p>
+      <div class="controles">
+        <div class="seg" role="group" aria-label="Estrategia" id="r6-modo"><button type="button" data-v="ab" aria-pressed="true">A/B testing</button><button type="button" data-v="canary" aria-pressed="false">Canary</button><button type="button" data-v="sombra" aria-pressed="false">Modo sombra</button></div>
+        <div class="ctl vista" id="r6-cctl" hidden><span class="etq">Tráfico a v2</span><div class="seg" role="group" aria-label="Porcentaje a v2" id="r6-pct"><button type="button" data-v="0.01" aria-pressed="false">1 %</button><button type="button" data-v="0.05" aria-pressed="true">5 %</button><button type="button" data-v="0.25" aria-pressed="false">25 %</button><button type="button" data-v="0.5" aria-pressed="false">50 %</button><button type="button" data-v="1" aria-pressed="false">100 %</button></div></div>
+        <button class="btn gris vista" id="r6-back" hidden>↺ Volver a v1 (rollback)</button>
+        <button class="btn" id="r6-play">⏸ Pausa</button>
+      </div>
+      <div class="escena"><svg id="r6-trafico" aria-label="Peticiones de usuarios repartidas entre la versión actual y la nueva"></svg></div>
+      <ul>
+        <li><strong>A/B:</strong> dos grupos comparables de usuarios; se compara una métrica de negocio, no la exactitud.</li>
+        <li><strong>Canary:</strong> la versión nueva recibe primero una pequeña parte del tráfico; si va bien se amplía, si no, se vuelve atrás.</li>
+        <li><strong>Modo sombra</strong> (<em>shadow mode</em>): la versión nueva recibe una copia de cada petición, pero su respuesta no llega al usuario: solo se registra y se compara.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> se mide el impacto real en el negocio, no solo la exactitud en un benchmark.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 7 · DATOS Y EVALUACIÓN -->
+  <section id="p-datos" class="panel" hidden>
+    <div class="card">
+      <h2>Los datos como ventaja competitiva: el verdadero foso</h2>
+      <div class="meta"><span class="tag illus">Esquema animado</span></div>
+      <p class="lead">El foso defensivo (<em>moat</em>) no es el modelo, que otros pueden copiar, sino el acceso exclusivo a datos y los bucles de realimentación que los generan.</p>
+      <div class="escena"><svg id="d7-foso" aria-label="Castillo del modelo rodeado por un foso de datos propios que gira como un bucle de realimentación"></svg></div>
+      <h3 class="dilema">Dilema: a tres años, ¿un modelo puntero o un flujo de datos legal y sostenible?</h3>
+      <div class="controles">
+        <div class="ctl"><label for="d7-v">Ventaja inicial del modelo</label><input id="d7-v" type="range" min="0" max="50" step="1" value="25"><output id="d7-vo">25 puntos</output></div>
+        <div class="ctl"><label for="d7-dr">Deriva del mundo al mes</label><input id="d7-dr" type="range" min="0" max="3" step="0.1" value="1"><output id="d7-dro">1,0 %</output></div>
+        <div class="ctl"><label for="d7-g">Mejora del bucle de datos al mes</label><input id="d7-g" type="range" min="0" max="4" step="0.1" value="2"><output id="d7-go">2,0 %</output></div>
+        <div class="kpis peq" id="d7-kpis"></div>
+      </div>
+      <canvas id="d7-tres" class="lienzo" aria-label="Valor de un modelo estático frente a un flujo de datos a 36 meses"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>modelo puntero hoy, sin datos propios</span><span><i style="background:var(--s2)"></i>flujo de datos legal y sostenible</span></div>
+      <p class="pie">Modelo de juguete para discutir supuestos, no para predecir: el modelo pierde valor con la deriva del mundo y el flujo de datos mejora cada mes.</p>
+      <div class="clave"><strong>Idea clave:</strong> sin datos propios no hay mejora continua, por muy buena que sea la arquitectura. Y un modelo entrenado con datos ilegales es un pasivo, no un activo.</div>
+    </div>
+
+    <div class="card">
+      <h2>Las trampas de la evaluación</h2>
+      <div class="meta" id="d7-meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Tres formas de sacar un 10 en la evaluación y fallar en el mundo real.</p>
+      <div class="controles">
+        <div class="seg" role="group" aria-label="Trampa" id="d7-trampa"><button type="button" data-v="fuga" aria-pressed="true">Fuga de datos</button><button type="button" data-v="bench" aria-pressed="false">Optimizar el benchmark</button><button type="button" data-v="demo" aria-pressed="false">Demos escogidas</button></div>
+        <div class="ctl vista" id="d7-c-fuga"><label for="d7-f">Ejemplos de prueba que también están en el entrenamiento</label><input id="d7-f" type="range" min="0" max="100" step="5" value="50"><output id="d7-fo">50 %</output></div>
+        <div class="ctl vista" id="d7-c-bench" hidden><label for="d7-k">Variantes probadas contra el mismo test</label><input id="d7-k" type="range" min="0" max="8" step="1" value="5"><output id="d7-ko">50</output></div>
+        <div class="ctl vista" id="d7-c-demo" hidden><span class="etq">Mostrar</span><div class="seg" role="group" aria-label="Demo o realidad" id="d7-dm"><button type="button" data-v="demo" aria-pressed="true">La demo</button><button type="button" data-v="todo" aria-pressed="false">Fuera de guion</button></div></div>
+      </div>
+      <div class="kpis peq" id="d7-tkpis"></div>
+      <canvas id="d7-trampas" class="lienzo" aria-label="Visualización de la trampa de evaluación elegida"></canvas>
+      <p id="d7-ttxt"></p>
+      <div class="clave"><strong>Idea clave:</strong> ante una demo impresionante, pregúntate siempre qué no te están enseñando.</div>
+    </div>
+
+    <div class="card">
+      <h2>La evaluación real es un sistema</h2>
+      <div class="meta"><span class="tag illus">Ejemplo ilustrativo</span><span class="tag real">Cálculo real sobre una distribución de juguete</span></div>
+      <p class="lead">No es un único número, sino suites de tests, segmentación y pruebas fuera de distribución. Y el último 10 % es el más caro.</p>
+      <div class="lado">
+        <div class="escena"><svg id="d7-panel" aria-label="Panel de evaluación por segmentos y pruebas"></svg></div>
+        <div>
+          <div class="controles" style="margin-top:0">
+            <div class="ctl ancho"><label for="d7-obj">Fiabilidad objetivo</label><input id="d7-obj" type="range" min="50" max="99" step="1" value="95"><output id="d7-objo">95 %</output></div>
+          </div>
+          <canvas id="d7-cola" class="lienzo" aria-label="Cobertura de casos frente al número de tipos de caso resueltos"></canvas>
+        </div>
+      </div>
+      <div class="kpis peq" id="d7-ckpis"></div>
+      <p class="pie">Distribución de juguete: 10.000 tipos de caso con frecuencias según la ley de Zipf (el k-ésimo más frecuente aparece ∝ 1/k).</p>
+      <div class="clave"><strong>Idea clave:</strong> pasar del 85 % al 95 % de fiabilidad es resolver las colas largas, los casos raros, y eso exige monitorización continua y cultura de soporte.</div>
+    </div>
+
+    <div class="card">
+      <h2>Dilema: ¿+2 % en un benchmark o −50 % de incidentes en producción?</h2>
+      <div class="meta"><span class="tag illus">Dilema: la balanza depende de tus números</span></div>
+      <div class="controles">
+        <div class="ctl"><label for="d7-inc">Incidentes al mes</label><input id="d7-inc" type="range" min="1" max="200" step="1" value="20"><output id="d7-inco">20</output></div>
+        <div class="ctl"><label for="d7-ci">Coste medio de un incidente</label><input id="d7-ci" type="range" min="0" max="12" step="1" value="5"><output id="d7-cio">5.000 €</output></div>
+        <div class="ctl"><label for="d7-vp">Valor de cada punto de benchmark al año</label><input id="d7-vp" type="range" min="0" max="12" step="1" value="6"><output id="d7-vpo">100.000 €</output></div>
+      </div>
+      <div class="escena"><svg id="d7-balanza" aria-label="Balanza entre mejorar un benchmark y reducir incidentes"></svg></div>
+      <p class="pie">El benchmark es más fácil de comunicar a la dirección; por eso muchas empresas lo eligen aunque las cuentas digan otra cosa.</p>
+    </div>
+  </section>
+
+  <!-- ===================================================== 8 · ROBUSTEZ -->
+  <section id="p-robustez" class="panel" hidden>
+    <div class="card">
+      <h2>Correlaciones espurias: los «atajos»</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span><span class="tag illus">Rasgos de juguete</span></div>
+      <p class="lead">Las redes son «vagas»: buscan el camino de menor resistencia. Si en las fotos las vacas siempre están en la hierba, aprenden «hierba = vaca» en lugar de la anatomía.</p>
+      <div class="escena"><svg id="b8-esc" aria-label="Cuatro escenas: vaca en la hierba, camello en la arena, vaca en la playa y camello en la hierba, con la predicción del modelo"></svg></div>
+      <div class="controles">
+        <div class="ctl ancho"><label for="b8-p">Fotos de entrenamiento con el fondo «habitual»</label><input id="b8-p" type="range" min="50" max="100" step="1" value="95"><output id="b8-po">95 %</output></div>
+        <button class="btn gris" id="b8-x10" aria-pressed="false">×10 datos con el mismo sesgo</button>
+        <button class="btn" id="b8-train">↻ Reentrenar</button>
+        <div class="ctl"><span class="etq">Ver</span><div class="seg" role="group" aria-label="Datos que se muestran" id="b8-ver"><button type="button" data-v="train" aria-pressed="true">Entrenamiento</button><button type="button" data-v="playa" aria-pressed="false">Contexto cambiado</button></div></div>
+      </div>
+      <div class="lado">
+        <canvas id="b8-plano" class="lienzo cuadro" aria-label="Plano silueta frente a fondo con la frontera aprendida"></canvas>
+        <div class="escena"><svg id="b8-barras" aria-label="Pesos aprendidos y exactitud dentro y fuera de contexto"></svg></div>
+      </div>
+      <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>vaca</span><span><i class="punto" style="background:#eb6834"></i>camello</span><span>· el tinte del fondo es la predicción del modelo</span></div>
+      <p class="pie">Cada foto se resume en dos rasgos de juguete: la silueta del animal (señal real pero con ruido) y el fondo (hierba o arena). Regresión logística entrenada de verdad.</p>
+      <div class="clave"><strong>Idea clave:</strong> robustez ≠ más datos si los datos tienen el mismo sesgo. Hay que romper la correlación: datos variados y evaluación fuera de contexto.</div>
+    </div>
+
+    <div class="card">
+      <h2>Robustez adversaria: la fragilidad invisible</h2>
+      <div class="meta"><span class="tag real">Entrenamiento y ataque reales en el navegador</span></div>
+      <p class="lead">Un modelo con casi un 100 % de acierto puede cambiar de opinión con una perturbación que el ojo apenas ve: una señal de STOP pasa a «límite de velocidad».</p>
+      <div class="controles">
+        <div class="ctl ancho"><label for="b8-eps">Tamaño de la perturbación ε (máx. por píxel)</label><input id="b8-eps" type="range" min="0" max="0.2" step="0.002" value="0"><output id="b8-epso">0,000</output></div>
+        <button class="btn gris" id="b8-otra">Otra señal</button>
+        <button class="btn" id="b8-min">Ir al ε mínimo que engaña</button>
+        <div class="kpis peq" id="b8-akpis"></div>
+      </div>
+      <div class="adv">
+        <figure><canvas id="b8-orig" aria-label="Imagen original"></canvas><figcaption>Original</figcaption></figure>
+        <figure><canvas id="b8-pert" aria-label="Perturbación amplificada"></canvas><figcaption>Perturbación amplificada<br><span style="font-weight:400">azul: oscurece · naranja: aclara</span></figcaption></figure>
+        <figure><canvas id="b8-mod" aria-label="Imagen modificada"></canvas><figcaption>Original + perturbación</figcaption></figure>
+        <svg id="b8-prob" aria-label="Probabilidades del clasificador antes y después"></svg>
+      </div>
+      <p class="pie">Imágenes de 16 × 16 píxeles generadas por código. Clasificador lineal (regresión logística) entrenado en el navegador; la perturbación sigue el signo del gradiente (FGSM): cada píxel cambia como mucho ε, en la dirección que más empuja hacia el error.</p>
+      <div class="clave"><strong>Idea clave:</strong> la red no «ve» como nosotros. Y esto no se arregla simplemente añadiendo más fotos de señales de tráfico.</div>
+    </div>
+
+    <div class="card">
+      <h2>Más allá del laboratorio</h2>
+      <div class="meta"><span class="tag illus">Esquema</span><span class="tag real">Aritmética real</span></div>
+      <p class="lead">En un entorno controlado, un fallo es una métrica; en el mundo real, es un riesgo legal y físico.</p>
+      <div class="grid3">
+        <div class="tile"><svg id="b8-c1" viewBox="0 0 300 150" aria-label="Biometría"></svg><h3>Biometría</h3><p>Suplantación o falsos negativos: riesgos de seguridad.</p></div>
+        <div class="tile"><svg id="b8-c2" viewBox="0 0 300 150" aria-label="Conducción autónoma"></svg><h3>Conducción autónoma</h3><p>Confusión por clima adverso o pegatinas en las señales.</p></div>
+        <div class="tile"><svg id="b8-c3" viewBox="0 0 300 150" aria-label="Medicina"></svg><h3>Medicina</h3><p>Diagnósticos erróneos por marcas en las radiografías (sesgo de hospital).</p></div>
+      </div>
+      <div class="sep"></div>
+      <h3 class="dilema">Dilema: el modelo falla solo en el 0,1 % de los casos, pero esos casos son críticos</h3>
+      <div class="controles">
+        <div class="ctl ancho"><label for="b8-imp">Impacto de un fallo crítico (en aciertos equivalentes)</label><input id="b8-imp" type="range" min="0" max="4" step="0.05" value="2"><output id="b8-impo">×100</output></div>
+        <div class="kpis peq" id="b8-rkpis"></div>
+      </div>
+      <canvas id="b8-riesgo" class="lienzo" aria-label="10.000 casos con 10 fallos cuyo tamaño crece con su impacto"></canvas>
+      <ul>
+        <li>Umbral de confianza: los casos dudosos se derivan a una persona.</li>
+        <li>Supervisión humana y redundancia en las decisiones irreversibles.</li>
+        <li>Monitorización y un plan de respuesta antes de que ocurra.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> no hay respuestas fáciles, pero ignorar el 0,1 % no es una opción cuando cada fallo pesa tanto.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 9 · PRIVACIDAD -->
+  <section id="p-privacidad" class="panel" hidden>
+    <div class="card">
+      <h2>Pensar como un atacante</h2>
+      <div class="meta"><span class="tag real">Entrenamiento y ataques reales en el navegador</span></div>
+      <p class="lead">La privacidad no es un interruptor: es un compromiso entre utilidad y riesgo. Los datos de entrenamiento pueden extraerse si no se protegen.</p>
+      <div class="controles">
+        <div class="seg" role="group" aria-label="Ataque" id="p9-ataque"><button type="button" data-v="mia" aria-pressed="true">Memorización e inferencia de pertenencia</button><button type="button" data-v="ext" aria-pressed="false">Extracción del modelo</button></div>
+      </div>
+      <div class="vista" id="p9-v-mia">
+        <div class="controles">
+          <button class="btn" id="p9-mplay">▶ Entrenar</button>
+          <div class="ctl"><span class="etq">Regularización</span><div class="seg" role="group" aria-label="Regularización" id="p9-reg"><button type="button" data-v="0" aria-pressed="true">Ninguna</button><button type="button" data-v="0.01" aria-pressed="false">L2 (λ = 0,01)</button></div></div>
+          <div class="kpis peq" id="p9-mkpis"></div>
+        </div>
+        <div class="lado">
+          <canvas id="p9-mfront" class="lienzo cuadro" aria-label="Frontera del modelo con ejemplos de entrenamiento y ejemplos no vistos"></canvas>
+          <canvas id="p9-mhist" class="lienzo" aria-label="Histograma de la pérdida de los ejemplos vistos y no vistos"></canvas>
+        </div>
+        <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>clase 1</span><span><i class="punto" style="background:var(--s2)"></i>clase 0</span><span>● estaban en el entrenamiento · ○ no estaban</span><span><i class="cuad" style="background:var(--s7)"></i>pérdida de los vistos</span><span><i class="cuad" style="background:var(--s4)"></i>pérdida de los no vistos</span></div>
+        <p>Con un 15 % de etiquetas ruidosas, la red se aprende de memoria hasta los ejemplos raros: su pérdida en los vistos es casi cero. El atacante solo mira la pérdida: si es muy baja, apuesta a que ese ejemplo estaba en el entrenamiento. Un 50 % de acierto equivale a no saber nada.</p>
+      </div>
+      <div class="vista" id="p9-v-ext" hidden>
+        <div class="controles">
+          <div class="ctl ancho"><label for="p9-q">Consultas a la API</label><input id="p9-q" type="range" min="1" max="3.3" step="0.05" value="2.5"><output id="p9-qo">316</output></div>
+          <button class="btn" id="p9-eplay">▶ Consultar y copiar</button>
+          <div class="kpis peq" id="p9-ekpis"></div>
+        </div>
+        <div class="lado">
+          <canvas id="p9-vict" class="lienzo cuadro" aria-label="Frontera del modelo víctima"></canvas>
+          <canvas id="p9-copia" class="lienzo cuadro" aria-label="Frontera del modelo copiado a partir de consultas"></canvas>
+        </div>
+        <p>El atacante no ve ni un peso: solo envía puntos a la API y anota la clase que devuelve. Con esas respuestas entrena su propia red, que acaba copiando la frontera de la víctima.</p>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> memorización, inferencia de pertenencia y extracción del modelo: tres riesgos de seguridad ofensiva que ninguna métrica de acierto mide.</div>
+    </div>
+
+    <div class="card">
+      <h2>Estrategias defensivas</h2>
+      <div class="meta"><span class="tag real">Privacidad diferencial: cálculo real</span><span class="tag illus">Federado y red teaming: animaciones ilustrativas</span></div>
+      <div class="controles">
+        <div class="seg" role="group" aria-label="Defensa" id="p9-def"><button type="button" data-v="dp" aria-pressed="true">Privacidad diferencial</button><button type="button" data-v="fl" aria-pressed="false">Aprendizaje federado</button><button type="button" data-v="rt" aria-pressed="false">Red teaming</button></div>
+      </div>
+      <div class="vista" id="p9-v-dp">
+        <p class="lead">Añadir ruido estadístico para que la respuesta no dependa de ningún individuo concreto. ¿Cuántos pacientes del conjunto tienen la enfermedad? Con Ana son 43; sin ella, 42.</p>
+        <div class="controles">
+          <div class="ctl ancho"><label for="p9-eps">ε (presupuesto de privacidad)</label><input id="p9-eps" type="range" min="-1.3" max="0.7" step="0.02" value="-0.3"><output id="p9-epso">0,50</output></div>
+          <button class="btn gris" id="p9-pub">Publicar una respuesta</button>
+          <div class="kpis peq" id="p9-dkpis"></div>
+        </div>
+        <canvas id="p9-dp" class="lienzo" aria-label="Distribuciones de la respuesta con ruido con y sin Ana"></canvas>
+        <div class="leyenda"><span><i style="background:var(--s1)"></i>respuesta si Ana está (43 + ruido)</span><span><i style="background:var(--s2)"></i>respuesta si Ana no está (42 + ruido)</span><span><i style="background:var(--ink)"></i>respuesta publicada</span></div>
+        <p>Mecanismo de Laplace: ruido de escala 1/ε. Cuanto más se solapan las curvas, menos puede saber el atacante de Ana; a cambio, la respuesta es menos precisa. En el entrenamiento de redes se usa la misma idea (DP-SGD: recortar los gradientes de cada ejemplo y añadir ruido).</p>
+      </div>
+      <div class="vista" id="p9-v-fl" hidden>
+        <p class="lead">Entrenar en los dispositivos de los usuarios sin que los datos crudos salgan de ellos: solo viajan las actualizaciones del modelo.</p>
+        <div class="controles"><button class="btn" id="p9-fplay">⏸ Pausa</button></div>
+        <div class="escena"><svg id="p9-fed" aria-label="Aprendizaje federado: el servidor envía el modelo, los dispositivos entrenan en local y devuelven solo actualizaciones"></svg></div>
+      </div>
+      <div class="vista" id="p9-v-rt" hidden>
+        <p class="lead">Equipos dedicados a «hackear» el modelo de forma ética para encontrar vulnerabilidades antes del despliegue.</p>
+        <div class="escena"><svg id="p9-rt" aria-label="Ciclo de red teaming antes del despliegue"></svg></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> privacidad diferencial, aprendizaje federado y red teaming: ninguna es gratis, todas cambian utilidad por seguridad.</div>
+    </div>
+
+    <div class="card">
+      <h2>Gobernanza: el eslabón humano</h2>
+      <div class="meta"><span class="tag illus">Esquema interactivo</span></div>
+      <p class="lead">Trazabilidad: saber exactamente qué versión de los datos entrenó qué versión del modelo. Pulsa un nodo para ver su linaje.</p>
+      <div class="controles"><button class="btn" id="p9-traza">▶ Rastrear el modelo en producción</button></div>
+      <div class="escena"><svg id="p9-linaje" aria-label="Grafo de linaje entre versiones de datos, código, modelos y despliegue"></svg></div>
+      <ul>
+        <li><strong>Auditorías:</strong> revisiones periódicas no solo del código, sino de los sesgos y del comportamiento en producción.</li>
+        <li><strong>Controles:</strong> limitar quién puede consultar el modelo y vigilar patrones de uso anómalos (como los de un ataque de extracción).</li>
+      </ul>
+      <div class="sep"></div>
+      <h3 class="dilema">Dilema: ¿qué preferís auditar, los datos, el proceso de entrenamiento o las salidas? ¿Por qué?</h3>
+      <div class="controles">
+        <span class="etq" style="font-weight:700;color:var(--ink2);font-size:.85rem">Auditar:</span>
+        <button class="btn gris" id="p9-aD" aria-pressed="true">Datos</button>
+        <button class="btn gris" id="p9-aP" aria-pressed="false">Entrenamiento</button>
+        <button class="btn gris" id="p9-aS" aria-pressed="false">Salidas</button>
+      </div>
+      <div class="escena"><svg id="p9-aud" aria-label="Riesgos que quedan a la vista según los niveles auditados"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> cada nivel ve riesgos distintos. Lo ideal es auditar los tres; si hay que priorizar, empieza donde esté el mayor riesgo de tu caso.</div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 10 · CIENCIA -->
+  <section id="p-ciencia" class="panel" hidden>
+    <div class="card">
+      <h2>Redes en ciencia: modelos sustitutos</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Una red entrenada con unas pocas simulaciones caras puntúa miles de candidatos al instante. Acelera la generación de hipótesis; la validación sigue siendo obligatoria.</p>
+      <div class="controles">
+        <button class="btn" id="c10-train">▶ Entrenar 5 sustitutos</button>
+        <button class="btn gris" id="c10-val">Validar en el laboratorio</button>
+        <button class="btn gris" id="c10-reset">Reiniciar</button>
+        <div class="kpis peq" id="c10-skpis"></div>
+      </div>
+      <canvas id="c10-sust" class="lienzo" aria-label="Simulaciones, predicciones de los sustitutos y función real tras validar"></canvas>
+      <div class="leyenda"><span><i class="punto" style="background:var(--ink)"></i>simulaciones caras (datos)</span><span><i style="background:#9cc0ea"></i>cada sustituto</span><span><i style="background:var(--s1)"></i>media de los sustitutos</span><span><i class="punto" style="background:var(--esc)"></i>candidato elegido</span><span><i style="background:var(--ink2)"></i>realidad (tras validar)</span></div>
+      <ul>
+        <li><strong>AlphaFold:</strong> predicción de la estructura de proteínas en segundos frente a años de trabajo. <strong>Imágenes médicas:</strong> patrones invisibles al ojo humano.</li>
+        <li><strong>Retos:</strong> reproducibilidad (cajas negras difíciles de auditar), sesgo de datos (un modelo médico entrenado con una demografía falla en otras) y «alucinación estructural» (moléculas imposibles que lucen reales).</li>
+      </ul>
+      <p class="cita">«En ciencia, una red no reemplaza el método; acelera la generación de hipótesis.»</p>
+      <div class="sep"></div>
+      <h3 class="dilema">Dilema: ¿qué estándar de evidencia exigirías a una red en medicina frente a una de recomendación de vídeos?</h3>
+      <div class="controles">
+        <div class="ctl ancho"><label for="c10-g">Gravedad de un error</label><input id="c10-g" type="range" min="0" max="100" step="1" value="25"><output id="c10-go">un perjuicio leve</output></div>
+        <div class="ctl"><span class="etq">Ejemplos</span><div class="botones"><button class="btn gris peq" id="c10-gv">Recomendación de vídeos</button><button class="btn gris peq" id="c10-gm">Diagnóstico médico</button></div></div>
+      </div>
+      <div class="escena"><svg id="c10-esc" aria-label="Escalera de evidencia que se ilumina según la gravedad de un error"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> no basta con que «parezca» correcto. La exigencia de evidencia debe crecer con lo que cuesta un error.</div>
+    </div>
+
+    <div class="card">
+      <h2>Tendencias de hardware</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <div class="grid3">
+        <div class="tile"><svg id="c10-h1" viewBox="0 0 300 160" aria-label="Chip neuromórfico con picos"></svg><h3>Neuromórfico</h3><p>Chips que imitan la estructura de neuronas y sinapsis y solo trabajan cuando llega un pico: eficiencia energética extrema.</p></div>
+        <div class="tile"><svg id="c10-h2" viewBox="0 0 300 160" aria-label="Matriz analógica de resistencias"></svg><h3>Analógico</h3><p>Multiplicar matrices con la física (ley de Ohm y suma de corrientes), sacrificando precisión por velocidad y menor consumo.</p></div>
+        <div class="tile"><svg id="c10-h3" viewBox="0 0 300 160" aria-label="Circuito fotónico con haces de luz"></svg><h3>Fotónica</h3><p>Luz en lugar de electricidad para transmitir y procesar, sin la latencia y el calor de los cables de cobre.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Riesgos sistémicos: olvido y colapso</h2>
+      <div class="meta"><span class="tag real">Entrenamiento y simulación reales en el navegador</span></div>
+      <div class="lado">
+        <div>
+          <h3>Olvido catastrófico</h3>
+          <p>Al aprender algo nuevo, el modelo sobrescribe lo anterior: no es «elástico» como nuestro cerebro.</p>
+          <div class="controles">
+            <button class="btn" id="c10-oplay">▶ Aprender A y luego B</button>
+            <label class="inline"><input type="checkbox" id="c10-rep"> Repasar un 10 % de A</label>
+          </div>
+          <canvas id="c10-ofront" class="lienzo cuadro" aria-label="Frontera de la red con las tareas A y B"></canvas>
+          <canvas id="c10-ocurva" class="lienzo" aria-label="Exactitud en las tareas A y B por época"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>exactitud en la tarea A (●)</span><span><i style="background:var(--s2)"></i>exactitud en la tarea B (■)</span></div>
+        </div>
+        <div>
+          <h3>Colapso del modelo</h3>
+          <p>Entrenar cada generación con datos sintéticos de la anterior degrada la calidad y la diversidad de la «realidad» digital.</p>
+          <div class="controles">
+            <button class="btn" id="c10-cplay">▶ 30 generaciones</button>
+            <div class="ctl"><label for="c10-n">Muestras por generación</label><input id="c10-n" type="range" min="1.3" max="3" step="0.05" value="2"><output id="c10-no">100</output></div>
+            <div class="ctl"><label for="c10-r">Datos reales en cada generación</label><input id="c10-r" type="range" min="0" max="50" step="5" value="0"><output id="c10-ro">0 %</output></div>
+          </div>
+          <canvas id="c10-cbar" class="lienzo" aria-label="Distribución de 30 categorías en la generación actual frente a la real"></canvas>
+          <div class="leyenda"><span><i class="cuad" style="background:var(--s1)"></i>generación actual</span><span><i class="cuad" style="background:#fff;border:1.5px solid var(--ink2)"></i>distribución real</span><span><i class="cuad" style="background:#fff;border:1.5px solid var(--bad)"></i>✕ categoría extinguida</span></div>
+          <canvas id="c10-ccurva" class="lienzo" aria-label="Categorías que sobreviven por generación"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>categorías vivas</span><span><i style="background:var(--s2)"></i>sin datos reales (referencia, si mezclas datos reales)</span></div>
+        </div>
+      </div>
+      <p class="pie">Olvido: red 2 → 16 → 1 entrenada 60 épocas en la tarea A y 60 en la B. Colapso: 30 categorías con frecuencias de Zipf; cada generación se «entrena» con muestras de la anterior (su distribución empírica). Una categoría que desaparece ya no vuelve.</p>
+      <div class="clave"><strong>Idea clave:</strong> son problemas que aún no sabemos resolver del todo; repasar datos antiguos y conservar datos reales ayudan.</div>
+    </div>
+
+    <div class="card">
+      <h2>Recapitulando el viaje</h2>
+      <div class="meta"><span class="tag illus">Esquema</span></div>
+      <div class="escena"><svg id="c10-recap" aria-label="Tres pilares: escala y plataforma, operación y seguridad"></svg></div>
+      <h3 class="dilema">Dilema: ¿qué será el cuello de botella dentro de 2-3 años: datos, energía, regulación o hardware?</h3>
+      <div class="controles">
+        <div class="ctl"><label for="c10-vd">Datos</label><input id="c10-vd" type="range" min="10" max="100" step="1" value="65"><output id="c10-vdo">65 %</output></div>
+        <div class="ctl"><label for="c10-ve">Energía</label><input id="c10-ve" type="range" min="10" max="100" step="1" value="40"><output id="c10-veo">40 %</output></div>
+        <div class="ctl"><label for="c10-vr">Regulación</label><input id="c10-vr" type="range" min="10" max="100" step="1" value="45"><output id="c10-vro">45 %</output></div>
+        <div class="ctl"><label for="c10-vh">Hardware</label><input id="c10-vh" type="range" min="10" max="100" step="1" value="70"><output id="c10-vho">70 %</output></div>
+      </div>
+      <div class="escena"><svg id="c10-valv" aria-label="Tubería con cuatro válvulas; el caudal lo limita la más cerrada"></svg></div>
+      <p class="pie">Apertura de partida: energía y regulación son las válvulas más cerradas. Mueve las válvulas con la opinión de la clase: el caudal lo marca siempre la más estrecha.</p>
+      <p class="cita grande">«Las redes neuronales ya no son solo un tema de algoritmo; son un sistema socio-técnico con economía, infraestructura y gobernanza.»</p>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/mlp.js"></script>
+<script src="assets/lab_empresa.js"></script>
+</body>
+</html>

@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 10 · II · Ecosistemas en la nube — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .fila { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .fila.ancha { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+  .fila.codigo { grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); }
+  @media (max-width: 900px) { .fila, .fila.ancha { grid-template-columns: 1fr; } }
+  .detalle { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: .9rem 1rem; margin-top: .8rem; }
+  .detalle h3 { margin: 0 0 .3rem; font-size: 1.05rem; }
+  .detalle p { margin-bottom: .5rem; }
+  .registro { font-family: var(--mono); font-size: .8rem; background: #0F1B2D; color: #DDE6F0; border-radius: 10px; padding: .5rem .8rem; height: 5.6rem; overflow: auto; line-height: 1.5; margin: .6rem 0; }
+  .registro.alto { height: 15.5rem; }
+  .registro .r-ok { color: #A5D6A7; } .registro .r-mal { color: #EF9A9A; } .registro .r-av { color: #FFCB6B; } .registro .r-t { color: #7F8EA3; }
+  pre.code .ln { display: block; min-height: 1.3em; }
+  pre.code .ln.hl { display: block; background: rgba(255,203,107,.22); }
+  pre.code.compacto { font-size: .8rem; line-height: 1.45; }
+  pre.code .tachado { text-decoration: line-through; opacity: .6; }
+  pre.code .add { color: #A5D6A7; } pre.code .del { color: #EF9A9A; }
+  .card h3.mini { font-size: .88rem; text-transform: uppercase; letter-spacing: .03em; color: var(--ink2); margin: .3rem 0 .2rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 .8rem; }
+  .chip.s { background: var(--soft); border: 1px solid var(--line); color: var(--ink2); font-weight: 600; }
+  .kpi.alerta { border-color: #EF9A9A; background: #FFF5F5; }
+  .kpi.alerta .v { color: var(--bad); }
+  .kpi.bueno { border-color: #A5D6A7; background: #F3FAF3; }
+  .tabla td.col-sel, .tabla th.col-sel { background: var(--acento-l); }
+  .tabla tr.grupo td { background: var(--soft); font-weight: 800; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink2); }
+  .tabla tr.fila-clic { cursor: pointer; }
+  .tabla tr.fila-clic:hover td { background: #FFF8F1; }
+  .tabla tr.sel td { font-weight: 700; }
+  .grid3 > .bien, .grid3 > .mal, .grid3 > .box, .grid2 > .box { margin: 0; }
+  .checklist { list-style: none; margin: 0 !important; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+  .checklist li { display: grid; grid-template-columns: 1.6rem 1fr; gap: .5rem; align-items: start; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; }
+  .checklist li.hecho { background: var(--ok-l); border-color: #A5D6A7; }
+  .checklist input { width: 1.2rem; height: 1.2rem; margin-top: .15rem; }
+  .checklist strong { display: block; }
+  .checklist small { color: var(--ink2); font-size: .85rem; }
+  label.inline { font-size: .88rem; }
+  .vista-datos { margin-top: .6rem; }
+  .oculto { display: none !important; }
+</style>
+</head>
+<body class="bloque-esc" data-pagina="10_nube.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 10 · II</span>Ecosistemas en la nube</h1>
+  <p>Infraestructura, gestión de datos y operación de IA: AWS, Google Cloud y Azure, contenedores, Kubernetes, seguridad, datos, costes y monitorización.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-nube" aria-controls="p-nube" aria-selected="true">1 · ¿Nube sí o no?</button>
+  <button class="tab" role="tab" id="t-prov" aria-controls="p-prov" aria-selected="false">2 · AWS, GCP y Azure</button>
+  <button class="tab" role="tab" id="t-empaq" aria-controls="p-empaq" aria-selected="false">3 · Empaquetar</button>
+  <button class="tab" role="tab" id="t-k8s" aria-controls="p-k8s" aria-selected="false">4 · Kubernetes</button>
+  <button class="tab" role="tab" id="t-api" aria-controls="p-api" aria-selected="false">5 · REST y gRPC</button>
+  <button class="tab" role="tab" id="t-red" aria-controls="p-red" aria-selected="false">6 · Red y seguridad</button>
+  <button class="tab" role="tab" id="t-escala" aria-controls="p-escala" aria-selected="false">7 · Escalado y pruebas</button>
+  <button class="tab" role="tab" id="t-datos" aria-controls="p-datos" aria-selected="false">8 · Datos</button>
+  <button class="tab" role="tab" id="t-costes" aria-controls="p-costes" aria-selected="false">9 · Costes</button>
+  <button class="tab" role="tab" id="t-monit" aria-controls="p-monit" aria-selected="false">10 · Monitorización</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 -->
+  <section id="p-nube" class="panel">
+    <div class="card">
+      <h2>Qué ofrece la nube para IA: elasticidad</h2>
+      <div class="meta"><span class="tag illus">Demanda simulada</span></div>
+      <p class="lead">La demanda sube y baja; una infraestructura propia tiene una capacidad fija. La nube la ajusta a la demanda y se paga por uso (OpEx).</p>
+      <div class="escena"><svg id="n-ben"></svg></div>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Capacidad</span><div id="n-modo"></div></div>
+      </div>
+      <canvas id="n-elas" class="lienzo" aria-label="Demanda a lo largo de dos días frente a la capacidad disponible"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>demanda</span><span><i style="background:var(--s2)"></i>capacidad</span><span><i style="background:#C9D1D9"></i>capacidad pagada sin usar</span><span><i style="background:#F2A7A7"></i>demanda no atendida</span></div>
+      <div class="kpis" id="n-kpis"></div>
+      <div class="clave"><strong>Idea clave:</strong> la nube convierte una gran inversión inicial en un gasto que sigue a la demanda: escalar en minutos, probar ideas y destruir lo que no funciona sin haber comprado nada.</div>
+    </div>
+    <div class="card">
+      <h2>CapEx frente a OpEx: ¿comprar o alquilar las GPU?</h2>
+      <div class="meta"><span class="tag real">Aritmética real</span><span class="tag illus">Precios orientativos</span></div>
+      <p class="lead">El ejemplo de clase: hacen falta 8 GPU A100. ¿Cuánto cuesta alquilarlas frente a comprarlas, según cuántas horas al mes se usan?</p>
+      <div class="controles">
+        <div class="ctl ancho"><label for="n-horas">Horas de uso de las 8 GPU al mes</label><input id="n-horas" type="range" min="0" max="730" step="1" value="72"><output id="n-horaso">72 h</output></div>
+        <button class="btn gris" id="n-3dias">3 días al mes</button>
+        <button class="btn gris" id="n-247">24/7</button>
+      </div>
+      <canvas id="n-capex" class="lienzo" aria-label="Coste acumulado de la nube frente a la infraestructura propia durante 36 meses"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>infraestructura propia (CapEx)</span><span><i style="background:var(--s2)"></i>nube, pago por uso (OpEx)</span></div>
+      <div class="kpis" id="n-kpis2"></div>
+      <p class="nota"><strong>Supuestos orientativos:</strong> compra de 8 GPU a 10.000 € cada una más 20.000 € de servidor, red y refrigeración; 1.500 € al mes de energía y mantenimiento; alquiler a 3 € por GPU y hora. Los precios reales cambian con el proveedor, la región y los descuentos.</p>
+      <div class="clave"><strong>Idea clave:</strong> la nube es rentable con cargas variables; con una carga estable 24/7 la infraestructura propia acaba saliendo más barata (Dropbox, por ejemplo, sacó gran parte de su almacenamiento de la nube).</div>
+    </div>
+    <div class="card">
+      <h2>Cuándo evitar la nube</h2>
+      <div class="escena"><svg id="n-lim"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> si cada milisegundo cuenta o no hay conexión, la inferencia se hace en el propio dispositivo o muy cerca (<em>edge computing</em>).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 -->
+  <section id="p-prov" class="panel">
+    <div class="card">
+      <h2>Los tres grandes proveedores</h2>
+      <div class="grid3">
+        <div class="box acento"><h3>Amazon Web Services (AWS)</h3><p>Líder del mercado y el primero en llegar (2006). Más de 200 servicios y la plataforma de ML más usada: SageMaker.</p></div>
+        <div class="box acento"><h3>Google Cloud (GCP)</h3><p>Fuerte en big data e IA: BigQuery y Vertex AI. Kubernetes y TensorFlow nacieron en Google.</p></div>
+        <div class="box acento"><h3>Microsoft Azure</h3><p>Integración empresarial (Microsoft 365, Entra ID, antes Active Directory) y nube híbrida (Azure Stack). Azure Machine Learning.</p></div>
+      </div>
+      <p style="margin-top:.8rem">Cada vez más empresas son <strong>multinube</strong>: usan dos o tres proveedores para no depender de uno solo, a cambio de más complejidad.</p>
+    </div>
+    <div class="card">
+      <h2>La misma arquitectura de ML en las tres nubes</h2>
+      <div class="meta"><span class="tag illus">Flujo ilustrativo</span></div>
+      <p class="lead">Las piezas son las mismas; cambian los nombres. Cambia de proveedor y pulsa una pieza para verla en la tabla.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Proveedor</span><div id="pv-prov"></div></div>
+        <label class="inline"><input type="checkbox" id="pv-rotar"> Ir cambiando de proveedor solo</label>
+      </div>
+      <div class="escena"><svg id="pv-svg"></svg></div>
+    </div>
+    <div class="card">
+      <h2>Tabla de equivalencias</h2>
+      <table class="tabla" id="pv-tabla">
+        <thead><tr><th>Categoría</th><th data-col="aws">AWS</th><th data-col="gcp">Google Cloud</th><th data-col="azure">Azure</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="nota">Nombres que han cambiado: AWS llama <strong>SageMaker AI</strong> desde diciembre de 2024 a lo que antes se llamaba SageMaker; <strong>Cloud Run functions</strong> se llamaba Cloud Functions; <strong>Artifact Registry</strong> sustituye a Container Registry (GCR); <strong>Microsoft Purview</strong> se llamaba Azure Purview y <strong>Microsoft Entra ID</strong>, Azure Active Directory.</p>
+    </div>
+    <div class="card">
+      <h2>Criterios para elegir proveedor</h2>
+      <div class="escena"><svg id="pv-crit"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> elegir proveedor es una decisión estratégica para años. Las tecnologías abiertas (Kubernetes, PostgreSQL) reducen la dependencia; los servicios gestionados propios son más cómodos pero atan más.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section id="p-empaq" class="panel">
+    <div class="card">
+      <h2>Del notebook a una imagen desplegable</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Antes de subir nada a la nube hay que convertir el notebook en código de producción. Recorre los pasos.</p>
+      <div class="controles">
+        <button class="btn" id="e-rec">▶ Recorrer</button>
+        <button class="btn gris" id="e-sig">Paso siguiente</button>
+      </div>
+      <div class="escena"><svg id="e-svg"></svg></div>
+      <div class="detalle fila codigo" id="e-det"><div><h3 id="e-tit"></h3><p id="e-txt"></p></div><pre class="code compacto" id="e-code"></pre></div>
+    </div>
+    <div class="card">
+      <h2>Formatos de exportación y portabilidad</h2>
+      <p class="lead">El modelo entrenado vive en la memoria de Python; hay que serializarlo. Pulsa un formato para ver de dónde viene y dónde se ejecuta.</p>
+      <div class="escena"><svg id="f-svg"></svg></div>
+      <div class="detalle" id="f-nota"></div>
+    </div>
+    <div class="card">
+      <h2>Una imagen Docker por capas</h2>
+      <div class="meta"><span class="tag illus">Tamaños orientativos</span></div>
+      <p class="lead">Cada instrucción del Dockerfile crea una capa. Si solo cambia el código, las capas de abajo se reutilizan de la caché: construir y subir es mucho más rápido.</p>
+      <div class="controles">
+        <button class="btn" id="dk-build">▶ docker build</button>
+        <button class="btn gris" id="dk-cambio">Cambiar solo el código y reconstruir</button>
+        <button class="btn gris" id="dk-push">docker push al registro</button>
+      </div>
+      <div class="escena"><svg id="dk-svg"></svg></div>
+      <div class="fila ancha" style="margin-top:.6rem">
+        <pre class="code compacto" id="dk-file"></pre>
+        <div><div class="registro alto" id="dk-log" aria-live="polite"></div></div>
+      </div>
+      <ul>
+        <li>La imagen empaqueta sistema base, Python, librerías, código y modelo: «funciona en mi máquina» = «funciona en la nube».</li>
+        <li>Es <strong>inmutable</strong>: hoy y dentro de un año se comporta igual. Clave para la reproducibilidad.</li>
+        <li>Con PyTorch o TensorFlow con GPU, una imagen pesa fácilmente 2-10 GB: conviene usar <em>multi-stage builds</em> y no copiar ficheros innecesarios.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> ordena el Dockerfile de lo que menos cambia (sistema, librerías) a lo que más cambia (código, modelo) para aprovechar la caché de capas.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 -->
+  <section id="p-k8s" class="panel">
+    <div class="card">
+      <h2>Kubernetes: pods que se reparan y se multiplican</h2>
+      <div class="meta"><span class="tag illus">Simulación con tiempos acelerados</span><span class="tag real">Regla real del autoescalado (HPA)</span></div>
+      <p class="lead">Si Docker es el ladrillo, Kubernetes es el arquitecto: reparte las peticiones entre réplicas, reinicia lo que falla, añade réplicas si la CPU pasa del 70 % y actualiza sin cortar el servicio.</p>
+      <div class="controles">
+        <div class="ctl"><label for="k-carga">Carga (peticiones/s)</label><input id="k-carga" type="range" min="5" max="95" step="1" value="18"><output id="k-cargao">18/s</output></div>
+        <button class="btn" id="k-fpod">Fallo de un pod</button>
+        <button class="btn" id="k-fnodo">Fallo de un nodo</button>
+        <button class="btn" id="k-act">Actualizar a v2</button>
+        <button class="btn gris" id="k-reset">Reiniciar</button>
+      </div>
+      <div class="escena"><svg id="k-svg"></svg></div>
+      <div class="kpis" id="k-kpis"></div>
+      <div class="fila">
+        <div><h3 class="mini">Eventos del clúster</h3><div class="registro alto" id="k-log" aria-live="polite"></div></div>
+        <div><h3 class="mini">Lo que se declara (YAML)</h3><pre class="code compacto" id="k-yaml"></pre></div>
+      </div>
+      <ul>
+        <li><strong>Pod:</strong> uno o más contenedores que se ejecutan juntos; normalmente, uno con el modelo.</li>
+        <li><strong>Auto-reparación:</strong> si un contenedor se cae, se reinicia; si cae un nodo, sus pods se recrean en otros nodos.</li>
+        <li><strong>HPA:</strong> réplicas deseadas = ⌈réplicas actuales × CPU media / 70 %⌉ (con un margen de tolerancia del 10 %).</li>
+        <li><strong>Actualización progresiva (<em>rolling update</em>):</strong> se crea un pod v2, cuando está listo se retira un v1, y así hasta el final.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> en Kubernetes no se dan órdenes paso a paso: se declara el estado deseado (cuántas réplicas, qué imagen, qué umbral) y el clúster trabaja sin parar para cumplirlo.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 -->
+  <section id="p-api" class="panel">
+    <div class="card">
+      <h2>REST y gRPC: la misma predicción, dos formatos</h2>
+      <div class="meta"><span class="tag real">Codificación real en el navegador</span><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">REST envía JSON (texto legible); gRPC envía Protocol Buffers (binario compacto). Aquí se codifican de verdad los mismos datos en los dos formatos.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Datos</span><div id="a-cli"></div></div>
+        <div class="ctl"><label for="a-lote">Clientes en la petición</label><input id="a-lote" type="range" min="1" max="100" step="1" value="1"><output id="a-loteo">1</output></div>
+        <button class="btn" id="a-env">▶ Enviar por los dos</button>
+        <button class="btn gris" id="a-stream">Streaming bidireccional (gRPC)</button>
+      </div>
+      <div class="escena"><svg id="a-svg"></svg></div>
+      <div class="kpis" id="a-kpis"></div>
+      <div class="grid2">
+        <div><h3 class="mini">REST · petición HTTP con JSON</h3><pre class="code compacto" id="a-rest"></pre></div>
+        <div><h3 class="mini">gRPC · contrato .proto</h3><pre class="code compacto" id="a-proto"></pre><h3 class="mini">gRPC · los bytes que viajan (hexadecimal)</h3><pre class="code compacto" id="a-hex" style="white-space:pre-wrap"></pre></div>
+      </div>
+      <table class="tabla">
+        <thead><tr><th></th><th>REST</th><th>gRPC</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Formato</strong></td><td>JSON (texto)</td><td>Protocol Buffers (binario)</td></tr>
+          <tr><td><strong>Transporte</strong></td><td>HTTP/1.1 o HTTP/2</td><td>HTTP/2</td></tr>
+          <tr><td><strong>Depurar</strong></td><td>Fácil: se lee a simple vista</td><td>Hace falta el .proto y herramientas</td></tr>
+          <tr><td><strong>Rendimiento</strong></td><td>Bueno</td><td>Mayor: mensajes más pequeños y rápidos de procesar</td></tr>
+          <tr><td><strong>Streaming</strong></td><td>Limitado</td><td>Bidireccional</td></tr>
+          <tr><td><strong>Contrato</strong></td><td>OpenAPI (Swagger)</td><td>Fichero .proto</td></tr>
+          <tr><td><strong>Uso típico</strong></td><td>APIs abiertas, navegador, cualquier lenguaje</td><td>Comunicación entre microservicios (en navegador necesita gRPC-Web)</td></tr>
+        </tbody>
+      </table>
+      <div class="clave"><strong>Idea clave:</strong> REST es universal y fácil de depurar; gRPC es más rápido y compacto. Lo habitual: REST hacia fuera y gRPC entre servicios internos.</div>
+    </div>
+    <div class="card">
+      <h2>El contrato: entradas y salidas estrictas</h2>
+      <div class="meta"><span class="tag illus">Respuestas de ejemplo</span></div>
+      <p class="lead">FastAPI valida cada petición contra el esquema y publica el contrato OpenAPI en <code>/docs</code>. Si algo no cuadra, responde 422 y explica qué falta.</p>
+      <div class="controles"><div class="ctl"><span class="etq">Petición</span><div id="c-caso"></div></div></div>
+      <div class="grid2">
+        <div><h3 class="mini">Petición</h3><pre class="code compacto" id="c-req"></pre><h3 class="mini">El contrato en el código (Pydantic)</h3><pre class="code compacto" id="c-py"></pre></div>
+        <div><h3 class="mini">Respuesta</h3><pre class="code compacto" id="c-res"></pre></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> versionad siempre la API (<code>/api/v1/predict</code>): cuando haga falta un cambio incompatible, se publica la v2 sin romper a quien sigue usando la v1.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 -->
+  <section id="p-red" class="panel">
+    <div class="card">
+      <h2>Red privada: VPC, subredes y grupos de seguridad</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">El balanceador vive en una subred pública; el modelo y la base de datos, en subredes privadas sin acceso directo desde internet. Pulsa un tráfico y mira quién lo deja pasar.</p>
+      <div class="controles">
+        <button class="btn" id="r-usuario">Usuario → predicción</button>
+        <button class="btn gris" id="r-directo">Atacante → modelo directo</button>
+        <button class="btn gris" id="r-bd">Balanceador → base de datos</button>
+        <button class="btn gris" id="r-ssh">Atacante → SSH al balanceador</button>
+      </div>
+      <div class="escena"><svg id="r-svg"></svg></div>
+      <div class="registro" id="r-log" aria-live="polite"></div>
+      <table class="tabla">
+        <thead><tr><th>Grupo de seguridad</th><th>Entrada permitida</th><th>Desde</th></tr></thead>
+        <tbody>
+          <tr><td><strong>gs-balanceador</strong></td><td class="n">443 (HTTPS)</td><td>cualquier dirección (0.0.0.0/0)</td></tr>
+          <tr><td><strong>gs-modelo</strong></td><td class="n">8080</td><td>solo gs-balanceador</td></tr>
+          <tr><td><strong>gs-bd</strong></td><td class="n">5432 (PostgreSQL)</td><td>solo gs-modelo</td></tr>
+        </tbody>
+      </table>
+      <div class="clave"><strong>Idea clave:</strong> por defecto, nada entra. Cada grupo de seguridad abre solo el puerto imprescindible y solo para quien lo necesita.</div>
+    </div>
+    <div class="card">
+      <h2>IAM: ¿se permite esta acción?</h2>
+      <div class="meta"><span class="tag real">Evaluación real de la política</span></div>
+      <p class="lead">Una política IAM es un documento JSON con permisos «Allow» y «Deny». Elige qué intenta hacer el rol del modelo y mira cómo se evalúa.</p>
+      <div class="controles">
+        <div class="ctl ancho"><label for="i-pet">El rol del modelo intenta…</label><select id="i-pet"></select></div>
+        <label class="inline"><input type="checkbox" id="i-amplia"> Añadir un permiso demasiado amplio (<code>s3:*</code> sobre <code>*</code>)</label>
+      </div>
+      <div class="fila">
+        <pre class="code compacto" id="i-pol"></pre>
+        <div><div class="escena"><svg id="i-svg"></svg></div><div class="registro" id="i-log" aria-live="polite"></div></div>
+      </div>
+      <ul>
+        <li><strong>Mínimo privilegio:</strong> si el modelo solo lee un bucket, su rol solo puede leer ese bucket.</li>
+        <li><strong>Roles, no usuarios:</strong> los servicios usan roles con credenciales temporales que caducan solas.</li>
+        <li><strong>MFA</strong> obligatoria para las personas y <strong>auditoría</strong> de cada acción (AWS CloudTrail).</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> un «Deny» explícito gana siempre; sin un «Allow» que coincida, la respuesta también es no (denegación implícita).</div>
+    </div>
+    <div class="card">
+      <h2>Cifrado en tránsito y en reposo con KMS</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">TLS protege los datos mientras viajan; en disco se guardan cifrados con una clave de datos que, a su vez, cifra una clave maestra que nunca sale de KMS.</p>
+      <div class="controles">
+        <button class="btn" id="m-guardar">Guardar un dato</button>
+        <button class="btn" id="m-leer">Leer con permiso kms:Decrypt</button>
+        <button class="btn gris" id="m-sin">Leer sin permiso</button>
+        <button class="btn gris" id="m-rotar">Rotar la clave maestra</button>
+      </div>
+      <div class="escena"><svg id="m-svg"></svg></div>
+      <div class="registro" id="m-log" aria-live="polite"></div>
+      <div class="clave"><strong>Idea clave:</strong> IAM y KMS trabajan juntos: no basta con tener los datos cifrados, hace falta permiso para usar la clave. Doble capa de protección.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 -->
+  <section id="p-escala" class="panel">
+    <div class="card">
+      <h2>Escalar en vertical o en horizontal</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <div class="controles"><button class="btn" id="x-mas">Más demanda</button><button class="btn gris" id="x-reset">Reiniciar</button></div>
+      <div class="escena"><svg id="x-svg"></svg></div>
+    </div>
+    <div class="card">
+      <h2>Autoescalado durante un día de tráfico</h2>
+      <div class="meta"><span class="tag real">Simulación real de la regla del HPA</span><span class="tag illus">Tráfico simulado</span></div>
+      <p class="lead">Regla: si la CPU media supera el umbral, más réplicas; si baja, menos (tras 5 minutos de estabilización). Las réplicas nuevas tardan en arrancar.</p>
+      <div class="controles">
+        <div class="ctl"><label for="h-umb">Umbral de CPU</label><input id="h-umb" type="range" min="50" max="90" step="5" value="70"><output id="h-umbo">70 %</output></div>
+        <div class="ctl"><label for="h-arr">Arranque de una réplica</label><input id="h-arr" type="range" min="1" max="10" step="1" value="3"><output id="h-arro">3 min</output></div>
+        <div class="ctl"><label for="h-min">Réplicas mínimas</label><input id="h-min" type="range" min="1" max="6" step="1" value="2"><output id="h-mino">2</output></div>
+        <button class="btn" id="h-play">▶ Reproducir el día</button>
+      </div>
+      <div class="kpis" id="h-kpis"></div>
+      <canvas id="h-g1" class="lienzo" aria-label="Demanda y capacidad de las réplicas a lo largo del día"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>demanda (peticiones/s)</span><span><i style="background:var(--s2)"></i>capacidad de las réplicas listas</span><span><i style="background:#F2A7A7"></i>demanda no atendida</span></div>
+      <canvas id="h-g2" class="lienzo" aria-label="CPU media de las réplicas a lo largo del día con el umbral"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s3)"></i>CPU media de las réplicas</span><span><i style="background:var(--ink2)"></i>umbral del autoescalado</span></div>
+      <div class="clave"><strong>Idea clave:</strong> el autoescalado reacciona tarde: si las réplicas tardan en arrancar, un pico brusco se come la holgura. Por eso el umbral no se pone al 100 %.</div>
+    </div>
+    <div class="card">
+      <h2>Estrategia de pruebas</h2>
+      <div class="meta"><span class="tag real">Prueba de carga con teoría de colas</span></div>
+      <p class="lead">Muchas pruebas rápidas abajo, pocas y costosas arriba. Pulsa cada nivel.</p>
+      <div class="fila">
+        <div class="escena"><svg id="pp-svg"></svg></div>
+        <div><h3 id="pp-tit" style="margin:0 0 .3rem"></h3><p id="pp-txt"></p><pre class="code compacto" id="pp-code"></pre></div>
+      </div>
+      <div id="pp-cargaw" class="oculto">
+        <canvas id="pp-carga" class="lienzo" aria-label="Latencia p95 frente a peticiones por segundo en una prueba de carga"></canvas>
+        <div class="leyenda"><span><i style="background:var(--s2)"></i>latencia p95 (4 réplicas, teoría M/M/c)</span><span><i style="background:var(--bad)"></i>objetivo de servicio: 300 ms</span></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> un modelo necesita aún más pruebas que el software clásico, porque su comportamiento cambia de forma sutil. Antes de producción: saber dónde está el punto de quiebre.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 -->
+  <section id="p-datos" class="panel">
+    <div class="card">
+      <h2>Gestión de datos en la nube</h2>
+      <div class="meta" id="dt-meta"></div>
+      <div class="controles"><div class="ctl"><span class="etq">Vista</span><div id="dt-vista"></div></div><div id="dt-ctl" style="display:contents"></div></div>
+      <p class="lead" id="dt-lead"></p>
+      <div class="escena"><svg id="dt-svg"></svg></div>
+      <div class="kpis" id="dt-kpis"></div>
+      <div id="dt-txt" class="vista-datos"></div>
+      <div class="clave"><strong>Idea clave:</strong> un modelo es tan bueno como sus datos: dónde se guardan, cómo llegan, cómo se transforman y quién responde de ellos.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9 -->
+  <section id="p-costes" class="panel">
+    <div class="card">
+      <h2>Tres palancas para que la factura no se dispare</h2>
+      <div class="meta"><span class="tag illus">Cifras orientativas</span></div>
+      <div class="controles"><div class="ctl"><span class="etq">Palanca</span><div id="co-vista"></div></div><div id="co-ctl" style="display:contents"></div></div>
+      <p class="lead" id="co-lead"></p>
+      <div class="escena" id="co-esc"><svg id="co-svg"></svg></div>
+      <canvas id="co-pres" class="lienzo oculto" aria-label="Gasto acumulado del mes frente al presupuesto, con avisos"></canvas>
+      <div class="leyenda oculto" id="co-ley"><span><i style="background:var(--s1)"></i>gasto acumulado real</span><span><i style="background:var(--s1);opacity:.45"></i>previsión a fin de mes</span><span><i style="background:var(--ink2)"></i>presupuesto (100 %)</span></div>
+      <div class="kpis" id="co-kpis"></div>
+      <p id="co-txt"></p>
+    </div>
+    <div class="card">
+      <h2>Ciclo de vida de una instancia de notebook de SageMaker</h2>
+      <div class="meta"><span class="tag illus">Precios orientativos · tiempo acelerado</span></div>
+      <p class="lead">Mientras está «InService» se paga, se use o no. «Stopped» solo cuesta el disco. El error típico: olvidarla encendida.</p>
+      <div class="controles">
+        <div class="ctl"><label for="sm-tipo">Tipo de instancia</label><select id="sm-tipo"><option value="0.05">ml.t3.medium · CPU · ≈ 0,05 €/h</option><option value="0.75">ml.g4dn.xlarge · GPU T4 · ≈ 0,75 €/h</option><option value="3.8" selected>ml.p3.2xlarge · GPU V100 · ≈ 3,80 €/h</option></select></div>
+        <button class="btn" id="sm-start">Iniciar</button>
+        <button class="btn" id="sm-stop">Detener</button>
+        <button class="btn gris" id="sm-finde">Olvidarla encendida el fin de semana</button>
+        <label class="inline"><input type="checkbox" id="sm-auto"> Auto-stop tras 1 h sin uso (script de ciclo de vida)</label>
+      </div>
+      <div class="escena"><svg id="sm-svg"></svg></div>
+      <div class="kpis" id="sm-kpis"></div>
+      <ul>
+        <li><strong>Rol IAM:</strong> sin un rol que deje a SageMaker leer de S3, todo acaba en «Access Denied».</li>
+        <li>El disco (EBS) guarda los ficheros aunque la instancia esté parada; las librerías extra se instalan con scripts de ciclo de vida.</li>
+        <li>Desde el notebook se lanzan trabajos de entrenamiento, puntos de inferencia (<em>endpoints</em>) y transformaciones por lotes.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> alertas de presupuesto desde el primer día y apagado automático: una GPU olvidada un fin de semana cuesta más que muchas horas de trabajo útil.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 10 -->
+  <section id="p-monit" class="panel">
+    <div class="card">
+      <h2>Monitorización con Prometheus</h2>
+      <div class="meta"><span class="tag illus">Métricas simuladas</span></div>
+      <p class="lead">Prometheus «pregunta» (modo <em>pull</em>) cada pocos segundos a cada réplica por sus métricas, las guarda como series temporales y avisa si algo se tuerce.</p>
+      <div class="controles"><div class="ctl"><span class="etq">Situación</span><div id="pm-esc"></div></div></div>
+      <div class="escena"><svg id="pm-svg"></svg></div>
+      <div class="grid3" style="margin-top:.6rem">
+        <div><canvas id="pm-g1" class="lienzo" aria-label="Panel de latencia p95"></canvas></div>
+        <div><canvas id="pm-g2" class="lienzo" aria-label="Panel de tasa de errores"></canvas></div>
+        <div><canvas id="pm-g3" class="lienzo" aria-label="Panel de deriva: media de la probabilidad predicha"></canvas></div>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>métrica</span><span><i style="background:var(--bad)"></i>umbral de alerta</span><span><i style="background:#C9D1D9"></i>banda de referencia de la deriva</span></div>
+      <div class="registro" id="pm-alert" aria-live="polite"></div>
+      <div class="grid2">
+        <div><h3 class="mini">Lo que responde cada réplica en /metrics</h3><pre class="code compacto" id="pm-metrics"></pre></div>
+        <div><h3 class="mini">Reglas de alerta (PromQL)</h3><pre class="code compacto" id="pm-reglas" style="white-space:pre-wrap"></pre></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> Prometheus detecta si el modelo está vivo, lento o fallando… y, con métricas propias, si sus predicciones se están desviando (deriva). Grafana lo muestra y Alertmanager avisa.</div>
+    </div>
+    <div class="card">
+      <h2>Checklist de despliegue en la nube</h2>
+      <p class="lead">Si todas las respuestas son «sí», el modelo está listo para producción.</p>
+      <div class="fila ancha">
+        <ul class="checklist" id="ck-lista"></ul>
+        <div class="escena"><svg id="ck-svg"></svg></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> poner un modelo en producción no es subir un fichero: es infraestructura, seguridad, datos, automatización y vigilancia continua.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/10_diagramas.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, D = D10, K = D10.col;
+  const reducido = RN.reducirMovimiento;
+  function $(id) { return document.getElementById(id); }
+  function tab(nombre, fn) { try { fn(); } catch (e) { console.error("Pestaña " + nombre + ": " + (e && e.stack ? e.stack : e)); } }
+  function bucle(paso, el, auto) {
+    const a = RN.anima(paso, el);
+    if (auto !== false) {
+      if (!reducido) a.iniciar();
+      else { const c = el.closest ? el.closest(".card") : null; if (c) c.addEventListener("click", function () { a.iniciar(); }, { once: true }); }
+    }
+    return a;
+  }
+  function registra(caja, html, clase) {
+    const d = RN.el("div", clase ? { class: "r-" + clase } : null, null);
+    d.innerHTML = html;
+    caja.insertBefore(d, caja.firstChild);
+    while (caja.childNodes.length > 40) caja.removeChild(caja.lastChild);
+  }
+  function kpi(cont, id, titulo) {
+    const k = RN.el("div", { class: "kpi", id: id }, cont);
+    RN.el("div", { class: "t" }, k, titulo);
+    k.v = RN.el("div", { class: "v" }, k, "—");
+    return k;
+  }
+  function bonito(v) { const p = Math.pow(10, Math.floor(Math.log10(v))), r = v / p; return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * p; }
+  function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  // tarjeta con icono a la izquierda; s puede ser un texto o una lista de líneas
+  function tarjeta(padre, x, y, w, h, ic, t, s, o) {
+    o = o || {};
+    const g = RN.svg("g", { class: "d-caja" + (o.clase ? " " + o.clase : "") }, padre);
+    g.rect = RN.svg("rect", { x: x, y: y, width: w, height: h, rx: o.r || 10, fill: o.fill || "#fff", stroke: o.stroke || K.borde, "stroke-width": 1.5 }, g);
+    const cy = y + h / 2, lineas = s ? (Array.isArray(s) ? s : [s]) : [];
+    if (ic) g.ic = D.icono(g, ic, x + (o.dxIc || 24), cy, o.tamIc || 24, o.colIc);
+    const tx = x + (ic ? (o.dxTxt || 46) : 14);
+    const ty = cy - lineas.length * 8;
+    g.t1 = D.texto(g, tx, ty, t, { ancla: "start", tam: o.tam || 13, peso: 700 });
+    if (lineas.length) g.t2 = D.texto(g, tx, ty + 19, lineas, { ancla: "start", tam: 12, color: C.ink2, arriba: true, interlinea: 1.3 });
+    return g;
+  }
+  // ficha vertical: icono arriba, título y varias líneas
+  function ficha(padre, x, y, w, h, ic, t, lineas, o) {
+    o = o || {};
+    const g = RN.svg("g", { class: "d-caja" }, padre);
+    g.rect = RN.svg("rect", { x: x, y: y, width: w, height: h, rx: 12, fill: o.fill || "#fff", stroke: K.borde, "stroke-width": 1.5 }, g);
+    D.icono(g, ic, x + w / 2, y + 30, o.tamIc || 32, o.colIc);
+    D.texto(g, x + w / 2, y + 66, t, { tam: 14, peso: 700 });
+    D.texto(g, x + w / 2, y + 90, lineas, { tam: 12, color: C.ink2, arriba: true, interlinea: 1.35 });
+    return g;
+  }
+  const PROV = ["aws", "gcp", "azure"], PROVN = { aws: "AWS", gcp: "Google Cloud", azure: "Azure" };
+
+  // =====================================================================================
+  // 1 · ¿Nube sí o no?
+  tab("nube", function () {
+    const sb = D.prepara($("n-ben"), 1000, 104, "Tres ventajas de la nube para IA: escalabilidad, costes flexibles y agilidad");
+    tarjeta(sb, 10, 8, 316, 88, "servidor", "Escalabilidad", ["8 GPU A100 en cinco minutos;", "se usan tres días y se apagan"], { tamIc: 30, dxIc: 30, dxTxt: 60, tam: 15 });
+    tarjeta(sb, 342, 8, 316, 88, "euro", "Costes flexibles (OpEx)", ["pago por uso, sin inversión", "inicial (CapEx) que se deprecia"], { tamIc: 30, dxIc: 30, dxTxt: 60, tam: 15 });
+    tarjeta(sb, 674, 8, 316, 88, "rayo", "Agilidad", ["desplegar en minutos, no semanas;", "probar y destruir sin coste"], { tamIc: 30, dxIc: 30, dxTxt: 60, tam: 15 });
+
+    // ---- elasticidad
+    const rng = RN.rng(31), N = 48 * 4, dem = [];
+    for (let i = 0; i <= N; i++) {
+      const h = i / 4, hd = h % 24;
+      let d = 22 + 52 * Math.exp(-0.5 * Math.pow((hd - 13) / 3.6, 2)) + 18 * Math.exp(-0.5 * Math.pow((hd - 21) / 1.6, 2));
+      if (h > 32.5 && h < 34.5) d += 55 * Math.sin((h - 32.5) / 2 * Math.PI);
+      dem.push(Math.max(5, d + 1.6 * RN.normal(rng)));
+    }
+    const media = dem.reduce(function (a, b) { return a + b; }, 0) / dem.length, pico = Math.max.apply(null, dem);
+    let modo = "elastica", cap = [], tc = 48;
+    function calcCap() {
+      cap = dem.map(function (d, i) {
+        if (modo === "media") return media * 1.1;
+        if (modo === "pico") return pico * 1.03;
+        const atr = dem[Math.max(0, i - 1)];
+        return Math.ceil(atr / 10 + 0.4) * 10;
+      });
+      let ociosa = 0, tot = 0, falta = 0, td = 0;
+      dem.forEach(function (d, i) { ociosa += Math.max(0, cap[i] - d); tot += cap[i]; falta += Math.max(0, d - cap[i]); td += d; });
+      kO.v.textContent = RN.fmt(100 * ociosa / tot, 0) + " %";
+      kF.v.textContent = RN.fmt(100 * falta / td, 1) + " %";
+      kF.classList.toggle("alerta", falta / td > 0.01);
+      kO.classList.toggle("alerta", ociosa / tot > 0.4);
+      kC.v.textContent = RN.fmt(tot / N, 0) + " unidades";
+    }
+    const kc = $("n-kpis");
+    const kO = kpi(kc, "nk-o", "Capacidad pagada sin usar"), kF = kpi(kc, "nk-f", "Demanda no atendida"), kC = kpi(kc, "nk-c", "Capacidad media pagada");
+    const ge = RN.grafica($("n-elas"), {
+      alto: 260, hover: false, x: { min: 0, max: 48, titulo: "horas (dos días)", marcas: [0, 6, 12, 18, 24, 30, 36, 42, 48], fmt: function (v) { return (v % 24) + " h"; } },
+      y: { min: 0, max: bonito(pico * 1.15), titulo: "carga (unidades de cómputo)" },
+      extras: function (ctx, g) {
+        const n = Math.round(Math.min(48, tc) * 4);
+        const X = function (i) { return g.sx(i / 4); };
+        for (let i = 0; i < n; i++) {
+          const x0 = X(i), x1 = X(i + 1), d = dem[i], c = cap[i];
+          if (c > d) { ctx.fillStyle = "rgba(160,170,182,.32)"; ctx.fillRect(x0, g.sy(c), x1 - x0 + 0.5, g.sy(d) - g.sy(c)); }
+          else { ctx.fillStyle = "rgba(227,73,72,.28)"; ctx.fillRect(x0, g.sy(d), x1 - x0 + 0.5, g.sy(c) - g.sy(d)); }
+        }
+        ctx.lineWidth = 2.5; ctx.lineJoin = "round";
+        ctx.strokeStyle = C.s2; ctx.beginPath();
+        for (let i = 0; i <= n; i++) { const y = g.sy(cap[Math.min(i, N)]); if (i === 0) ctx.moveTo(X(i), y); else { ctx.lineTo(X(i), g.sy(cap[i - 1])); ctx.lineTo(X(i), y); } }
+        ctx.stroke();
+        ctx.strokeStyle = C.s1; ctx.beginPath();
+        for (let i = 0; i <= n; i++) { const y = g.sy(dem[i]); if (i === 0) ctx.moveTo(X(i), y); else ctx.lineTo(X(i), y); }
+        ctx.stroke();
+        ctx.fillStyle = C.ink; ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        if (tc > 34) ctx.fillText("campaña inesperada", g.sx(33.5), g.sy(pico) - 6);
+        if (tc < 48) { ctx.strokeStyle = C.ink2; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(X(n), g.m.t); ctx.lineTo(X(n), g.h - g.m.b); ctx.stroke(); }
+      }
+    });
+    D.seg($("n-modo"), [["media", "Propia, para la media"], ["pico", "Propia, para el pico"], ["elastica", "Elástica (nube)"]], "elastica", function (v) { modo = v; calcCap(); tc = reducido ? 48 : 0; ge.dibujar([]); }, "Tipo de capacidad");
+    calcCap(); ge.dibujar([]);
+    let espera = 0;
+    bucle(function (dt) {
+      if (tc < 48) { tc = Math.min(48, tc + dt * 7); ge.dibujar(); espera = 0; }
+      else { espera += dt; if (espera > 3) { tc = 0; } }
+    }, $("n-elas"));
+
+    // ---- CapEx frente a OpEx
+    const INV = 8 * 10000 + 20000, MANT = 1500, PRECIO = 3, NG = 8;
+    const kc2 = $("n-kpis2");
+    const k1 = kpi(kc2, "nk-1", "Nube: coste al mes"), k2 = kpi(kc2, "nk-2", "Propia: inicial + mensual"), k3 = kpi(kc2, "nk-3", "A 3 años"), k4 = kpi(kc2, "nk-4", "Punto de equilibrio");
+    let horas = 72;
+    const gc = RN.grafica($("n-capex"), {
+      alto: 280, x: { min: 0, max: 36, titulo: "meses" }, y: { min: 0, max: 200, titulo: "coste acumulado (miles de €)" },
+      extras: function (ctx, g) {
+        const mes = NG * PRECIO * horas;
+        if (mes > MANT) {
+          const m = INV / (mes - MANT);
+          if (m <= 36) {
+            const X = g.sx(m), Y = g.sy((INV + MANT * m) / 1000);
+            ctx.beginPath(); ctx.arc(X, Y, 6, 0, 7); ctx.fillStyle = C.ink; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+            ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = C.ink;
+            ctx.fillText("a partir del mes " + RN.fmt(m, 1) + ", comprar sale más barato", X + 10, Y + 6);
+          }
+        }
+      }
+    });
+    function capex() {
+      const mes = NG * PRECIO * horas, pc = [], pn = [];
+      for (let m = 0; m <= 36; m += 0.5) { pc.push([m, (INV + MANT * m) / 1000]); pn.push([m, mes * m / 1000]); }
+      gc.op.y.max = bonito(Math.max(INV + MANT * 36, mes * 36) / 1000 * 1.05);
+      gc.dibujar([{ nombre: "propia", color: C.s1, puntos: pc }, { nombre: "nube", color: C.s2, puntos: pn }]);
+      $("n-horaso").textContent = horas + " h" + (horas >= 720 ? " (24/7)" : horas === 72 ? " (3 días)" : "");
+      k1.v.textContent = RN.fmtN(mes) + " €";
+      k2.v.textContent = RN.fmtN(INV / 1000) + " k€ + " + RN.fmtN(MANT) + " €";
+      k3.v.textContent = "nube " + RN.fmtN(mes * 36 / 1000) + " k€ · propia " + RN.fmtN((INV + MANT * 36) / 1000) + " k€";
+      const m = mes > MANT ? INV / (mes - MANT) : Infinity;
+      k4.v.textContent = m <= 36 ? "mes " + RN.fmt(m, 1) : "no llega en 3 años";
+      k4.classList.toggle("alerta", m <= 36);
+    }
+    $("n-horas").addEventListener("input", function () { horas = +this.value; capex(); });
+    $("n-3dias").addEventListener("click", function () { horas = 72; $("n-horas").value = 72; capex(); });
+    $("n-247").addEventListener("click", function () { horas = 730; $("n-horas").value = 730; capex(); });
+    capex();
+
+    // ---- limitaciones
+    const sl = D.prepara($("n-lim"), 1000, 166, "Cinco situaciones en las que conviene evitar la nube");
+    [["reloj", "Latencia extrema", ["cirugía robótica,", "coche autónomo: se", "decide en el dispositivo"]],
+     ["bandera", "Soberanía de datos", ["sanidad, defensa: datos", "que no pueden salir", "del país (o del edificio)"]],
+     ["euro", "Carga estable 24/7", ["puede salir más cara", "que el hardware propio", "(caso Dropbox)"]],
+     ["chip", "Hardware específico", ["aceleradores que no", "ofrece ningún", "proveedor"]],
+     ["sinred", "Sin conectividad", ["plataforma petrolífera,", "submarino: edge", "computing"]]
+    ].forEach(function (f, i) { ficha(sl, 6 + i * 199, 6, 190, 152, f[0], f[1], f[2]); });
+  });
+
+  // =====================================================================================
+  // 2 · AWS, GCP y Azure
+  tab("proveedores", function () {
+    const GRUPOS = [
+      ["Cómputo y contenedores", [
+        ["vm", "Máquinas virtuales", "Amazon EC2", "Compute Engine", "Azure Virtual Machines"],
+        ["fn", "Funciones serverless", "AWS Lambda", "Cloud Run functions", "Azure Functions"],
+        ["k8s", "Kubernetes gestionado", "Amazon EKS", "Google Kubernetes Engine (GKE)", "Azure Kubernetes Service (AKS)"],
+        ["reg", "Registro de imágenes", "Amazon ECR", "Artifact Registry", "Azure Container Registry"],
+        ["spot", "Capacidad sobrante barata", "Instancias spot de EC2", "Spot VMs", "Azure Spot Virtual Machines"]]],
+      ["Almacenamiento", [
+        ["obj", "Objetos", "Amazon S3", "Cloud Storage", "Azure Blob Storage"],
+        ["blq", "Bloque (discos)", "Amazon EBS", "Persistent Disk", "Azure Managed Disks"],
+        ["arch", "Archivos compartidos", "Amazon EFS", "Filestore", "Azure Files"]]],
+      ["Aprendizaje automático", [
+        ["ml", "Plataforma de ML gestionada", "Amazon SageMaker AI", "Vertex AI", "Azure Machine Learning"]]],
+      ["Datos", [
+        ["sql", "Base de datos SQL", "Amazon RDS", "Cloud SQL", "Azure SQL Database"],
+        ["nosql", "NoSQL clave-valor", "Amazon DynamoDB", "Firestore", "Azure Cosmos DB"],
+        ["cache", "Caché en memoria (Redis)", "Amazon ElastiCache", "Memorystore", "Azure Cache for Redis"],
+        ["dw", "Almacén de datos", "Amazon Redshift", "BigQuery", "Azure Synapse Analytics"],
+        ["str", "Streaming", "Amazon Kinesis", "Pub/Sub", "Azure Event Hubs"],
+        ["etl", "ETL", "AWS Glue", "Dataflow", "Azure Data Factory"],
+        ["cat", "Catálogo y gobernanza", "AWS Glue Data Catalog", "Dataplex Universal Catalog", "Microsoft Purview"]]],
+      ["Red y seguridad", [
+        ["vpc", "Red privada", "Amazon VPC", "VPC", "Azure Virtual Network"],
+        ["lb", "Balanceador de carga", "Elastic Load Balancing", "Cloud Load Balancing", "Azure Load Balancer"],
+        ["iam", "Identidad y acceso", "AWS IAM", "Cloud IAM", "Microsoft Entra ID + Azure RBAC"],
+        ["kms", "Claves de cifrado", "AWS KMS", "Cloud KMS", "Azure Key Vault"],
+        ["aud", "Auditoría", "AWS CloudTrail", "Cloud Audit Logs", "Registro de actividad de Azure Monitor"]]],
+      ["Operación", [
+        ["mon", "Monitorización", "Amazon CloudWatch", "Cloud Monitoring", "Azure Monitor"],
+        ["bud", "Presupuestos y costes", "AWS Budgets", "Presupuestos de Cloud Billing", "Microsoft Cost Management"]]]
+    ];
+    const FILA = {};
+    GRUPOS.forEach(function (g) { g[1].forEach(function (f) { FILA[f[0]] = f; }); });
+    const tb = $("pv-tabla").querySelector("tbody");
+    const trs = {};
+    GRUPOS.forEach(function (g) {
+      const tr = RN.el("tr", { class: "grupo" }, tb); RN.el("td", { colspan: 4 }, tr, g[0]);
+      g[1].forEach(function (f) {
+        const r = RN.el("tr", { class: "fila-clic", "data-id": f[0] }, tb);
+        RN.el("td", null, r, f[1]);
+        PROV.forEach(function (p, i) { RN.el("td", { "data-col": p }, r, f[2 + i]); });
+        r.addEventListener("click", function () { selecciona(f[0]); });
+        trs[f[0]] = r;
+      });
+    });
+    // arquitectura
+    const svg = D.prepara($("pv-svg"), 1000, 400, "Arquitectura típica de aprendizaje automático con los nombres de los servicios del proveedor elegido");
+    const CORTO = { k8s: ["Amazon EKS", "Google Kubernetes Engine", "Azure Kubernetes Service"], cat: ["AWS Glue Data Catalog", "Dataplex", "Microsoft Purview"], iam: ["AWS IAM", "Cloud IAM", "Microsoft Entra ID"], lb: ["Elastic Load Balancing", "Cloud Load Balancing", "Azure Load Balancer"] };
+    const CAJAS = [
+      ["str", 15, 30, "streaming de eventos"], ["etl", 265, 30, "ETL"], ["obj", 515, 30, "objetos: datos y modelos"], ["dw", 765, 30, "almacén de datos"],
+      ["ml", 765, 160, "entrenar y registrar el modelo"], ["reg", 515, 160, "registro de imágenes"], ["k8s", 265, 160, "Kubernetes: servir"], ["lb", 15, 160, "balanceador → usuarios"],
+      ["iam", 15, 318, "identidad y acceso"], ["kms", 265, 318, "claves de cifrado"], ["mon", 515, 318, "monitorización"], ["cat", 765, 318, "catálogo y linaje"]
+    ];
+    const flechas = [[235, 63, 263, 63], [485, 63, 513, 63], [735, 63, 763, 63], [875, 98, 875, 158], [625, 98, 790, 158], [763, 193, 737, 193], [513, 193, 487, 193], [263, 193, 237, 193]];
+    flechas.forEach(function (f) { D.ruta(svg, "M" + f[0] + " " + f[1] + " L" + f[2] + " " + f[3], { color: K.borde, ancho: 2, flecha: true }); });
+    RN.svg("line", { x1: 15, y1: 270, x2: 985, y2: 270, stroke: K.linea, "stroke-dasharray": "6 5" }, svg);
+    D.texto(svg, 15, 290, "Transversal: seguridad, operación y gobierno de los datos", { ancla: "start", tam: 12, peso: 700, color: C.ink2 });
+    const nodos = {};
+    CAJAS.forEach(function (c) {
+      const g = RN.svg("g", { class: "d-caja" }, svg);
+      g.rect = RN.svg("rect", { x: c[1], y: c[2], width: 220, height: 66, rx: 10, fill: c[2] > 300 ? K.suave : "#fff", stroke: K.borde, "stroke-width": 1.5 }, g);
+      D.texto(g, c[1] + 110, c[2] + 20, c[3], { tam: 12, color: C.ink2 });
+      g.nom = D.texto(g, c[1] + 110, c[2] + 44, "", { tam: 15, peso: 700 });
+      g.nom.style.transition = "opacity .18s";
+      D.clicable(g, function () { selecciona(c[0]); }, c[3]);
+      nodos[c[0]] = g;
+    });
+    // fichas de datos que recorren la arquitectura
+    const fl = D.Flujo(svg);
+    const ruta = [[125, 63], [375, 63], [625, 63], [875, 63], [875, 193], [625, 193], [375, 193], [125, 193], [60, 240]];
+    let tt = 0;
+    let prov = "aws", sel = null;
+    function nombres(animar) {
+      CAJAS.forEach(function (c) {
+        const i = PROV.indexOf(prov), txt = CORTO[c[0]] ? CORTO[c[0]][i] : FILA[c[0]][2 + i];
+        const g = nodos[c[0]];
+        if (animar && !reducido) { g.nom.style.opacity = 0; setTimeout(function () { g.nom.textContent = txt; g.nom.style.opacity = 1; }, 180); }
+        else g.nom.textContent = txt;
+      });
+      Array.from($("pv-tabla").querySelectorAll("[data-col]")).forEach(function (td) { td.classList.toggle("col-sel", td.dataset.col === prov); });
+    }
+    function selecciona(id) {
+      sel = id;
+      Object.keys(trs).forEach(function (k) { trs[k].classList.toggle("sel", k === id); });
+      Object.keys(nodos).forEach(function (k) { D.estado(nodos[k], k === id ? "activo" : null); });
+    }
+    const seg = D.seg($("pv-prov"), [["aws", "AWS"], ["gcp", "Google Cloud"], ["azure", "Azure"]], "aws", function (v) { prov = v; nombres(true); }, "Proveedor");
+    let tRot = 0;
+    bucle(function (dt) {
+      tt += dt;
+      if (tt > 1.1) { tt = 0; fl.add({ pts: ruta, dur: 5.5, r: 6, color: C.s1 }); }
+      fl.paso(dt);
+      if ($("pv-rotar").checked) { tRot += dt; if (tRot > 3) { tRot = 0; const k = (PROV.indexOf(prov) + 1) % 3; seg.poner(PROV[k], true); } }
+    }, svg.parentNode);
+    nombres(false);
+    selecciona("ml");
+
+    // criterios
+    const sc = D.prepara($("pv-crit"), 1000, 166, "Cinco criterios para elegir proveedor de nube");
+    [["candado", "Dependencia (lock-in)", ["tecnologías abiertas", "(Kubernetes, PostgreSQL)", "se migran mejor"]],
+     ["bd", "Ecosistema de datos", ["¿Oracle o SQL Server?", "¿BigQuery? Pesa lo", "que ya hay"]],
+     ["equipo", "Habilidades del equipo", ["certificaciones, nombres", "y consolas distintos:", "cambiar cuesta"]],
+     ["mundo", "Región y RGPD", ["España: AWS (Aragón),", "Google Cloud y Azure", "(Madrid)"]],
+     ["engranaje", "Servicios de ML", ["SageMaker AI, Vertex AI", "o Azure ML: comparar", "con calma"]]
+    ].forEach(function (f, i) { ficha(sc, 6 + i * 199, 6, 190, 152, f[0], f[1], f[2]); });
+  });
+
+  // =====================================================================================
+  // 3 · Empaquetar
+  tab("empaquetar", function () {
+    const svg = D.prepara($("e-svg"), 1000, 236, "Pasos para convertir un notebook en una imagen desplegada en Kubernetes");
+    const P = [
+      ["portatil", "Notebook", "celdas sueltas"], ["papelera", "Limpiar", "sin experimentos"], ["lista", "Dependencias", "requirements.txt"], ["llave", "Configuración", "sin rutas fijas"], ["engranaje", "Modularizar", "preproceso aparte"],
+      ["doc", "Documentar E/S", "esquema de datos"], ["disco", "Exportar", "SavedModel, ONNX…"], ["contenedor", "Imagen Docker", "Dockerfile"], ["servidor", "Registro", "docker push"], ["timon", "Desplegar", "Kubernetes"]
+    ];
+    const pos = P.map(function (p, i) { return i < 5 ? [15 + i * 197, 22] : [15 + (9 - i) * 197, 148]; });
+    const camino = [];
+    pos.forEach(function (q, i) {
+      camino.push([q[0] + 85, q[1] + 33]);
+      if (i < 9) {
+        const n = pos[i + 1];
+        if (i === 4) D.ruta(svg, "M" + (q[0] + 85) + " " + (q[1] + 68) + " V" + (n[1] - 3), { color: K.borde, ancho: 2, flecha: true });
+        else if (i < 4) D.ruta(svg, "M" + (q[0] + 172) + " " + (q[1] + 33) + " H" + (n[0] - 3), { color: K.borde, ancho: 2, flecha: true });
+        else D.ruta(svg, "M" + q[0] + " " + (q[1] + 33) + " H" + (n[0] + 173), { color: K.borde, ancho: 2, flecha: true });
+      }
+    });
+    const nodos = P.map(function (p, i) {
+      const g = tarjeta(svg, pos[i][0], pos[i][1], 170, 66, p[0], p[1], p[2], { tamIc: 26 });
+      D.clicable(g, function () { ir(i); }, p[1]);
+      return g;
+    });
+    const tok = RN.svg("circle", { r: 8, fill: K.acento, stroke: "#fff", "stroke-width": 2, visibility: "hidden" }, svg);
+    const DET = [
+      ["Notebook", "Perfecto para explorar, pero lleno de celdas de prueba, gráficos intermedios y rutas de tu portátil.", ['<span class="com">In [7]:</span>  df.head()', '<span class="com">In [8]:</span>  print(<span class="str">"¿funcionará?"</span>)', '<span class="com">In [9]:</span>  <span class="com"># modelo.fit(X, y, epochs=50)  ← intento viejo</span>', '<span class="com">In [10]:</span> modelo = cargar(<span class="str">"/Users/ana/Desktop/final_v3.pkl"</span>)']],
+      ["Limpiar el código", "Fuera celdas de experimentación, prints de depuración y código comentado. Que un compañero lo entienda dentro de seis meses.", ['<span class="del">- df.head()</span>', '<span class="del">- print("¿funcionará?")</span>', '<span class="del">- # modelo.fit(X, y, epochs=50)</span>', '<span class="add">+ def predecir(datos):</span>', '<span class="add">+     return modelo.predict(preparar(datos))</span>']],
+      ["Congelar dependencias", "Versiones exactas en requirements.txt: si no, otro entorno instala otras versiones y el modelo cambia o falla (dependency hell).", ["numpy==1.24.1", "pandas==2.0.0", "scikit-learn==1.2.2", "onnxruntime==1.17.1", "fastapi==0.110.0", "uvicorn==0.29.0"]],
+      ["Desacoplar la configuración", "Nada de rutas, URL ni credenciales en el código: el mismo código debe funcionar en el portátil, en pruebas y en producción.", ['<span class="com"># Mal: valores fijos</span>', 'RUTA = <span class="str">"/Users/ana/Desktop/final_v3.pkl"</span>', 'BD = <span class="str">"postgres://admin:1234@10.0.3.7/clientes"</span>', "", '<span class="com"># Bien: variables de entorno</span>', '<span class="kw">import</span> os', 'RUTA = os.environ[<span class="str">"MODELO_RUTA"</span>]', 'BD = os.environ[<span class="str">"BD_URL"</span>]']],
+      ["Modularizar", "El preprocesamiento separado de la inferencia: son responsabilidades distintas y así se prueban y se cambian por separado.", ["src/", "├── preproceso.py   <span class=\"com\"># limpia y transforma la entrada</span>", "├── inferencia.py   <span class=\"com\"># carga el modelo y predice</span>", "└── api.py          <span class=\"com\"># recibe peticiones y responde</span>"]],
+      ["Documentar entradas y salidas", "Qué formato espera el modelo y qué devuelve: evita horas de depuración por tipos de datos.", ['<span class="com">Entrada:</span> {"edad": entero, "ingresos_mensuales": decimal, …}', '<span class="com">Salida:</span>  {"prediccion": "riesgo_alto" | "riesgo_bajo",', '          "probabilidad_impago": decimal entre 0 y 1}']],
+      ["Exportar el modelo", "Serializarlo a un fichero: nativo del framework, interoperable (ONNX) u optimizado (más abajo).", ['tf.saved_model.save(modelo, <span class="str">"riesgo/"</span>)          <span class="com"># TensorFlow</span>', 'torch.save(modelo.state_dict(), <span class="str">"riesgo.pth"</span>)    <span class="com"># PyTorch</span>', 'torch.onnx.export(modelo, x_ejemplo, <span class="str">"riesgo.onnx"</span>)  <span class="com"># ONNX</span>']],
+      ["Construir la imagen Docker", "Código, librerías y sistema base en una imagen inmutable (detalle más abajo).", ['$ docker build -t riesgo:1.2.0 .']],
+      ["Subir al registro", "El registro de imágenes (Amazon ECR, Artifact Registry, Azure Container Registry) guarda cada versión.", ['$ docker tag riesgo:1.2.0 \\', '    123456789012.dkr.ecr.eu-south-2.amazonaws.com/riesgo:1.2.0', '$ docker push 123456789012.dkr.ecr.eu-south-2.amazonaws.com/riesgo:1.2.0']],
+      ["Desplegar", "Kubernetes descarga la imagen del registro y crea los pods (pestaña 4).", ['$ kubectl set image deployment/modelo-riesgo \\', '    modelo=123456789012.dkr.ecr.eu-south-2.amazonaws.com/riesgo:1.2.0']]
+    ];
+    let paso = 0, tMov = 9, desde = 0, auto = false, tAuto = 0;
+    function ir(i, animar) {
+      desde = paso; paso = i; tMov = animar && !reducido ? 0 : 9;
+      nodos.forEach(function (g, k) { D.estado(g, k === i ? "activo" : k < i ? "ok" : null); });
+      $("e-tit").textContent = (i + 1) + ". " + DET[i][0];
+      $("e-txt").textContent = DET[i][1];
+      $("e-code").innerHTML = D.codigoHTML(DET[i][2]);
+    }
+    bucle(function (dt) {
+      if (tMov < 1) {
+        tMov = Math.min(1, tMov + dt / 0.6);
+        const a = camino[desde], b = camino[paso], u = RN.suave(tMov);
+        const pts = desde <= paso ? camino.slice(desde, paso + 1) : [a, b];
+        const p = D.enPol(pts.length > 1 ? pts : [a, b], null, u);
+        tok.setAttribute("cx", p[0]); tok.setAttribute("cy", p[1]); tok.setAttribute("visibility", "visible");
+      } else tok.setAttribute("visibility", "hidden");
+      if (auto) { tAuto += dt; if (tAuto > 1.8) { tAuto = 0; if (paso < 9) ir(paso + 1, true); else { auto = false; $("e-rec").textContent = "▶ Recorrer"; } } }
+    }, svg.parentNode);
+    $("e-rec").addEventListener("click", function () {
+      auto = !auto; tAuto = 0;
+      if (auto && paso === 9) ir(0);
+      this.textContent = auto ? "⏸ Pausa" : "▶ Recorrer";
+    });
+    $("e-sig").addEventListener("click", function () { ir((paso + 1) % 10, paso < 9); });
+    ir(0);
+
+    // ---- formatos
+    const sf = D.prepara($("f-svg"), 1000, 336, "Frameworks, formatos de exportación y entornos donde se ejecuta cada uno");
+    D.texto(sf, 110, 14, "Framework", { tam: 12, peso: 700, color: C.ink2 });
+    D.texto(sf, 480, 14, "Formato del fichero", { tam: 12, peso: 700, color: C.ink2 });
+    D.texto(sf, 880, 14, "Dónde se ejecuta", { tam: 12, peso: 700, color: C.ink2 });
+    const FAM = { nativo: C.s1, interoperable: C.s3, optimizado: C.s2 };
+    const NF = {
+      sk: [20, 60, 180, "scikit-learn"], tf: [20, 150, 180, "TensorFlow / Keras"], pt: [20, 240, 180, "PyTorch"],
+      pkl: [370, 28, 225, "Pickle / Joblib", "nativo"], sav: [370, 78, 225, "SavedModel", "nativo"], pth: [370, 128, 225, ".pth (state_dict)", "nativo"],
+      onnx: [370, 186, 225, "ONNX", "interoperable"], tfl: [370, 240, 225, "TensorFlow Lite", "optimizado"], trt: [370, 290, 225, "TensorRT", "optimizado"],
+      py: [780, 28, 200, "Servidor Python"], tfs: [780, 78, 200, "TensorFlow Serving"], ts: [780, 128, 200, "TorchServe"],
+      ort: [780, 186, 200, "ONNX Runtime"], mov: [780, 240, 200, "Móvil y embebidos"], gpu: [780, 290, 200, "GPU NVIDIA (Triton)"]
+    };
+    const AR = [["sk", "pkl"], ["sk", "onnx", "skl2onnx"], ["tf", "sav"], ["tf", "onnx", "tf2onnx"], ["tf", "tfl"], ["pt", "pth"], ["pt", "onnx", "torch.onnx"],
+      ["pkl", "py"], ["sav", "tfs"], ["pth", "ts"], ["onnx", "ort"], ["onnx", "trt"], ["tfl", "mov"], ["trt", "gpu"]];
+    const aristas = AR.map(function (a) {
+      const s = NF[a[0]], d = NF[a[1]];
+      const b = a[0] === "onnx" && a[1] === "trt" ? D.cubica([s[0] - 2, s[1] + 30], [s[0] - 48, s[1] + 30], [d[0] - 48, d[1] + 20], [d[0] - 4, d[1] + 20]) : D.bezier(s[0] + s[2] + 2, s[1] + 20, d[0] - 4, d[1] + 20);
+      const p = D.ruta(sf, b.d, { color: K.linea, ancho: 2, flecha: true });
+      return { a: a[0], b: a[1], p: p, et: a[2] };
+    });
+    const nf = {};
+    Object.keys(NF).forEach(function (id) {
+      const n = NF[id];
+      const g = RN.svg("g", { class: "d-caja" }, sf);
+      g.rect = RN.svg("rect", { x: n[0], y: n[1], width: n[2], height: 40, rx: 9, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, g);
+      if (n[4]) RN.svg("rect", { x: n[0] + 1, y: n[1] + 6, width: 6, height: 28, rx: 3, fill: FAM[n[4]] }, g);
+      D.texto(g, n[0] + (n[4] ? 18 : 14), n[1] + 20, n[3], { ancla: "start", tam: 14, peso: 700 });
+      if (n[4]) D.texto(g, n[0] + n[2] - 10, n[1] + 20, n[4], { ancla: "end", tam: 12, color: C.ink2 });
+      D.clicable(g, function () { marca(id); }, n[3]);
+      nf[id] = g;
+    });
+    const etq = D.g(sf);
+    const NOTA = {
+      pkl: ["Pickle / Joblib", "Serialización general de objetos de Python, ideal para scikit-learn. <strong>Peligro:</strong> al cargar un Pickle se puede ejecutar código arbitrario; nunca carguéis uno de una fuente no confiable."],
+      sav: ["SavedModel (TensorFlow)", "Guarda los pesos <em>y</em> el grafo de cómputo: se puede ejecutar sin el código Python original, por ejemplo en TensorFlow Serving. Más seguro y portable que Pickle, pero solo para TensorFlow."],
+      pth: ["Fichero .pth (PyTorch)", "Guarda el <em>state_dict</em>, es decir, los pesos. Para reconstruir el modelo hace falta el código de su clase."],
+      onnx: ["ONNX (Open Neural Network Exchange)", "Estándar abierto impulsado por Microsoft, Meta (Facebook), Amazon y otros: entrenar en un framework y ejecutar en otro. ONNX Runtime suele ser más rápido que el runtime original."],
+      tfl: ["TensorFlow Lite", "Modelos comprimidos para móviles y dispositivos embebidos: ocupan menos y van más rápido, con una pequeña pérdida de precisión."],
+      trt: ["TensorRT (NVIDIA)", "Optimiza el modelo para GPU NVIDIA: aceleraciones de hasta 10 veces respecto al original."]
+    };
+    function marca(id) {
+      Object.keys(nf).forEach(function (k) { D.estado(nf[k], null); });
+      while (etq.firstChild) etq.removeChild(etq.firstChild);
+      const vecinos = {};
+      vecinos[id] = true;
+      aristas.forEach(function (a) {
+        const on = a.a === id || a.b === id;
+        a.p.setAttribute("stroke", on ? K.acento : K.linea);
+        a.p.setAttribute("stroke-width", on ? 3 : 2);
+        a.p.setAttribute("marker-end", D.flecha(sf, on ? K.acento : K.borde));
+        if (on) { vecinos[a.a] = true; vecinos[a.b] = true; if (a.et) { const s = NF[a.a]; const t = D.texto(etq, 286, (s[1] + 20 + NF[a.b][1] + 20) / 2 - 2, a.et, { tam: 12, peso: 700, color: K.acento }); t.setAttribute("stroke", "#fff"); t.setAttribute("stroke-width", 4); t.setAttribute("paint-order", "stroke"); } }
+      });
+      Object.keys(nf).forEach(function (k) { D.estado(nf[k], k === id ? "activo" : vecinos[k] ? null : "apagado"); });
+      const n = NOTA[id] || NOTA.onnx;
+      $("f-nota").innerHTML = "<h3>" + (NOTA[id] ? n[0] : NF[id][3]) + "</h3><p>" + (NOTA[id] ? n[1] : "Pulsa un formato (columna central) para ver su explicación.") + "</p>";
+    }
+    marca("onnx");
+
+    // ---- Docker por capas
+    const sd = D.prepara($("dk-svg"), 1000, 300, "Capas de una imagen Docker que se construyen, se reutilizan de la caché y se suben al registro");
+    const CAP = [
+      ["sistema base", "ubuntu:22.04", 77, 0], ["Python", "python3.10 y pip", 380, 1], ["dependencias (lista)", "requirements.txt", 0.001, 3],
+      ["librerías", "pip3 install", 320, 4], ["código", "src/", 0.04, 5], ["modelo", "modelo/riesgo.onnx", 100, 6]
+    ];
+    const DF = ['<span class="kw">FROM</span> ubuntu:22.04', '<span class="kw">RUN</span> apt-get update &amp;&amp; apt-get install -y python3.10 python3-pip', '<span class="kw">WORKDIR</span> /app', '<span class="kw">COPY</span> requirements.txt .', '<span class="kw">RUN</span> pip3 install --no-cache-dir -r requirements.txt', '<span class="kw">COPY</span> src/ ./src/', '<span class="kw">COPY</span> modelo/ ./modelo/', '<span class="kw">ENV</span> MODELO_RUTA=/app/modelo/riesgo.onnx', '<span class="kw">EXPOSE</span> 8080', '<span class="kw">CMD</span> [<span class="str">"uvicorn"</span>, <span class="str">"src.api:app"</span>, <span class="str">"--host"</span>, <span class="str">"0.0.0.0"</span>, <span class="str">"--port"</span>, <span class="str">"8080"</span>]'];
+    $("dk-file").innerHTML = D.codigoHTML(DF);
+    const lineas = $("dk-file").querySelectorAll(".ln");
+    function mb(x) { return x >= 1 ? RN.fmtN(x) + " MB" : RN.fmtN(x * 1000) + " kB"; }
+    const capas = CAP.map(function (c, i) {
+      const y = 248 - i * 40;
+      const g = RN.svg("g", { class: "d-caja" }, sd);
+      g.rect = RN.svg("rect", { x: 30, y: y, width: 470, height: 34, rx: 7, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, g);
+      g.barra = RN.svg("rect", { x: 31, y: y + 1, width: 0, height: 32, rx: 6, fill: RN.rgba(K.acento, 0.18) }, g);
+      D.texto(g, 44, y + 17, (i + 1) + " · " + c[0], { ancla: "start", tam: 13, peso: 700 });
+      D.texto(g, 230, y + 17, c[1], { ancla: "start", tam: 12, color: C.ink2, mono: true });
+      D.texto(g, 488, y + 17, mb(c[2]), { ancla: "end", tam: 12, peso: 700 });
+      g.est = D.texto(g, 516, y + 17, "", { ancla: "start", tam: 12, peso: 700 });
+      g.addEventListener("mouseenter", function () { lineas.forEach(function (l, k) { l.classList.toggle("hl", k === c[3]); }); });
+      D.clicable(g, function () { lineas.forEach(function (l, k) { l.classList.toggle("hl", k === c[3]); }); }, "Capa " + (i + 1) + ": " + c[0]);
+      g.y = y;
+      return g;
+    });
+    D.texto(sd, 265, 16, "Imagen riesgo:1.2.0 · ≈ 0,9 GB (orientativo)", { tam: 13, peso: 700 });
+    const reg = D.caja(sd, { x: 770, y: 40, w: 210, h: 96, icono: "servidor", titulo: "Registro de imágenes", sub: "ECR · Artifact Registry · ACR", tam: 14 });
+    const k8 = D.caja(sd, { x: 770, y: 176, w: 210, h: 96, icono: "timon", titulo: "Kubernetes", sub: "descarga la imagen al crear pods", tam: 14 });
+    D.ruta(sd, "M875 138 V174", { color: K.borde, ancho: 2, flecha: true, dash: "5 4" });
+    const fl = D.Flujo(sd);
+    const dlog = $("dk-log");
+    const est = CAP.map(function () { return { s: "ok", subida: false }; });
+    let cola = [], tC = 0, actual = null;
+    function pintaCapa(i) {
+      const g = capas[i], e = est[i];
+      g.est.textContent = e.s === "constr" ? "construyendo…" : e.s === "cache" ? "✓ en caché" : e.s === "ok" ? "✓ lista" : "";
+      g.est.setAttribute("fill", e.s === "cache" ? C.s3 : e.s === "constr" ? K.acento : C.ok);
+      D.estado(g, e.s === "constr" ? "activo" : null);
+      g.style.opacity = e.s === "nada" ? 0.3 : 1;
+    }
+    function build(desde) {
+      cola = [];
+      CAP.forEach(function (c, i) {
+        if (i < desde) { cola.push({ tipo: "cache", i: i, dur: 0.18 }); }
+        else { est[i].s = "nada"; est[i].subida = false; cola.push({ tipo: "constr", i: i, dur: 0.35 + Math.sqrt(c[2]) * 0.06 }); }
+      });
+      CAP.forEach(function (c, i) { pintaCapa(i); capas[i].barra.setAttribute("width", 0); });
+      registra(dlog, "$ docker build -t riesgo:1.2.0 .", "av");
+      actual = null; tC = 0;
+    }
+    function push() {
+      cola = [];
+      CAP.forEach(function (c, i) { cola.push({ tipo: "push", i: i, dur: est[i].subida ? 0.15 : 0.3 + Math.sqrt(c[2]) * 0.05 }); });
+      registra(dlog, "$ docker push …/riesgo:1.2.0", "av");
+      actual = null; tC = 0;
+    }
+    bucle(function (dt) {
+      fl.paso(dt);
+      if (!actual && cola.length) {
+        actual = cola.shift(); tC = 0;
+        const i = actual.i;
+        if (actual.tipo === "constr") { est[i].s = "constr"; pintaCapa(i); }
+        if (actual.tipo === "push" && !est[i].subida) fl.add({ pts: [[500, capas[i].y + 17], [640, capas[i].y + 17], [770, 88]], dur: actual.dur, r: 7, color: K.acento });
+      }
+      if (actual) {
+        tC += dt;
+        const i = actual.i;
+        if (actual.tipo === "constr") capas[i].barra.setAttribute("width", 468 * Math.min(1, tC / actual.dur));
+        if (tC >= actual.dur) {
+          if (actual.tipo === "constr") { est[i].s = "ok"; capas[i].barra.setAttribute("width", 0); registra(dlog, "[" + (i + 1) + "/6] " + esc(CAP[i][1]) + " · construida (" + mb(CAP[i][2]) + ")", "ok"); }
+          else if (actual.tipo === "cache") { est[i].s = "cache"; registra(dlog, "[" + (i + 1) + "/6] " + esc(CAP[i][1]) + " · CACHED (reutilizada)"); }
+          else if (actual.tipo === "push") { registra(dlog, "capa " + (i + 1) + ": " + (est[i].subida ? "Layer already exists (ya estaba en el registro)" : "subida (" + mb(CAP[i][2]) + ")"), est[i].subida ? "" : "ok"); est[i].subida = true; if (i === 5) D.estado(reg, "ok"); }
+          pintaCapa(i);
+          actual = null;
+          if (!cola.length) registra(dlog, "✓ terminado", "ok");
+        }
+      }
+    }, sd.parentNode);
+    $("dk-build").addEventListener("click", function () { D.estado(reg, null); build(0); });
+    $("dk-cambio").addEventListener("click", function () { D.estado(reg, null); registra(dlog, "(se edita src/api.py)", "t"); build(4); });
+    $("dk-push").addEventListener("click", push);
+    CAP.forEach(function (c, i) { pintaCapa(i); });
+    registra(dlog, "Imagen construida. Pulsa un botón para ver qué pasa.", "t");
+  });
+
+  // =====================================================================================
+  // 4 · Kubernetes
+  tab("k8s", function () {
+    const svg = D.prepara($("k-svg"), 1000, 420, "Clúster de Kubernetes con tres nodos, pods del modelo, un balanceador y autoescalado por CPU");
+    RN.svg("rect", { x: 222, y: 12, width: 763, height: 48, rx: 10, fill: "#0F1B2D" }, svg);
+    D.icono(svg, "timon", 246, 36, 26, "#FFCB6B");
+    D.texto(svg, 268, 36, "Plano de control (gestionado: EKS · GKE · AKS)", { ancla: "start", tam: 13, peso: 700, color: "#fff" });
+    const tHpa = D.texto(svg, 970, 36, "", { ancla: "end", tam: 12, peso: 700, color: "#FFCB6B" });
+    D.icono(svg, "equipo", 44, 236, 46);
+    D.texto(svg, 44, 276, "Usuarios", { tam: 13, peso: 700 });
+    D.ruta(svg, "M74 236 H112", { color: K.linea, ancho: 2 });
+    RN.svg("circle", { cx: 150, cy: 236, r: 34, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, svg);
+    D.icono(svg, "balanceador", 150, 236, 40);
+    D.texto(svg, 150, 290, ["Service", "(balanceador)"], { tam: 12, peso: 700, arriba: true });
+    const NODOS = [0, 1, 2].map(function (i) {
+      const x = 222 + i * 256;
+      const g = RN.svg("g", { class: "d-caja" }, svg);
+      g.rect = RN.svg("rect", { x: x, y: 74, width: 245, height: 338, rx: 12, fill: K.suave, stroke: K.borde, "stroke-width": 1.5 }, g);
+      D.icono(g, "servidor", x + 22, 96, 20);
+      D.texto(g, x + 38, 96, "Nodo " + (i + 1), { ancla: "start", tam: 13, peso: 700 });
+      const tEst = D.texto(g, x + 231, 96, "Ready", { ancla: "end", tam: 12, peso: 700, color: C.ok });
+      return { x: x, g: g, tEst: tEst, ok: true, caido: 0 };
+    });
+    function slotXY(n, s) { return [NODOS[n].x + 12 + (s % 2) * 116, 112 + Math.floor(s / 2) * 148]; }
+    NODOS.forEach(function (n, i) { for (let s2 = 0; s2 < 4; s2++) { const xy = slotXY(i, s2); RN.svg("rect", { x: xy[0], y: xy[1], width: 106, height: 138, rx: 9, fill: "none", stroke: K.linea, "stroke-dasharray": "5 5" }, svg); } });
+    const capaPods = D.g(svg);
+    const fl = D.Flujo(svg);
+    const rng = RN.rng(17);
+    const klog = $("k-log");
+    const kc = $("k-kpis");
+    const kR = kpi(kc, "kk-r", "Réplicas listas"), kCpu = kpi(kc, "kk-c", "CPU media"), kL = kpi(kc, "kk-l", "Carga"), kV = kpi(kc, "kk-v", "Versión");
+    $("k-yaml").innerHTML = D.codigoHTML([
+      '<span class="kw">apiVersion</span>: apps/v1', '<span class="kw">kind</span>: Deployment', '<span class="kw">metadata</span>: { name: modelo-riesgo }', '<span class="kw">spec</span>:', '  replicas: <span class="num">3</span>',
+      '  selector: { matchLabels: { app: riesgo } }', '  strategy:', '    rollingUpdate: { maxSurge: <span class="num">1</span>, maxUnavailable: <span class="num">0</span> }', '  template:', '    metadata: { labels: { app: riesgo } }', '    spec:', '      containers:',
+      '      - name: modelo', '        image: …/riesgo:<span class="str" id="k-tag">1.2.0</span>', '        resources: { requests: { cpu: <span class="str">"500m"</span> } }', '        livenessProbe:', '          httpGet: { path: /health, port: <span class="num">8080</span> }', '---',
+      '<span class="kw">apiVersion</span>: autoscaling/v2', '<span class="kw">kind</span>: HorizontalPodAutoscaler', '<span class="kw">metadata</span>: { name: modelo-riesgo }', '<span class="kw">spec</span>:', '  scaleTargetRef: { kind: Deployment, name: modelo-riesgo }',
+      '  minReplicas: <span class="num">2</span>', '  maxReplicas: <span class="num">10</span>', '  metrics:', '  - type: Resource', '    resource:', '      name: cpu', '      target: { type: Utilization, averageUtilization: <span class="num">70</span> }'
+    ]);
+    const COLV = { v1: C.s1, v2: C.s3 };
+    const CAPAC = 10, OBJ = 70, MIN = 2, MAX = 10;
+    let pods, deseadas, objetivo, carga, T, tRec, tHpaT, recos, tVis, rr;
+    function nombre() { let s = ""; for (let i = 0; i < 4; i++) s += "abcdefghjkmnpqrstuvwxz23456789"[Math.floor(rng() * 30)]; return "riesgo-" + s; }
+    function nota(html, clase) { registra(klog, '<span class="r-t">' + RN.fmt(T, 1).padStart(5, " ") + " s</span> " + html, clase); }
+    function huecos() {
+      const lista = [];
+      NODOS.forEach(function (n, i) {
+        if (!n.ok) return;
+        const usados = pods.filter(function (p) { return p.nodo === i; }).map(function (p) { return p.slot; });
+        for (let s = 0; s < 4; s++) if (usados.indexOf(s) < 0) lista.push([i, s, 4 - usados.length]);
+      });
+      lista.sort(function (a, b) { return b[2] - a[2]; });
+      return lista;
+    }
+    function dibujaPod(p) {
+      const xy = slotXY(p.nodo, p.slot), x = xy[0], y = xy[1];
+      const g = RN.svg("g", {}, capaPods);
+      p.rect = RN.svg("rect", { x: x, y: y, width: 106, height: 138, rx: 9, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, g);
+      D.texto(g, x + 53, y + 18, p.id.replace("riesgo-", ""), { tam: 12, peso: 700, mono: true });
+      const chip = RN.svg("rect", { x: x + 35, y: y + 30, width: 36, height: 20, rx: 10, fill: COLV[p.ver] }, g);
+      D.texto(g, x + 53, y + 40, p.ver, { tam: 12, peso: 700, color: "#fff" });
+      p.tEst = D.texto(g, x + 53, y + 66, "", { tam: 12, peso: 700 });
+      RN.svg("rect", { x: x + 9, y: y + 82, width: 88, height: 10, rx: 5, fill: "#E4E7EB" }, g);
+      p.barra = RN.svg("rect", { x: x + 9, y: y + 82, width: 0, height: 10, rx: 5, fill: C.s3 }, g);
+      p.tCpu = D.texto(g, x + 53, y + 106, "", { tam: 12, color: C.ink2 });
+      p.tRei = D.texto(g, x + 53, y + 124, "", { tam: 12, color: C.ink2 });
+      p.g = g; p.cx = x + 53; p.cy = y + 66;
+    }
+    function crear(ver) {
+      const h = huecos();
+      if (!h.length) { nota("Pendiente: no hay hueco libre en los nodos", "av"); return false; }
+      const p = { id: nombre(), nodo: h[0][0], slot: h[0][1], ver: ver, est: "creando", t: 0, cpu: 0, rein: 0 };
+      pods.push(p); dibujaPod(p);
+      nota("Scheduled · pod " + p.id + " (" + ver + ") asignado al nodo " + (p.nodo + 1));
+      return true;
+    }
+    function terminar(p, motivo) { p.est = "terminando"; p.t = 0; nota("Killing · pod " + p.id + (motivo ? " (" + motivo + ")" : "")); }
+    function reinicia() {
+      if (pods) pods.forEach(function (p) { p.g.remove(); });
+      pods = []; deseadas = 3; objetivo = "v1"; carga = +$("k-carga").value; T = 0; tRec = 0; tHpaT = 0; recos = []; tVis = 0; rr = 0;
+      NODOS.forEach(function (n) { n.ok = true; n.caido = 0; });
+      klog.innerHTML = ""; fl.vaciar();
+      for (let i = 0; i < 3; i++) { crear("v1"); pods[i].est = "listo"; }
+      $("k-act").textContent = "Actualizar a v2";
+      if ($("k-tag")) $("k-tag").textContent = "1.2.0";
+      nota("Deployment modelo-riesgo: 3 réplicas de la imagen riesgo:1.2.0 (v1)", "ok");
+      pinta();
+    }
+    function listos() { return pods.filter(function (p) { return p.est === "listo"; }); }
+    function reconcilia() {
+      const vivos = pods.filter(function (p) { return p.est !== "terminando"; });
+      const nuevos = vivos.filter(function (p) { return p.ver === objetivo; }), viejos = vivos.filter(function (p) { return p.ver !== objetivo; });
+      const ls = listos();
+      if (!viejos.length) {
+        if (nuevos.length < deseadas) crear(objetivo);
+        else if (nuevos.length > deseadas) { const p = nuevos.filter(function (q) { return q.est !== "listo"; })[0] || nuevos[nuevos.length - 1]; terminar(p, "sobra tras reducir réplicas"); }
+      } else {
+        if (vivos.length < deseadas + 1) crear(objetivo);
+        else if (ls.length > deseadas) { const v = viejos.filter(function (q) { return q.est === "listo"; })[0]; if (v) terminar(v, "sustituido por " + objetivo); }
+        if (viejos.length === 1 && ls.length > deseadas) nota("Rollout completado: todas las réplicas en " + objetivo, "ok");
+      }
+    }
+    function cpuMedia() { const ls = listos(); return ls.length ? Math.min(100, 100 * carga / (ls.length * CAPAC)) : 100; }
+    function hpa() {
+      const cpu = cpuMedia(), ratio = cpu / OBJ;
+      let reco = deseadas;
+      if (Math.abs(ratio - 1) > 0.1) reco = RN.limita(Math.ceil(deseadas * ratio), MIN, MAX);
+      recos.push([T, reco]);
+      recos = recos.filter(function (r) { return T - r[0] <= 8; });
+      let nuevo = reco;
+      if (reco < deseadas) nuevo = Math.max.apply(null, recos.map(function (r) { return r[1]; }));
+      nuevo = Math.min(nuevo, Math.max(deseadas, reco));
+      if (nuevo !== deseadas) {
+        nota("SuccessfulRescale · HPA: CPU media " + RN.fmt(cpu, 0) + " % " + (nuevo > deseadas ? "> " : "< ") + OBJ + " % → " + deseadas + " → " + nuevo + " réplicas", nuevo > deseadas ? "av" : "ok");
+        deseadas = nuevo;
+      }
+      tHpa.textContent = "HPA · objetivo CPU 70 % · deseadas: " + deseadas;
+    }
+    function pinta() {
+      const cpu = cpuMedia();
+      pods.forEach(function (p) {
+        const txt = { creando: "Creando…", listo: "Running", error: "Error", reiniciando: "Reiniciando", terminando: "Terminando" }[p.est];
+        p.tEst.textContent = txt;
+        p.tEst.setAttribute("fill", p.est === "listo" ? C.ok : p.est === "error" ? C.bad : C.ink2);
+        p.rect.setAttribute("fill", p.est === "error" ? K.badL : p.est === "creando" || p.est === "reiniciando" ? K.warnL : "#fff");
+        p.rect.setAttribute("stroke", p.est === "error" ? C.bad : p.est === "listo" ? K.borde : K.linea);
+        p.g.style.opacity = p.est === "terminando" ? Math.max(0.15, 1 - p.t) : 1;
+        const c = p.est === "listo" ? cpu : 0;
+        p.cpu += (c - p.cpu) * 0.15;
+        p.barra.setAttribute("width", 88 * p.cpu / 100);
+        p.barra.setAttribute("fill", p.cpu > OBJ ? C.s2 : C.s3);
+        p.tCpu.textContent = p.est === "listo" ? "CPU " + RN.fmt(p.cpu, 0) + " %" : "";
+        p.tRei.textContent = p.rein ? "reinicios: " + p.rein : "";
+      });
+      NODOS.forEach(function (n) { n.tEst.textContent = n.ok ? "Ready" : "NotReady"; n.tEst.setAttribute("fill", n.ok ? C.ok : C.bad); D.estado(n.g, n.ok ? null : "error"); });
+      const ls = listos();
+      kR.v.textContent = ls.length + " / " + deseadas; kR.classList.toggle("alerta", ls.length < deseadas);
+      kCpu.v.textContent = RN.fmt(cpu, 0) + " %"; kCpu.classList.toggle("alerta", cpu > OBJ);
+      kL.v.textContent = carga + "/s";
+      const vs = {}; pods.forEach(function (p) { if (p.est !== "terminando") vs[p.ver] = (vs[p.ver] || 0) + 1; });
+      kV.v.textContent = Object.keys(vs).length > 1 ? "v1 → v2 en curso" : (Object.keys(vs)[0] || "—");
+    }
+    function paso(dt) {
+      T += dt;
+      for (let i = pods.length - 1; i >= 0; i--) {
+        const p = pods[i]; p.t += dt;
+        if (p.est === "creando" && p.t > 1.8) { p.est = "listo"; p.t = 0; nota("Started · pod " + p.id + " listo", "ok"); }
+        else if (p.est === "error" && p.t > 0.9) { p.est = "reiniciando"; p.t = 0; p.rein++; nota("BackOff · reiniciando el contenedor de " + p.id + " (reinicios: " + p.rein + ")", "av"); }
+        else if (p.est === "reiniciando" && p.t > 1.3) { p.est = "listo"; p.t = 0; nota("Started · " + p.id + " vuelve a estar listo", "ok"); }
+        else if (p.est === "terminando" && p.t > 1) { p.g.remove(); pods.splice(i, 1); }
+      }
+      NODOS.forEach(function (n, i) {
+        if (!n.ok) { n.caido -= dt; if (n.caido <= 0) { n.ok = true; nota("NodeReady · el nodo " + (i + 1) + " vuelve a estar disponible", "ok"); } }
+      });
+      tRec += dt; if (tRec > 0.35) { tRec = 0; reconcilia(); }
+      tHpaT += dt; if (tHpaT > 3) { tHpaT = 0; hpa(); }
+      tVis += dt;
+      const tasa = Math.min(carga, 24);
+      if (tVis > 1 / tasa) {
+        tVis = 0;
+        const ls = listos();
+        if (ls.length) {
+          const p = ls[rr++ % ls.length];
+          fl.add({ pts: [[184, 236], [p.cx, p.cy - 30]], dur: 0.45, r: 5, color: COLV[p.ver] });
+        } else fl.add({ pts: [[80, 236], [118, 236]], dur: 0.3, texto: "503", color: C.bad });
+      }
+      fl.paso(dt);
+      pinta();
+    }
+    $("k-carga").addEventListener("input", function () { carga = +this.value; $("k-cargao").textContent = carga + "/s"; });
+    $("k-fpod").addEventListener("click", function () {
+      const ls = listos(); if (!ls.length) return;
+      const p = ls[Math.floor(rng() * ls.length)];
+      p.est = "error"; p.t = 0;
+      nota("Error · el contenedor de " + p.id + " se ha caído; la sonda de vida (liveness) lo detecta", "mal");
+    });
+    $("k-fnodo").addEventListener("click", function () {
+      const vivos = NODOS.map(function (n, i) { return [i, pods.filter(function (p) { return p.nodo === i && p.est !== "terminando"; }).length]; }).filter(function (a) { return NODOS[a[0]].ok; });
+      if (vivos.length < 2) return;
+      vivos.sort(function (a, b) { return b[1] - a[1]; });
+      const i = vivos[0][0];
+      NODOS[i].ok = false; NODOS[i].caido = 10;
+      nota("NodeNotReady · el nodo " + (i + 1) + " ha caído: sus pods se recrean en otros nodos", "mal");
+      for (let k = pods.length - 1; k >= 0; k--) if (pods[k].nodo === i) { pods[k].g.remove(); pods.splice(k, 1); }
+    });
+    $("k-act").addEventListener("click", function () {
+      objetivo = objetivo === "v1" ? "v2" : "v1";
+      this.textContent = objetivo === "v2" ? "Volver a v1 (rollout undo)" : "Actualizar a v2";
+      const tg = $("k-tag"); if (tg) tg.textContent = objetivo === "v2" ? "1.3.0" : "1.2.0";
+      nota(objetivo === "v2" ? "Rolling update → riesgo:1.3.0 (v2): un pod nuevo de más, y se retira uno viejo cuando el nuevo está listo" : "Rollout undo → vuelta a riesgo:1.2.0 (v1)", "av");
+    });
+    $("k-reset").addEventListener("click", reinicia);
+    reinicia();
+    hpa();
+    bucle(paso, svg.parentNode);
+  });
+
+  // =====================================================================================
+  // 5 · REST y gRPC
+  tab("api", function () {
+    const CLI = {
+      A: { cliente_id: "C-10482", edad: 34, ingresos_mensuales: 2150.5, deuda_actual: 8400, meses_en_empleo: 18, impagos_previos: 0 },
+      B: { cliente_id: "C-20917", edad: 29, ingresos_mensuales: 1600, deuda_actual: 11000.75, meses_en_empleo: 10, impagos_previos: 1 },
+      C: { cliente_id: "C-31555", edad: 47, ingresos_mensuales: 3100, deuda_actual: 3000, meses_en_empleo: 96, impagos_previos: 0 }
+    };
+    const CAMPOS = [["cliente_id", "string", 1, "s"], ["edad", "int32", 2, "i"], ["ingresos_mensuales", "float", 3, "f"], ["deuda_actual", "float", 4, "f"], ["meses_en_empleo", "int32", 5, "i"], ["impagos_previos", "int32", 6, "i"]];
+    const COLF = ["#82AAFF", "#C3E88D", "#F78C6C", "#FFCB6B", "#C792EA", "#89DDFF"];
+    // --- codificación Protocol Buffers (proto3) real
+    function varint(n) { const o = []; while (n > 127) { o.push((n & 127) | 128); n = Math.floor(n / 128); } o.push(n); return o; }
+    function codifica(c) {
+      const partes = [];
+      CAMPOS.forEach(function (f, k) {
+        const v = c[f[0]];
+        let b = [];
+        if (f[3] === "s") { const u = new TextEncoder().encode(v); if (u.length) b = [(f[2] << 3) | 2].concat(varint(u.length), Array.from(u)); }
+        else if (f[3] === "i") { if (v) b = [(f[2] << 3) | 0].concat(varint(v)); }
+        else if (v) { const dv = new DataView(new ArrayBuffer(4)); dv.setFloat32(0, v, true); b = [(f[2] << 3) | 5, dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)]; }
+        partes.push({ k: k, b: b });
+      });
+      return partes;
+    }
+    function tamPB(c, n) {
+      const una = codifica(c).reduce(function (a, p) { return a + p.b.length; }, 0);
+      if (n === 1) return una;
+      return n * (1 + varint(una).length + una);           // repeated Solicitud solicitudes = 1;
+    }
+    function tamJSON(c, n) {
+      const s = n === 1 ? JSON.stringify(c) : JSON.stringify({ solicitudes: new Array(n).fill(c) });
+      return new TextEncoder().encode(s).length;
+    }
+    function bytesTxt(b) { return b < 1000 ? RN.fmtN(b) + " B" : RN.fmt(b / 1000, 1) + " kB"; }
+    let cli = "A", lote = 1;
+    const kc = $("a-kpis");
+    const kJ = kpi(kc, "ak-j", "JSON compacto"), kP = kpi(kc, "ak-p", "Protocol Buffers"), kR = kpi(kc, "ak-r", "JSON ocupa");
+    $("a-proto").innerHTML = D.codigoHTML(['<span class="kw">syntax</span> = <span class="str">"proto3"</span>;', "", '<span class="kw">service</span> <span class="fn">Riesgo</span> {', '  <span class="kw">rpc</span> Predecir (Solicitud) <span class="kw">returns</span> (Prediccion);', "}", "", '<span class="kw">message</span> <span class="fn">Solicitud</span> {'].concat(
+      CAMPOS.map(function (f, k) { return '  <span style="color:' + COLF[k] + '">' + (f[1] === "string" ? "string" : f[1]) + " " + f[0] + " = " + f[2] + ";</span>"; })).concat(["}", '<span class="kw">message</span> <span class="fn">Prediccion</span> { string clase = 1; float probabilidad = 2; }']));
+    function actualiza() {
+      const c = CLI[cli];
+      const cuerpo = lote === 1 ? JSON.stringify(c, null, 2) : JSON.stringify({ solicitudes: [c, "…" + (lote - 1) + " más"] }, null, 2).replace('"…' + (lote - 1) + ' más"', "… (" + (lote - 1) + " clientes más)");
+      $("a-rest").innerHTML = D.codigoHTML(['<span class="kw">POST</span> /api/v1/predict HTTP/1.1', "Host: riesgo.ejemplo.es", "Content-Type: application/json", "Content-Length: " + tamJSON(c, lote), ""]) +
+        cuerpo.split("\n").map(function (l) { return '<span class="ln">' + esc(l) + "</span>"; }).join("");
+      const partes = codifica(c);
+      let h = "";
+      partes.forEach(function (p) {
+        if (!p.b.length) { h += '<span style="color:' + COLF[p.k] + ';opacity:.7">[' + CAMPOS[p.k][0] + " = 0: no se envía]</span> "; return; }
+        h += '<span style="color:' + COLF[p.k] + '">' + p.b.map(function (x) { return x.toString(16).padStart(2, "0"); }).join(" ") + "</span>  ";
+      });
+      if (lote > 1) h += '<span class="com">… y otros ' + (lote - 1) + " mensajes iguales</span>";
+      $("a-hex").innerHTML = h;
+      const j = tamJSON(c, lote), p = tamPB(c, lote);
+      kJ.v.textContent = bytesTxt(j); kP.v.textContent = bytesTxt(p); kR.v.textContent = "× " + RN.fmt(j / p, 1);
+      $("a-loteo").textContent = lote;
+      return [j, p];
+    }
+    // --- animación
+    const svg = D.prepara($("a-svg"), 1000, 230, "La misma petición viaja por REST (JSON) y por gRPC (Protocol Buffers)");
+    D.caja(svg, { x: 15, y: 40, w: 150, h: 150, icono: "app", titulo: "Cliente", sub: "otra aplicación", tam: 14 });
+    D.caja(svg, { x: 835, y: 40, w: 150, h: 150, icono: "servidor", titulo: "Servidor", sub: "modelo de riesgo", tam: 14 });
+    [[70, "REST · HTTP/1.1 · JSON (texto)"], [160, "gRPC · HTTP/2 · Protocol Buffers (binario)"]].forEach(function (l) {
+      RN.svg("rect", { x: 175, y: l[0] - 26, width: 650, height: 58, rx: 10, fill: K.suave }, svg);
+      D.texto(svg, 500, l[0] - 14, l[1], { tam: 12, peso: 700, color: C.ink2 });
+    });
+    const fl = D.Flujo(svg);
+    function enviar() {
+      const tm = actualiza(), j = tm[0], p = tm[1];
+      const k = Math.min(1, 300 / j), wj = Math.max(64, j * k), wp = Math.max(64, p * k);
+      const dj = 1.1 + wj / 500, dp = 1.1 + wp / 500;
+      fl.add({ pts: [[175 + wj / 2, 82], [825 - wj / 2, 82]], dur: dj, texto: "JSON " + bytesTxt(j), ancho: wj, color: C.s1, onFin: function () {
+        fl.add({ pts: [[825 - 40, 82], [175 + 40, 82]], dur: 1.1, retardo: 0.15, texto: "200 OK", ancho: 80, color: C.s3 });
+      } });
+      fl.add({ pts: [[175 + wp / 2, 172], [825 - wp / 2, 172]], dur: dp, texto: "PB " + bytesTxt(p), ancho: wp, color: C.s7, onFin: function () {
+        fl.add({ pts: [[825 - 40, 172], [175 + 40, 172]], dur: 1.1, retardo: 0.15, texto: "OK", ancho: 64, color: C.s3 });
+      } });
+    }
+    function stream() {
+      for (let i = 0; i < 8; i++) {
+        const ida = i % 2 === 0;
+        fl.add({ pts: ida ? [[205, 172], [795, 172]] : [[795, 172], [205, 172]], dur: 1.3, retardo: i * 0.3, texto: ida ? "dato " + (i / 2 + 1) : "pred. " + ((i - 1) / 2 + 1), ancho: 70, color: ida ? C.s7 : C.s3 });
+      }
+    }
+    D.seg($("a-cli"), [["A", "Cliente A"], ["B", "Cliente B"], ["C", "Cliente C"]], "A", function (v) { cli = v; actualiza(); }, "Datos del cliente");
+    $("a-lote").addEventListener("input", function () { lote = +this.value; actualiza(); });
+    $("a-env").addEventListener("click", enviar);
+    $("a-stream").addEventListener("click", stream);
+    actualiza();
+    bucle(function (dt) { fl.paso(dt); }, svg.parentNode);
+    setTimeout(function () { if (!reducido) enviar(); }, 300);
+
+    // --- contrato
+    const PY = ['<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI', '<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel', "",
+      '<span class="kw">class</span> <span class="fn">Solicitud</span>(BaseModel):', "    cliente_id: str", "    edad: int", "    ingresos_mensuales: float", "    deuda_actual: float", "    meses_en_empleo: int", "    impagos_previos: int = <span class=\"num\">0</span>", "",
+      'app = FastAPI(title=<span class="str">"Riesgo de impago"</span>, version=<span class="str">"1.2.0"</span>)', "",
+      '<span class="fn">@app.post</span>(<span class="str">"/api/v1/predict"</span>)', '<span class="kw">def</span> <span class="fn">predecir</span>(s: Solicitud):', "    p = modelo.predecir(preprocesar(s))", '    <span class="kw">return</span> {<span class="str">"prediccion"</span>: etiqueta(p),', '            <span class="str">"probabilidad_impago"</span>: round(p, <span class="num">2</span>)}'];
+    $("c-py").innerHTML = D.codigoHTML(PY);
+    const base = { cliente_id: "C-10482", edad: 34, ingresos_mensuales: 2150, deuda_actual: 8400, meses_en_empleo: 18, impagos_previos: 0 };
+    function caso(v) {
+      let req = Object.assign({}, base), cab, res, marcas = [];
+      if (v === "falta") { delete req.edad; marcas = []; }
+      if (v === "tipo") { req.edad = "treinta y cuatro"; marcas = ["edad"]; }
+      $("c-req").innerHTML = D.codigoHTML(['<span class="kw">POST</span> /api/v1/predict HTTP/1.1', "Content-Type: application/json", ""]) + D.jsonHTML(req, marcas);
+      if (v === "ok") { cab = 'HTTP/1.1 <span class="num">200</span> OK'; res = { prediccion: "riesgo_bajo", probabilidad_impago: 0.15 }; }
+      else if (v === "falta") { cab = 'HTTP/1.1 <span class="num">422</span> Unprocessable Entity'; res = { detail: [{ type: "missing", loc: ["body", "edad"], msg: "Field required", input: req }] }; }
+      else { cab = 'HTTP/1.1 <span class="num">422</span> Unprocessable Entity'; res = { detail: [{ type: "int_parsing", loc: ["body", "edad"], msg: "Input should be a valid integer, unable to parse string as an integer", input: "treinta y cuatro" }] }; }
+      $("c-res").innerHTML = D.codigoHTML([cab, "Content-Type: application/json", ""]) + D.jsonHTML(res, ["msg", "type"]);
+      Array.from($("c-py").querySelectorAll(".ln")).forEach(function (l, i) { l.classList.toggle("hl", v !== "ok" && i === 5); });
+    }
+    D.seg($("c-caso"), [["ok", "Correcta"], ["falta", "Falta un campo"], ["tipo", "Tipo erróneo"]], "ok", caso, "Tipo de petición");
+    caso("ok");
+  });
+
+  // =====================================================================================
+  // 6 · Red, identidad y cifrado
+  tab("red", function () {
+    // ---------- VPC
+    const svg = D.prepara($("r-svg"), 1000, 400, "VPC con subred pública para el balanceador y subredes privadas para el modelo y la base de datos, con grupos de seguridad");
+    D.icono(svg, "nube", 70, 70, 74, C.ink2);
+    D.texto(svg, 70, 116, "Internet", { tam: 13, peso: 700 });
+    const usu = D.icono(svg, "usuario", 60, 210, 40, C.s1);
+    D.texto(svg, 60, 244, "Usuario", { tam: 12, peso: 700 });
+    D.icono(svg, "usuario", 60, 318, 40, C.bad);
+    D.texto(svg, 60, 352, "Atacante", { tam: 12, peso: 700, color: C.bad });
+    RN.svg("rect", { x: 186, y: 14, width: 800, height: 378, rx: 14, fill: "#F7F9FB", stroke: K.borde, "stroke-width": 1.5 }, svg);
+    D.texto(svg, 204, 34, "VPC 10.0.0.0/16 · región eu-south-2 (España)", { ancla: "start", tam: 13, peso: 700 });
+    RN.svg("rect", { x: 170, y: 236, width: 32, height: 48, rx: 6, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, svg);
+    D.texto(svg, 186, 260, "IGW", { tam: 12, peso: 700 });
+    const SUB = [[222, "Subred pública 10.0.1.0/24", K.zona], [452, "Subred privada 10.0.2.0/24", "#EEF2F7"], [722, "Subred privada 10.0.3.0/24", "#EEF2F7"]];
+    const subr = SUB.map(function (s, i) {
+      const w = i === 0 ? 210 : i === 1 ? 250 : 248;
+      const g = RN.svg("g", { class: "d-caja" }, svg);
+      g.rect = RN.svg("rect", { x: s[0], y: 52, width: w, height: 328, rx: 12, fill: s[2], stroke: K.linea, "stroke-width": 1.5 }, g);
+      D.texto(g, s[0] + 12, 70, s[1], { ancla: "start", tam: 12, peso: 700, color: C.ink2 });
+      return g;
+    });
+    function anillo(x, y, w, h, et) {
+      const g = RN.svg("g", { class: "d-caja" }, svg);
+      g.rect = RN.svg("rect", { x: x, y: y, width: w, height: h, rx: 14, fill: "none", stroke: K.acento, "stroke-width": 1.8, "stroke-dasharray": "6 4" }, g);
+      D.texto(g, x + w / 2, y + h + 15, et, { tam: 12, peso: 700, color: K.acento });
+      return g;
+    }
+    const gsLB = anillo(272, 190, 110, 110, "gs-balanceador: 443");
+    RN.svg("circle", { cx: 327, cy: 245, r: 34, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, svg);
+    D.icono(svg, "balanceador", 327, 245, 40);
+    D.texto(svg, 327, 336, "Balanceador", { tam: 12, peso: 700 });
+    const gsMod = anillo(500, 110, 154, 220, "gs-modelo: 8080 ← balanceador");
+    [175, 265].forEach(function (y, i) { tarjeta(svg, 512, y - 32, 130, 64, "servidor", "Modelo", "réplica " + (i + 1)); });
+    const gsBD = anillo(780, 170, 134, 150, "gs-bd: 5432 ← modelo");
+    D.icono(svg, "bd", 847, 230, 54);
+    D.texto(svg, 847, 280, "PostgreSQL (RDS)", { tam: 12, peso: 700 });
+    const fl = D.Flujo(svg), marcas = D.g(svg);
+    const rlog = $("r-log");
+    let etiquetas = [];
+    function etiqueta(x, y, txt, color) {
+      const t = D.texto(marcas, x, y, txt, { tam: 13, peso: 700, color: color });
+      t.setAttribute("stroke", "#fff"); t.setAttribute("stroke-width", 4); t.setAttribute("paint-order", "stroke");
+      etiquetas.push({ e: t, t: 2.8 });
+    }
+    function bloquea(g, x, y, txt, msg) { D.estado(g, "error"); etiqueta(x, y, txt, C.bad); registra(rlog, msg, "mal"); setTimeout(function () { D.estado(g, null); }, 1800); }
+    function cadena(tramos, color, alFin) {
+      (function sig(k) {
+        const t = tramos[k];
+        fl.add({ pts: t.pts, dur: t.dur || 0.6, r: 7, color: color, retardo: k ? 0.12 : 0, onFin: function () { if (t.fin) t.fin(); if (k + 1 < tramos.length) sig(k + 1); else if (alFin) alFin(); } });
+      })(0);
+    }
+    const ESC = {
+      usuario: function () {
+        registra(rlog, "✓ Usuario → IGW → balanceador:443 (gs-balanceador lo permite) → modelo:8080 (solo desde gs-balanceador) → base de datos:5432 (solo desde gs-modelo).", "ok");
+        cadena([
+          { pts: [[80, 216], [170, 252], [292, 245]], fin: function () { D.estado(gsLB, "ok"); } },
+          { pts: [[361, 245], [500, 190], [512, 175]], fin: function () { D.estado(gsMod, "ok"); } },
+          { pts: [[642, 175], [780, 230], [820, 230]], fin: function () { D.estado(gsBD, "ok"); } }
+        ], C.s1, function () {
+          cadena([{ pts: [[820, 238], [642, 183]] }, { pts: [[512, 183], [361, 250]] }, { pts: [[292, 250], [170, 258], [80, 222]], fin: function () { [gsLB, gsMod, gsBD].forEach(function (g) { D.estado(g, null); }); etiqueta(110, 190, "✓ predicción", C.ok); } }], C.s3);
+        });
+      },
+      directo: function () {
+        cadena([{ pts: [[80, 318], [170, 270], [440, 300]], dur: 1, fin: function () { bloquea(subr[1], 452, 300, "✕ sin ruta", "✕ El modelo está en una subred privada: no tiene IP pública ni ruta desde internet."); } }], C.bad);
+      },
+      ssh: function () {
+        cadena([{ pts: [[80, 318], [170, 270], [268, 262]], dur: 0.9, fin: function () { bloquea(gsLB, 270, 214, "✕ puerto 22", "✕ gs-balanceador solo abre el 443 (HTTPS): el intento de SSH por el puerto 22 se descarta."); } }], C.bad);
+      },
+      bd: function () {
+        cadena([{ pts: [[361, 255], [600, 360], [776, 290]], dur: 1.1, fin: function () { bloquea(gsBD, 776, 160, "✕ origen no permitido", "✕ gs-bd solo acepta el 5432 desde gs-modelo: ni siquiera el balanceador puede hablar con la base de datos."); } }], C.s2);
+      }
+    };
+    ["usuario", "directo", "ssh", "bd"].forEach(function (id) { $("r-" + id).addEventListener("click", ESC[id]); });
+    registra(rlog, "Pulsa un tráfico para ver quién lo deja pasar.", "t");
+    bucle(function (dt) {
+      fl.paso(dt);
+      etiquetas = etiquetas.filter(function (m) { m.t -= dt; m.e.setAttribute("opacity", RN.limita(m.t, 0, 1)); if (m.t <= 0) { m.e.remove(); return false; } return true; });
+    }, svg.parentNode);
+
+    // ---------- IAM
+    const POL = [
+      { Sid: "LeerDatosEntrenamiento", Effect: "Allow", Action: ["s3:GetObject", "s3:ListBucket"], Resource: ["arn:aws:s3:::datos-entrenamiento", "arn:aws:s3:::datos-entrenamiento/*"] },
+      { Sid: "UsarClaveDeDatos", Effect: "Allow", Action: "kms:Decrypt", Resource: "arn:aws:kms:eu-south-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab" },
+      { Sid: "NuncaBorrarDatos", Effect: "Deny", Action: "s3:DeleteObject", Resource: "*" }
+    ];
+    const AMPLIA = { Sid: "DemasiadoAmplio", Effect: "Allow", Action: "s3:*", Resource: "*" };
+    const PET = [
+      ["Leer un fichero de datos de entrenamiento", "s3:GetObject", "arn:aws:s3:::datos-entrenamiento/2026/clientes.csv"],
+      ["Listar el bucket de datos", "s3:ListBucket", "arn:aws:s3:::datos-entrenamiento"],
+      ["Escribir en el bucket de datos", "s3:PutObject", "arn:aws:s3:::datos-entrenamiento/2026/nuevo.csv"],
+      ["Borrar un fichero de datos", "s3:DeleteObject", "arn:aws:s3:::datos-entrenamiento/2026/clientes.csv"],
+      ["Leer el bucket de nóminas", "s3:GetObject", "arn:aws:s3:::nominas/2026/marzo.csv"],
+      ["Descifrar con la clave de datos", "kms:Decrypt", "arn:aws:kms:eu-south-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"],
+      ["Crear un endpoint de SageMaker", "sagemaker:CreateEndpoint", "arn:aws:sagemaker:eu-south-2:123456789012:endpoint/riesgo"]
+    ];
+    const selP = $("i-pet");
+    PET.forEach(function (p, i) { RN.el("option", { value: i }, selP, p[0]); });
+    function arr(x) { return Array.isArray(x) ? x : [x]; }
+    function coincide(patron, valor, ci) {
+      const re = new RegExp("^" + patron.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$", ci ? "i" : "");
+      return re.test(valor);
+    }
+    const si = D.prepara($("i-svg"), 480, 290, "Orden de evaluación de una política IAM: primero los Deny explícitos, luego los Allow, y si no, denegación implícita");
+    const q1 = D.caja(si, { x: 10, y: 14, w: 270, h: 60, titulo: "1. ¿Algún «Deny» coincide?", tam: 14 });
+    const r1 = D.caja(si, { x: 320, y: 14, w: 150, h: 60, titulo: "Denegado", sub: "Deny explícito", tam: 14 });
+    const q2 = D.caja(si, { x: 10, y: 114, w: 270, h: 60, titulo: "2. ¿Algún «Allow» coincide?", tam: 14 });
+    const r2 = D.caja(si, { x: 320, y: 114, w: 150, h: 60, titulo: "Permitido", tam: 14 });
+    const r3 = D.caja(si, { x: 10, y: 214, w: 270, h: 64, titulo: "Denegado", sub: "implícito: nadie lo permite", tam: 14 });
+    D.ruta(si, "M282 44 H318", { color: K.borde, ancho: 2, flecha: true }); D.texto(si, 300, 34, "sí", { tam: 12, color: C.ink2 });
+    D.ruta(si, "M282 144 H318", { color: K.borde, ancho: 2, flecha: true }); D.texto(si, 300, 134, "sí", { tam: 12, color: C.ink2 });
+    D.ruta(si, "M145 76 V112", { color: K.borde, ancho: 2, flecha: true }); D.texto(si, 158, 94, "no", { ancla: "start", tam: 12, color: C.ink2 });
+    D.ruta(si, "M145 176 V212", { color: K.borde, ancho: 2, flecha: true }); D.texto(si, 158, 194, "no", { ancla: "start", tam: 12, color: C.ink2 });
+    const ilog = $("i-log");
+    function evalua() {
+      const amplia = $("i-amplia").checked, p = PET[+selP.value];
+      const sts = POL.concat(amplia ? [AMPLIA] : []);
+      const m = sts.map(function (s, i) { return { s: s, i: i, ok: arr(s.Action).some(function (a) { return coincide(a, p[1], true); }) && arr(s.Resource).some(function (r) { return coincide(r, p[2], false); }) }; });
+      const deny = m.filter(function (x) { return x.ok && x.s.Effect === "Deny"; }), allow = m.filter(function (x) { return x.ok && x.s.Effect === "Allow"; });
+      const res = deny.length ? { r: "deny", st: deny.map(function (x) { return x.i; }) } : allow.length ? { r: "allow", st: allow.map(function (x) { return x.i; }) } : { r: "impl", st: [] };
+      // política con la sentencia aplicada resaltada
+      const lineas = ['{', '  <span class="kw">"Version"</span>: <span class="str">"2012-10-17"</span>,', '  <span class="kw">"Statement"</span>: ['];
+      const html = [];
+      sts.forEach(function (s, i) {
+        const js = JSON.stringify(s, null, 2).split("\n").map(function (l) { return "    " + l; });
+        js[js.length - 1] += i < sts.length - 1 ? "," : "";
+        js.forEach(function (l) {
+          let h = esc(l).replace(/"([A-Za-z]+)":/, '<span class="kw">"$1"</span>:').replace(/: "([^"]*)"/, ': <span class="str">"$1"</span>').replace(/^(\s*)"([^"]*)"(,?)$/, '$1<span class="str">"$2"</span>$3');
+          h = h.replace(/"(Allow|Deny)"/, '"<b>$1</b>"');
+          html.push('<span class="ln' + (res.st.indexOf(i) >= 0 ? " hl" : "") + '">' + h + "</span>");
+        });
+      });
+      $("i-pol").innerHTML = D.codigoHTML(lineas) + html.join("") + D.codigoHTML(["  ]", "}"]);
+      [q1, q2, r1, r2, r3].forEach(function (g) { D.estado(g, "apagado"); });
+      D.estado(q1, "activo");
+      if (res.r === "deny") D.estado(r1, "error");
+      else { D.estado(q2, "activo"); if (res.r === "allow") D.estado(r2, "ok"); else D.estado(r3, "error"); }
+      const hora = new Date().toISOString().slice(0, 19) + "Z";
+      registra(ilog, '<span class="r-t">' + hora + "</span> rol/modelo-riesgo " + p[1] + " " + esc(p[2].replace(/^arn:aws:[a-z0-9]+:[^:]*:[^:]*:/, "")) + " → " + (res.r === "allow" ? "permitido" : "AccessDenied"), res.r === "allow" ? "ok" : "mal");
+      if (amplia && res.r === "allow" && res.st.indexOf(3) >= 0 && res.st.length === 1) registra(ilog, "⚠ Solo lo permite la sentencia demasiado amplia: rompe el principio de mínimo privilegio.", "av");
+    }
+    selP.addEventListener("change", evalua);
+    $("i-amplia").addEventListener("change", evalua);
+    evalua();
+
+    // ---------- KMS
+    const sm = D.prepara($("m-svg"), 1000, 300, "Un dato viaja cifrado con TLS, se guarda cifrado con una clave de datos y esa clave la protege una clave maestra en KMS");
+    D.caja(sm, { x: 10, y: 90, w: 120, h: 110, icono: "app", titulo: "Cliente", tam: 14 });
+    RN.svg("rect", { x: 140, y: 126, width: 200, height: 40, rx: 20, fill: "#EAF2FB", stroke: "#BFD3EA", "stroke-width": 1.5 }, sm);
+    D.icono(sm, "candado", 160, 146, 18, C.s1);
+    D.texto(sm, 240, 112, "TLS: cifrado en tránsito", { tam: 12, peso: 700, color: C.ink2 });
+    const srv = D.caja(sm, { x: 350, y: 90, w: 140, h: 110, icono: "servidor", titulo: "Servicio", sub: "del modelo", tam: 14 });
+    const disco = D.caja(sm, { x: 560, y: 70, w: 170, h: 150, icono: "bd", titulo: "Disco / S3", sub: "cifrado en reposo", tam: 14 });
+    const tDato = D.texto(sm, 645, 236, "", { tam: 12, mono: true, color: C.ink2 });
+    const tClaveD = D.texto(sm, 645, 254, "", { tam: 12, color: C.ink2 });
+    RN.svg("rect", { x: 790, y: 40, width: 196, height: 220, rx: 12, fill: "#0F1B2D" }, sm);
+    D.texto(sm, 888, 62, "KMS", { tam: 15, peso: 700, color: "#fff" });
+    D.texto(sm, 888, 82, "AWS KMS · Cloud KMS · Key Vault", { tam: 12, color: "#B0BEC5" });
+    RN.svg("rect", { x: 810, y: 100, width: 156, height: 110, rx: 10, fill: "#1A2940", stroke: "#34506F" }, sm);
+    D.icono(sm, "llave", 888, 130, 30, "#FFCB6B");
+    const tVer = D.texto(sm, 888, 162, "", { tam: 13, peso: 700, color: "#fff" });
+    D.texto(sm, 888, 182, "módulo HSM: nunca sale", { tam: 12, color: "#B0BEC5" });
+    D.texto(sm, 888, 240, "rotación automática", { tam: 12, color: "#B0BEC5" });
+    const puerta = D.g(sm);
+    D.icono(puerta, "escudo", 755, 150, 30, C.ink2);
+    D.texto(sm, 755, 180, "IAM", { tam: 12, peso: 700, color: C.ink2 });
+    const flm = D.Flujo(sm), mlog = $("m-log");
+    let ver = 1, guardado = false;
+    function cifrado(t, v) { let h = 2166136261; const s = t + "|" + v; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } let o = ""; for (let i = 0; i < 4; i++) { h = Math.imul(h ^ (h >>> 13), 2654435761) >>> 0; o += (h >>> 16).toString(16).padStart(4, "0") + (i < 3 ? " " : ""); } return o; }
+    function pinta() {
+      tVer.textContent = "clave maestra v" + ver;
+      tDato.textContent = guardado ? cifrado("ingresos: 2150", guardado) + "…" : "(vacío)";
+      tClaveD.textContent = guardado ? "+ clave de datos cifrada con v" + guardado : "";
+    }
+    function seq(tramos, alFin) {
+      (function sig(k) {
+        const t = tramos[k];
+        flm.add({ pts: t.pts, dur: t.dur || 0.7, texto: t.texto, ancho: t.ancho, color: t.color || C.s1, r: 7, retardo: k ? 0.15 : 0, onFin: function () { if (t.fin) t.fin(); if (k + 1 < tramos.length) sig(k + 1); else if (alFin) alFin(); } });
+      })(0);
+    }
+    $("m-guardar").addEventListener("click", function () {
+      seq([
+        { pts: [[130, 146], [150, 146]], dur: 0.3, texto: "ingresos: 2150", ancho: 120 },
+        { pts: [[200, 146], [300, 146]], dur: 0.8, texto: "•••• TLS", ancho: 80, color: C.ink2 },
+        { pts: [[420, 146], [420, 120], [790, 120]], dur: 0.9, texto: "pide clave", ancho: 84, color: C.s7 },
+        { pts: [[790, 140], [490, 160]], dur: 0.8, texto: "clave de datos", ancho: 110, color: "#B8860B" },
+        { pts: [[490, 145], [560, 145]], dur: 0.6, texto: "cifrado", ancho: 70, color: C.ink2, fin: function () { guardado = ver; pinta(); D.estado(disco, "ok"); setTimeout(function () { D.estado(disco, null); }, 1200); } }
+      ]);
+      registra(mlog, "Guardar: viaja con TLS → KMS genera una clave de datos (envelope encryption) → el dato se guarda cifrado con ella; la clave de datos se guarda cifrada con la clave maestra v" + ver + ".", "ok");
+    });
+    function leer(permiso) {
+      if (!guardado) { registra(mlog, "Primero hay que guardar un dato.", "av"); return; }
+      seq([
+        { pts: [[560, 160], [490, 160]], dur: 0.6, texto: "cifrado", ancho: 70, color: C.ink2 },
+        { pts: [[490, 130], [740, 130]], dur: 0.8, texto: "kms:Decrypt", ancho: 92, color: C.s7, fin: function () {
+          if (!permiso) {
+            D.estado(srv, "error"); setTimeout(function () { D.estado(srv, null); }, 1500);
+            registra(mlog, "✕ AccessDenied: el rol no tiene permiso kms:Decrypt. El disco solo contiene «" + cifrado("ingresos: 2150", guardado) + "…»: ilegible.", "mal");
+          }
+        } }
+      ].concat(permiso ? [
+        { pts: [[740, 130], [800, 130]], dur: 0.3, texto: "✓ IAM", ancho: 60, color: C.ok },
+        { pts: [[800, 160], [490, 170]], dur: 0.8, texto: "clave de datos", ancho: 110, color: "#B8860B", fin: function () { D.estado(srv, "ok"); setTimeout(function () { D.estado(srv, null); }, 1500); } },
+        { pts: [[350, 160], [150, 160]], dur: 0.8, texto: "ingresos: 2150", ancho: 120, color: C.s3 }
+      ] : []));
+      if (permiso) registra(mlog, "✓ Leer: IAM comprueba kms:Decrypt → KMS descifra la clave de datos (con la clave maestra v" + guardado + ") → el servicio descifra el dato y lo envía por TLS.", "ok");
+    }
+    $("m-leer").addEventListener("click", function () { leer(true); });
+    $("m-sin").addEventListener("click", function () { leer(false); });
+    $("m-rotar").addEventListener("click", function () {
+      ver++; pinta();
+      registra(mlog, "Rotación: KMS crea material nuevo (v" + ver + ") para cifrar lo que llegue; conserva las versiones anteriores para descifrar lo antiguo. Si se filtrara una clave, el daño queda acotado.", "av");
+    });
+    pinta();
+    registra(mlog, "Pulsa «Guardar un dato» y después prueba a leerlo con y sin permiso.", "t");
+    bucle(function (dt) { flm.paso(dt); }, sm.parentNode);
+  });
+
+  // =====================================================================================
+  // 7 · Escalado y pruebas
+  tab("escala", function () {
+    // ---------- vertical frente a horizontal
+    const sx = D.prepara($("x-svg"), 1000, 290, "Escalado vertical (una máquina cada vez más grande hasta un límite) frente a horizontal (más réplicas)");
+    D.texto(sx, 20, 22, "Vertical: una máquina más grande", { ancla: "start", tam: 15, peso: 700 });
+    D.texto(sx, 520, 22, "Horizontal: más réplicas", { ancla: "start", tam: 15, peso: 700 });
+    RN.svg("line", { x1: 500, y1: 10, x2: 500, y2: 280, stroke: K.linea }, sx);
+    RN.svg("line", { x1: 40, y1: 64, x2: 460, y2: 64, stroke: C.bad, "stroke-width": 1.5, "stroke-dasharray": "6 4" }, sx);
+    D.texto(sx, 456, 54, "límite: la máquina más grande que existe", { ancla: "end", tam: 12, peso: 700, color: C.bad });
+    const vg = D.g(sx), hg = D.g(sx);
+    const tDem = D.texto(sx, 250, 278, "", { tam: 13, peso: 700 });
+    const tV = D.texto(sx, 250, 254, "", { tam: 12, color: C.ink2 });
+    const tH = D.texto(sx, 750, 278, "", { tam: 12, color: C.ink2 });
+    RN.svg("circle", { cx: 560, cy: 150, r: 26, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, sx);
+    D.icono(sx, "balanceador", 560, 150, 30);
+    const TAM = [[90, 50, "2 vCPU · 8 GB"], [120, 70, "4 vCPU · 16 GB"], [150, 92, "8 vCPU · 32 GB"], [185, 120, "16 vCPU · 64 GB"], [220, 150, "32 vCPU · 128 GB"], [220, 150, "32 vCPU · 128 GB"]];
+    let nivel = 0, dibN = 0;
+    function pintaX() {
+      while (vg.firstChild) vg.removeChild(vg.firstChild);
+      while (hg.firstChild) hg.removeChild(hg.firstChild);
+      const t = TAM[nivel], x = 250 - t[0] / 2, y = 236 - t[1];
+      const over = nivel >= 5;
+      RN.svg("rect", { x: x, y: y, width: t[0], height: t[1], rx: 10, fill: over ? K.badL : K.acentoL, stroke: over ? C.bad : K.acento, "stroke-width": 2 }, vg);
+      D.icono(vg, "servidor", 250, y + t[1] / 2 - 8, Math.min(40, t[1] * 0.45));
+      D.texto(vg, 250, y + t[1] - 12, t[2], { tam: 12, peso: 700 });
+      tV.textContent = over ? "✕ no hay una máquina más grande: hay que escalar en horizontal" : nivel ? "cada cambio de tamaño suele exigir reiniciar la máquina" : "sencillo, pero con techo";
+      tV.setAttribute("fill", over ? C.bad : C.ink2);
+      const n = Math.pow(2, nivel), cols = n > 16 ? 8 : n > 2 ? 4 : n, filas = Math.ceil(n / cols);
+      const w = n > 16 ? 38 : n > 8 ? 78 : 84, h = n > 8 ? 36 : 46, gx = n > 16 ? 44 : 92, gy = n > 8 ? 46 : 58;
+      const x0 = 610, y0 = 150 - (filas * gy - (gy - h)) / 2;
+      for (let i = 0; i < n; i++) { const xx = x0 + (i % cols) * gx, yy = y0 + Math.floor(i / cols) * gy; if (i % cols === 0) D.ruta(hg, "M586 150 L" + xx + " " + (yy + h / 2), { color: K.linea, ancho: 1.2 }); }
+      for (let i = 0; i < n; i++) {
+        const xx = x0 + (i % cols) * gx, yy = y0 + Math.floor(i / cols) * gy;
+        RN.svg("rect", { x: xx, y: yy, width: w, height: h, rx: 7, fill: i >= dibN ? K.acentoL : "#fff", stroke: i >= dibN ? K.acento : K.borde, "stroke-width": 1.5 }, hg);
+        D.icono(hg, "servidor", n > 16 ? xx + w / 2 : xx + 16, yy + h / 2, 18);
+        if (n <= 16) D.texto(hg, xx + 30, yy + h / 2, "2 vCPU", { ancla: "start", tam: 12 });
+      }
+      tH.textContent = n + (n === 1 ? " réplica" : " réplicas") + " de 2 vCPU · sin límite teórico (se añaden máquinas)";
+      tDem.textContent = "Demanda × " + n;
+      dibN = n;
+    }
+    $("x-mas").addEventListener("click", function () { nivel = Math.min(5, nivel + 1); pintaX(); });
+    $("x-reset").addEventListener("click", function () { nivel = 0; dibN = 0; pintaX(); });
+    dibN = 1; pintaX();
+
+    // ---------- autoescalado durante un día
+    const PASO = 15, NP = 86400 / PASO, CAP = 20, MAXR = 20;
+    const rngD = RN.rng(5), dem = new Float64Array(NP);
+    for (let i = 0; i < NP; i++) {
+      const h = i * PASO / 3600;
+      let d = 18 + 95 * Math.exp(-0.5 * Math.pow((h - 11.5) / 2.6, 2)) + 135 * Math.exp(-0.5 * Math.pow((h - 21) / 1.6, 2)) - 25 * Math.exp(-0.5 * Math.pow((h - 14.5) / 0.7, 2));
+      if (h > 17 && h < 17.5) d *= 2.6;
+      dem[i] = Math.max(8, d * (1 + 0.04 * RN.normal(rngD)));
+    }
+    let res = null, tCur = 24;
+    function simula() {
+      const umb = +$("h-umb").value, arr = +$("h-arr").value * 60, minR = +$("h-min").value;
+      const listas = new Float64Array(NP), cpu = new Float64Array(NP), desR = new Float64Array(NP);
+      let deseadas = minR, arrancando = [], ready = minR, recos = [], noAt = 0, tot = 0, rh = 0, maxR = minR;
+      for (let i = 0; i < NP; i++) {
+        const t = i * PASO;
+        arrancando = arrancando.filter(function (a) { if (a <= t) { ready++; return false; } return true; });
+        const c = ready ? Math.min(100, 100 * dem[i] / (ready * CAP)) : 100;
+        // como el HPA real: los pods que aún arrancan cuentan como 0 % al decidir subir
+        const total = ready + arrancando.length;
+        const cTodos = total ? c * ready / total : c;
+        const ratio = cTodos / umb;
+        let reco = deseadas;
+        if (Math.abs(ratio - 1) > 0.1) reco = RN.limita(Math.ceil(total * ratio), minR, MAXR);
+        if (reco > deseadas) reco = Math.min(reco, Math.max(2 * deseadas, deseadas + 4));
+        recos.push([t, reco]);
+        while (recos.length && recos[0][0] < t - 300) recos.shift();
+        let nuevo = reco < deseadas ? Math.max.apply(null, recos.map(function (r) { return r[1]; })) : reco;
+        nuevo = RN.limita(nuevo, minR, MAXR);
+        deseadas = nuevo;
+        while (ready + arrancando.length < deseadas) arrancando.push(t + arr);
+        while (ready + arrancando.length > deseadas) { if (arrancando.length) arrancando.pop(); else ready--; }
+        listas[i] = ready; cpu[i] = c; desR[i] = deseadas;
+        noAt += Math.max(0, dem[i] - ready * CAP) * PASO; tot += dem[i] * PASO; rh += (ready + arrancando.length) * PASO / 3600;
+        maxR = Math.max(maxR, deseadas);
+      }
+      res = { listas: listas, cpu: cpu, umb: umb, noAt: noAt / tot, rh: rh, maxR: maxR, minR: minR };
+      kM.v.textContent = res.minR + " – " + res.maxR;
+      kN.v.textContent = RN.fmt(100 * res.noAt, res.noAt < 0.01 ? 2 : 1) + " %"; kN.classList.toggle("alerta", res.noAt > 0.002);
+      kRH.v.textContent = RN.fmt(res.rh, 0);
+      $("h-umbo").textContent = umb + " %"; $("h-arro").textContent = arr / 60 + " min"; $("h-mino").textContent = minR;
+    }
+    const kc = $("h-kpis");
+    const kM = kpi(kc, "hk-m", "Réplicas (mín. – máx.)"), kN = kpi(kc, "hk-n", "Demanda no atendida"), kRH = kpi(kc, "hk-rh", "Réplica·horas (coste)");
+    function submuestra(arrv, f) { const out = []; const hasta = Math.floor(Math.min(1, tCur / 24) * NP); for (let i = 0; i < hasta; i += 8) out.push([i * PASO / 3600, f ? f(arrv[i], i) : arrv[i]]); return out; }
+    const g1 = RN.grafica($("h-g1"), {
+      alto: 250, x: { min: 0, max: 24, titulo: "hora del día", marcas: [0, 3, 6, 9, 12, 15, 18, 21, 24], fmt: function (v) { return v + " h"; } }, y: { min: 0, max: 300, titulo: "peticiones/s" },
+      extras: function (ctx, g) {
+        if (!res) return;
+        const hasta = Math.floor(Math.min(1, tCur / 24) * NP);
+        ctx.fillStyle = "rgba(227,73,72,.3)";
+        for (let i = 0; i < hasta; i += 4) {
+          const capi = res.listas[i] * CAP;
+          if (dem[i] > capi) { const x = g.sx(i * PASO / 3600); ctx.fillRect(x, g.sy(dem[i]), Math.max(1, g.sx(4 * PASO / 3600) - g.sx(0)), g.sy(capi) - g.sy(dem[i])); }
+        }
+        ctx.fillStyle = C.ink; ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        if (tCur > 17.5) ctx.fillText("pico brusco", g.sx(17.2), g.sy(dem[Math.floor(17.2 * 240)]) - 8);
+      }
+    });
+    const g2 = RN.grafica($("h-g2"), {
+      alto: 200, x: { min: 0, max: 24, titulo: "hora del día", marcas: [0, 3, 6, 9, 12, 15, 18, 21, 24], fmt: function (v) { return v + " h"; } }, y: { min: 0, max: 100, titulo: "CPU media (%)" },
+      extras: function (ctx, g) {
+        if (!res) return;
+        const Y = g.sy(res.umb);
+        ctx.save(); ctx.strokeStyle = C.ink2; ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(g.m.l, Y); ctx.lineTo(g.w - g.m.r, Y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = C.ink2; ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "bottom"; ctx.fillText("umbral " + res.umb + " %", g.w - g.m.r - 6, Y - 3); ctx.restore();
+      }
+    });
+    function dibuja() {
+      let mxc = 0; for (let i = 0; i < NP; i++) mxc = Math.max(mxc, dem[i], res.listas[i] * CAP);
+      g1.op.y.max = Math.ceil(mxc * 1.08 / 50) * 50;
+      g1.dibujar([{ nombre: "demanda", color: C.s1, puntos: submuestra(dem) }, { nombre: "capacidad", color: C.s2, puntos: submuestra(res.listas, function (v) { return v * CAP; }) }]);
+      g2.dibujar([{ nombre: "CPU", color: C.s3, puntos: submuestra(res.cpu) }]);
+    }
+    ["h-umb", "h-arr", "h-min"].forEach(function (id) { $(id).addEventListener("input", function () { simula(); dibuja(); }); });
+    const anim = RN.anima(function (dt) { tCur += dt * 2.4; dibuja(); if (tCur >= 24) { tCur = 24; dibuja(); return false; } }, $("h-g1"));
+    RN.botonPlay($("h-play"), anim, ["▶ Reproducir el día", "⏸ Pausa"]);
+    $("h-play").addEventListener("click", function () { if (anim.activo && tCur >= 24) tCur = 0; });
+    simula(); dibuja();
+
+    // ---------- pirámide de pruebas
+    const sp = D.prepara($("pp-svg"), 500, 300, "Pirámide de pruebas: unitarias en la base, integración en medio y carga y estrés en la cima");
+    const hw = function (y) { return (y - 18) / 262 * 235; };
+    const NIV = [
+      { id: "uni", y0: 204, y1: 280, t: "Unitarias", s: "muchas · rápidas · baratas", col: C.s1 },
+      { id: "int", y0: 122, y1: 200, t: "Integración", s: "API + base de datos", col: C.s3 },
+      { id: "car", y0: 18, y1: 118, t: "Carga y estrés", s: "pocas · lentas · caras", col: C.s2 }
+    ];
+    const capas = NIV.map(function (n) {
+      const g = RN.svg("g", { class: "d-caja" }, sp);
+      const a = hw(n.y0), b = hw(n.y1);
+      g.rect = RN.svg("path", { d: "M" + (250 - a) + " " + n.y0 + " L" + (250 + a) + " " + n.y0 + " L" + (250 + b) + " " + n.y1 + " L" + (250 - b) + " " + n.y1 + " Z", fill: RN.rgba(n.col, 0.16), stroke: n.col, "stroke-width": 1.5 }, g);
+      const ty = n.id === "car" ? 86 : (n.y0 + n.y1) / 2 - 8;
+      D.texto(g, 250, ty, n.t, { tam: 15, peso: 700 });
+      D.texto(g, 250, ty + 19, n.s, { tam: 12, color: C.ink2 });
+      D.clicable(g, function () { elige(n.id); }, n.t);
+      g.n = n;
+      return g;
+    });
+    const PP = {
+      uni: ["Pruebas unitarias", "Verifican la lógica interna de cada función: que el preprocesamiento normaliza bien, redimensiona al tamaño correcto y trata los casos raros. Con pytest, en segundos.", ['<span class="kw">import</span> numpy <span class="kw">as</span> np', '<span class="kw">from</span> src.preproceso <span class="kw">import</span> normalizar_imagen', "", '<span class="kw">def</span> <span class="fn">test_normaliza_entre_0_y_1</span>():', '    img = np.full((<span class="num">28</span>, <span class="num">28</span>), <span class="num">255</span>, dtype=np.uint8)', "    x = normalizar_imagen(img)", '    <span class="kw">assert</span> x.shape == (<span class="num">28</span>, <span class="num">28</span>, <span class="num">1</span>)', '    <span class="kw">assert</span> x.max() == <span class="num">1.0</span>']],
+      int: ["Pruebas de integración", "Comprueban que las piezas funcionan juntas: la API responde, la base de datos conecta y el preproceso se encadena con la inferencia.", ['<span class="kw">from</span> fastapi.testclient <span class="kw">import</span> TestClient', '<span class="kw">from</span> src.api <span class="kw">import</span> app', "", "cliente = TestClient(app)", "", '<span class="kw">def</span> <span class="fn">test_predict_devuelve_probabilidad</span>():', '    r = cliente.post(<span class="str">"/api/v1/predict"</span>, json=EJEMPLO)', '    <span class="kw">assert</span> r.status_code == <span class="num">200</span>', '    <span class="kw">assert</span> <span class="num">0</span> &lt;= r.json()[<span class="str">"probabilidad_impago"</span>] &lt;= <span class="num">1</span>']],
+      car: ["Pruebas de carga y estrés", "Simulan cientos o miles de usuarios a la vez (Locust, JMeter o k6) para medir latencia, caudal y el punto de quiebre antes de salir a producción.", ['<span class="kw">from</span> locust <span class="kw">import</span> HttpUser, task, between', "", '<span class="kw">class</span> <span class="fn">Cliente</span>(HttpUser):', "    wait_time = between(<span class=\"num\">0.5</span>, <span class=\"num\">2</span>)", "", '    <span class="fn">@task</span>', '    <span class="kw">def</span> <span class="fn">predecir</span>(self):', '        self.client.post(<span class="str">"/api/v1/predict"</span>, json=EJEMPLO)']]
+    };
+    const gq = RN.grafica($("pp-carga"), {
+      alto: 240, x: { min: 0, max: 80, titulo: "peticiones por segundo" }, y: { min: 0, max: 600, titulo: "latencia p95 (ms)" },
+      extras: function (ctx, g) {
+        const Y = g.sy(300);
+        ctx.save(); ctx.strokeStyle = C.bad; ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(g.m.l, Y); ctx.lineTo(g.w - g.m.r, Y); ctx.stroke(); ctx.setLineDash([]);
+        let lq = 0;
+        for (let l = 1; l < 80; l += 0.25) { const r = D.mmc(l, 20, 4); if (!r || r.percentil(0.95) * 1000 > 300) { lq = l; break; } }
+        const X = g.sx(lq);
+        ctx.beginPath(); ctx.arc(X, Y, 6, 0, 7); ctx.fillStyle = C.ink; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+        ctx.fillStyle = C.ink; ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+        ctx.fillText("punto de quiebre ≈ " + RN.fmt(lq, 0) + " peticiones/s", X - 10, Y - 6);
+        ctx.restore();
+      }
+    });
+    const pts = [];
+    for (let l = 0.5; l < 79.6; l += 0.5) { const r = D.mmc(l, 20, 4); pts.push([l, Math.min(5000, r.percentil(0.95) * 1000)]); }
+    function elige(id) {
+      capas.forEach(function (g) { D.estado(g, g.n.id === id ? "activo" : null); });
+      $("pp-tit").textContent = PP[id][0]; $("pp-txt").textContent = PP[id][1];
+      $("pp-code").innerHTML = D.codigoHTML(PP[id][2]);
+      $("pp-cargaw").classList.toggle("oculto", id !== "car");
+      if (id === "car") gq.dibujar([{ nombre: "p95", color: C.s2, puntos: pts }]);
+    }
+    elige("uni");
+  });
+
+  // =====================================================================================
+  // 8 · Datos en la nube
+  tab("datos", function () {
+    const svg = $("dt-svg"), ctl = $("dt-ctl"), kc = $("dt-kpis"), txt = $("dt-txt");
+    let vista = null, pasoV = null;
+    const META = {
+      alm: '<span class="tag illus">Animación ilustrativa</span>',
+      bd: '<span class="tag real">Caché LRU simulada de verdad</span><span class="tag illus">Tiempos orientativos</span>',
+      ing: '<span class="tag illus">Animación ilustrativa</span>',
+      etl: '<span class="tag illus">Animación ilustrativa</span>',
+      gob: '<span class="tag illus">Linaje de ejemplo</span>'
+    };
+    const LEAD = {
+      alm: "Tres formas de guardar datos en la nube, cada una para un uso.",
+      bd: "Bases de datos gestionadas: el proveedor se encarga de parches, copias y alta disponibilidad. Patrón muy común: Redis como caché delante del modelo.",
+      ing: "Dos formas de traer los datos: por lotes (cada noche) o en flujo (evento a evento). Kafka desacopla a quien produce de quien consume.",
+      etl: "ETL limpia antes de cargar; ELT carga en crudo y transforma dentro del almacén. El almacén de datos es la fuente de verdad para BI e IA.",
+      gob: "Un catálogo de datos con metadatos y linaje: de dónde viene cada dato y a qué afecta. Pulsa un nodo."
+    };
+    function limpiaSVG(etq) { D.prepara(svg, 1000, 360, etq); }
+    // ---------------------------------------------------------------- almacenamiento
+    function vAlm() {
+      limpiaSVG("Almacenamiento de objetos, de bloque y de archivos");
+      const P = [[15, "Objetos", "S3 · Cloud Storage · Blob Storage", ["barato y masivo: imágenes,", "modelos exportados, copias"]], [345, "Bloque", "EBS · Persistent Disk · Managed Disks", ["disco virtual de una máquina:", "alto rendimiento (IOPS)"]], [675, "Archivos", "EFS · Filestore · Azure Files", ["sistema de archivos compartido", "tipo NFS entre varias máquinas"]]];
+      P.forEach(function (p) {
+        RN.svg("rect", { x: p[0], y: 8, width: 310, height: 300, rx: 12, fill: K.suave, stroke: K.linea, "stroke-width": 1.5 }, svg);
+        D.texto(svg, p[0] + 155, 32, p[1], { tam: 16, peso: 700 });
+        D.texto(svg, p[0] + 155, 52, p[2], { tam: 12, color: C.ink2 });
+        D.texto(svg, p[0] + 155, 268, p[3], { tam: 12, color: C.ink2 });
+      });
+      D.texto(svg, 500, 336, "Combinación típica en IA: objetos para los datos y los modelos, bloque para el disco de la instancia de entrenamiento y archivos para compartir entre instancias.", { tam: 12, color: C.ink2 });
+      // objetos
+      D.icono(svg, "cubo", 170, 180, 96, C.s1);
+      const claves = ["datos/2026/img_0001.jpg", "modelos/riesgo-v3.onnx", "copias/2026-10-11.tar"];
+      claves.forEach(function (c, i) { D.texto(svg, 170, 82 + i * 17, c, { tam: 12, mono: true, color: C.ink }); });
+      // bloque
+      D.caja(svg, { x: 380, y: 74, w: 110, h: 84, icono: "servidor", titulo: "Máquina", sub: "virtual", tam: 13 });
+      D.caja(svg, { x: 540, y: 74, w: 100, h: 84, icono: "disco", titulo: "Disco", sub: "de bloque", tam: 13 });
+      D.ruta(svg, "M490 116 H540", { color: K.borde, ancho: 3 });
+      const barras = [];
+      for (let i = 0; i < 8; i++) barras.push(RN.svg("rect", { x: 420 + i * 22, y: 176, width: 14, height: 40, rx: 3, fill: C.s1 }, svg));
+      D.texto(svg, 500, 232, "operaciones de E/S por segundo", { tam: 12, color: C.ink2 });
+      // archivos
+      D.icono(svg, "carpeta", 830, 120, 56, C.s3);
+      const vms = [[730, 210], [830, 220], [930, 210]];
+      vms.forEach(function (v) { D.ruta(svg, "M830 146 L" + v[0] + " " + (v[1] - 22), { color: K.linea, ancho: 1.5 }); D.icono(svg, "servidor", v[0], v[1], 34); });
+      const fl = D.Flujo(svg);
+      let tt = 0, tc = 0;
+      pasoV = function (dt) {
+        tt += dt; tc += dt;
+        barras.forEach(function (b, i) { const h = 12 + 28 * (0.5 + 0.5 * Math.sin(tt * 6 + i * 1.3)); b.setAttribute("height", h.toFixed(1)); b.setAttribute("y", (216 - h).toFixed(1)); });
+        if (tc > 0.5) {
+          tc = 0;
+          const k = Math.floor(Math.random() * 3);
+          fl.add({ pts: [[830, 150], [vms[k][0], vms[k][1] - 20]], dur: 0.7, r: 5, color: C.s3 });
+          fl.add({ pts: [[100 + Math.random() * 140, 64], [170, 165]], dur: 0.8, r: 5, color: C.s1 });
+        }
+        fl.paso(dt);
+      };
+      txt.innerHTML = "";
+    }
+    // ---------------------------------------------------------------- bases de datos y caché
+    function vBD() {
+      limpiaSVG("Tipos de bases de datos y el patrón de caché con Redis delante del modelo");
+      [["bd", "Relacional (SQL)", ["RDS, Cloud SQL", "transacciones ACID"]], ["registro", "NoSQL clave-valor", ["DynamoDB, Firestore", "escala horizontal"]], ["doc", "Documental", ["MongoDB Atlas, DocumentDB", "JSON nativo"]], ["rayo", "En memoria", ["ElastiCache (Redis)", "latencia de microsegundos"]]].forEach(function (b, i) {
+        tarjeta(svg, 10 + i * 247, 6, 237, 70, b[0], b[1], b[2], { tamIc: 26 });
+      });
+      D.caja(svg, { x: 15, y: 150, w: 120, h: 110, icono: "app", titulo: "Aplicación", tam: 13 });
+      D.caja(svg, { x: 175, y: 160, w: 110, h: 90, icono: "doc", titulo: "API", tam: 13 });
+      RN.svg("rect", { x: 330, y: 96, width: 330, height: 252, rx: 12, fill: "#FFF5F5", stroke: "#F2A7A7", "stroke-width": 1.5 }, svg);
+      D.icono(svg, "rayo", 352, 116, 22, C.bad);
+      D.texto(svg, 370, 116, "Caché Redis (ElastiCache · Memorystore)", { ancla: "start", tam: 13, peso: 700 });
+      const tCap = D.texto(svg, 345, 140, "", { ancla: "start", tam: 12, color: C.ink2 });
+      const modelo = D.caja(svg, { x: 760, y: 150, w: 150, h: 110, icono: "red", titulo: "Modelo", sub: "≈ 40 ms por predicción", tam: 14 });
+      D.ruta(svg, "M135 205 H173", { color: K.borde, ancho: 2 });
+      D.ruta(svg, "M285 205 H328", { color: K.borde, ancho: 2 });
+      D.ruta(svg, "M660 205 H758", { color: K.borde, ancho: 2, dash: "5 4" });
+      D.texto(svg, 710, 192, "fallo", { tam: 12, color: C.ink2 });
+      const celdas = [];
+      for (let i = 0; i < 60; i++) {
+        const x = 345 + (i % 10) * 31, y = 152 + Math.floor(i / 10) * 30;
+        celdas.push({ r: RN.svg("rect", { x: x, y: y, width: 27, height: 24, rx: 4, fill: "#fff", stroke: "#F2C4C4" }, svg), t: D.texto(svg, x + 13.5, y + 12, "", { tam: 12, mono: true, color: C.ink }) });
+      }
+      let tam = 20, s = 1.0;
+      ctl.innerHTML = '<div class="ctl"><label for="dt-tam">Entradas en la caché</label><input id="dt-tam" type="range" min="5" max="60" step="5" value="20"><output id="dt-tamo">20</output></div><div class="ctl"><label for="dt-zipf">Peticiones repetidas</label><input id="dt-zipf" type="range" min="0.4" max="1.4" step="0.1" value="1"><output id="dt-zipfo">media</output></div>';
+      const N = 400, rng = RN.rng(3);
+      let cdf = [];
+      function zipf() { let acc = 0; const w = []; for (let k = 1; k <= N; k++) { acc += 1 / Math.pow(k, s); w.push(acc); } cdf = w.map(function (v) { return v / acc; }); }
+      function muestra() { const u = rng(); let lo = 0, hi = N - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cdf[m] < u) lo = m + 1; else hi = m; } return lo + 1; }
+      let lru = [], aciertos = 0, total = 0, hist = [];
+      function pide() {
+        const k = muestra(), i = lru.indexOf(k), hit = i >= 0;
+        if (hit) lru.splice(i, 1);
+        lru.unshift(k);
+        if (lru.length > tam) lru.length = tam;
+        total++; if (hit) aciertos++;
+        hist.push(hit); if (hist.length > 2000) hist.shift();
+        return { k: k, hit: hit };
+      }
+      function reinicia() { lru = []; aciertos = 0; total = 0; hist = []; for (let i = 0; i < 3000; i++) pide(); }
+      function pintaCache() {
+        celdas.forEach(function (c, i) {
+          const on = i < tam;
+          c.r.style.display = on ? "" : "none"; c.t.style.display = on ? "" : "none";
+          const k = lru[i];
+          c.t.textContent = k !== undefined ? String(k) : "";
+          c.r.setAttribute("fill", k !== undefined ? RN.mezcla("#FFFFFF", "#F28B82", Math.max(0.12, 1 - i / tam)) : "#fff");
+        });
+        tCap.textContent = "las " + tam + " respuestas más recientes (LRU) · los números son ids de cliente";
+        const h = hist.filter(Boolean).length / Math.max(1, hist.length);
+        kH.v.textContent = RN.fmt(100 * h, 0) + " %";
+        kL.v.textContent = RN.fmt(1 + (1 - h) * 40, 1) + " ms";
+        kM.v.textContent = RN.fmt(100 * (1 - h), 0) + " % de las peticiones";
+      }
+      kc.innerHTML = "";
+      const kH = kpi(kc, "dk-h", "Aciertos de caché"), kL = kpi(kc, "dk-l", "Latencia media (1 ms acierto · 41 ms fallo)"), kM = kpi(kc, "dk-m", "Llegan al modelo");
+      function etZipf() { $("dt-zipfo").textContent = s < 0.75 ? "pocas" : s < 1.15 ? "media" : "muchas"; }
+      $("dt-tam").addEventListener("input", function () { tam = +this.value; $("dt-tamo").textContent = tam; reinicia(); pintaCache(); });
+      $("dt-zipf").addEventListener("input", function () { s = +this.value; etZipf(); zipf(); reinicia(); pintaCache(); });
+      zipf(); reinicia(); pintaCache(); etZipf();
+      const fl = D.Flujo(svg);
+      let tt = 0, tp = 0;
+      pasoV = function (dt) {
+        tt += dt; tp += dt;
+        if (tp > 0.05) { tp = 0; pide(); }
+        if (tt > 0.6) {
+          tt = 0;
+          const r = pide();
+          const idx = lru.indexOf(r.k), c = celdas[Math.max(0, idx)];
+          fl.add({ pts: [[135, 205], [330, 205], [c ? +c.r.getAttribute("x") + 13 : 400, c ? +c.r.getAttribute("y") + 12 : 200]], dur: 0.6, r: 6, color: C.s1, onFin: function () {
+            if (r.hit) fl.add({ pts: [[330, 215], [135, 215]], dur: 0.45, texto: "acierto", ancho: 70, color: C.s3 });
+            else fl.add({ pts: [[660, 205], [758, 205]], dur: 0.4, texto: "fallo", ancho: 52, color: C.s2, onFin: function () {
+              D.estado(modelo, "activo"); setTimeout(function () { D.estado(modelo, null); }, 300);
+              fl.add({ pts: [[758, 220], [660, 220], [330, 225], [135, 225]], dur: 0.9, retardo: 0.25, texto: "predicción", ancho: 86, color: C.s3 });
+            } });
+          } });
+          pintaCache();
+        }
+        fl.paso(dt);
+      };
+      txt.innerHTML = "<p>Si la misma petición ya se respondió, Redis devuelve el resultado guardado sin ejecutar el modelo. Solo vale si el modelo es determinista, y la caché se vacía al desplegar una versión nueva.</p>";
+    }
+    // ---------------------------------------------------------------- ingesta y streaming
+    function vIng() {
+      limpiaSVG("Ingesta por lotes cada noche frente a streaming con Kafka, que desacopla productores y consumidores");
+      RN.svg("rect", { x: 10, y: 6, width: 980, height: 100, rx: 12, fill: K.suave, stroke: K.linea }, svg);
+      D.texto(svg, 26, 26, "Por lotes (batch)", { ancla: "start", tam: 14, peso: 700 });
+      D.texto(svg, 26, 46, ["se acumula y se procesa de golpe:", "eficiente, pero con horas de retraso"], { ancla: "start", tam: 12, color: C.ink2, arriba: true });
+      const cubo = D.icono(svg, "cubo", 420, 60, 56, C.s1);
+      const tLote = D.texto(svg, 420, 98, "", { tam: 12, peso: 700 });
+      const reloj = D.texto(svg, 560, 56, "", { tam: 15, peso: 700, mono: true });
+      D.texto(svg, 560, 78, "proceso nocturno a las 02:00", { tam: 12, color: C.ink2 });
+      D.caja(svg, { x: 760, y: 22, w: 210, h: 66, icono: "bd", iconoTam: 22, titulo: "Almacén / reentreno", tam: 13 });
+      // streaming
+      RN.svg("rect", { x: 10, y: 118, width: 980, height: 236, rx: 12, fill: "#fff", stroke: K.linea }, svg);
+      D.texto(svg, 26, 138, "En flujo (streaming) con Apache Kafka · Amazon Kinesis · Google Pub/Sub · Azure Event Hubs", { ancla: "start", tam: 14, peso: 700 });
+      const PROD = [["web", "Web: clics", C.s1], ["sensor", "Sensores IoT", C.s7], ["tarjeta", "Transacciones", C.s4]];
+      PROD.forEach(function (p, i) { tarjeta(svg, 24, 160 + i * 62, 170, 50, p[0], p[1], null, { tamIc: 22 }); });
+      RN.svg("rect", { x: 250, y: 152, width: 430, height: 190, rx: 12, fill: K.suave, stroke: K.borde, "stroke-width": 1.5 }, svg);
+      D.texto(svg, 266, 170, "Tema «eventos» (log ordenado e inmutable)", { ancla: "start", tam: 12, peso: 700, color: C.ink2 });
+      const CONS = [["Detector de fraude", "tiempo real", C.s2], ["Carga al almacén", "cada pocos segundos", C.s3]];
+      const cons = CONS.map(function (c, i) {
+        const g = tarjeta(svg, 740, 180 + i * 86, 236, 64, i ? "bd" : "escudo", c[0], c[1], { tamIc: 22 });
+        RN.svg("rect", { x: 741, y: 188 + i * 86, width: 6, height: 48, rx: 3, fill: c[2] }, g);
+        return { g: g, col: c[2], off: [0, 0, 0], activo: true, vel: i ? 0.5 : 0.18, t: 0 };
+      });
+      const PART = 3, CW = 26, VIS = 14, part = [[], [], []];
+      const gCel = D.g(svg), gPun = D.g(svg);
+      for (let p = 0; p < PART; p++) D.texto(svg, 262, 202 + p * 48, "partición " + p, { ancla: "start", tam: 12, color: C.ink2 });
+      const btn = RN.el("button", { class: "btn", type: "button", id: "dt-parar" }, null, "Detener el detector de fraude");
+      ctl.innerHTML = ""; ctl.appendChild(btn);
+      btn.addEventListener("click", function () { cons[0].activo = !cons[0].activo; btn.textContent = cons[0].activo ? "Detener el detector de fraude" : "Reanudar el detector de fraude"; });
+      kc.innerHTML = "";
+      const kLag = kpi(kc, "dk-lag", "Retraso del detector (mensajes sin leer)"), kLag2 = kpi(kc, "dk-lag2", "Retraso de la carga al almacén");
+      const fl = D.Flujo(svg);
+      let tt = 0, hora = 6, enLote = 0, nMsg = 0;
+      function dibujaLog() {
+        while (gCel.firstChild) gCel.removeChild(gCel.firstChild);
+        while (gPun.firstChild) gPun.removeChild(gPun.firstChild);
+        for (let p = 0; p < PART; p++) {
+          const L = part[p], ini = Math.max(0, L.length - VIS), y = 212 + p * 48;
+          for (let i = ini; i < L.length; i++) {
+            const x = 340 + (i - ini) * CW;
+            RN.svg("rect", { x: x, y: y - 10, width: CW - 4, height: 22, rx: 4, fill: L[i].col }, gCel);
+          }
+          cons.forEach(function (c, ci) {
+            const o = c.off[p], x = 340 + Math.max(0, o - ini) * CW - 2, yy = y + 15 + ci * 7;
+            RN.svg("path", { d: "M" + x + " " + (yy + 5) + " l5 -6 l5 6 z", fill: c.col }, gPun);
+          });
+        }
+      }
+      pasoV = function (dt) {
+        tt += dt;
+        // lotes: el reloj avanza 2 h por segundo
+        const h0 = hora; hora = (hora + dt * 2) % 24;
+        if (Math.random() < dt * 4) { enLote++; fl.add({ pts: [[240 + Math.random() * 120, 14], [420, 50]], dur: 0.5, r: 4, color: C.s1 }); }
+        if (h0 < 2 && hora >= 2 || (h0 > hora && hora >= 2)) { fl.add({ pts: [[450, 60], [758, 55]], dur: 1, texto: "lote de " + enLote, ancho: 100, color: C.s1 }); enLote = 0; }
+        reloj.textContent = String(Math.floor(hora)).padStart(2, "0") + ":" + String(Math.floor((hora % 1) * 60)).padStart(2, "0");
+        tLote.textContent = enLote + " eventos esperando";
+        // streaming
+        if (tt > 0.28) {
+          tt = 0;
+          const pr = Math.floor(Math.random() * 3), p = nMsg++ % PART;
+          fl.add({ pts: [[194, 185 + pr * 62], [330, 212 + p * 48]], dur: 0.45, r: 5, color: PROD[pr][2], onFin: function () { part[p].push({ col: PROD[pr][2] }); if (part[p].length > 400) { part[p].shift(); cons.forEach(function (c) { c.off[p] = Math.max(0, c.off[p] - 1); }); } } });
+        }
+        cons.forEach(function (c, ci) {
+          if (!c.activo) return;
+          c.t += dt;
+          if (c.t > c.vel / 3) {
+            c.t = 0;
+            for (let p = 0; p < PART; p++) if (c.off[p] < part[p].length) { c.off[p]++; if (ci === 0 && Math.random() < 0.3) fl.add({ pts: [[690, 212 + p * 48], [738, 212]], dur: 0.3, r: 4, color: c.col }); break; }
+          }
+        });
+        const lag = function (c) { let s = 0; for (let p = 0; p < PART; p++) s += part[p].length - c.off[p]; return s; };
+        kLag.v.textContent = RN.fmtN(lag(cons[0])); kLag.classList.toggle("alerta", lag(cons[0]) > 10);
+        kLag2.v.textContent = RN.fmtN(lag(cons[1]));
+        D.estado(cons[0].g, cons[0].activo ? null : "error");
+        dibujaLog();
+        fl.paso(dt);
+      };
+      pasoV(0);
+      txt.innerHTML = "<p><strong>Desacoplamiento:</strong> quien produce no sabe quién consume. Si el detector se para, los mensajes esperan en el tema y, al volver, se pone al día leyendo desde donde lo dejó. Kafka nació en LinkedIn; lo usan Netflix o Uber. Las arquitecturas lambda o kappa combinan lotes y flujo.</p>";
+    }
+    // ---------------------------------------------------------------- ETL / ELT
+    function vETL() {
+      limpiaSVG("ETL frente a ELT y el almacén de datos como fuente de verdad");
+      const filas = [[20, "ETL", ["Extraer", "Transformar", "Cargar"]], [190, "ELT", ["Extraer", "Cargar en crudo", ""]]];
+      filas.forEach(function (f) {
+        D.texto(svg, 24, f[0] + 16, f[1], { ancla: "start", tam: 16, peso: 800, color: K.acento });
+        tarjeta(svg, 20, f[0] + 30, 140, 96, "doc", "Fuentes", ["CRM, ventas,", "registros"], { tamIc: 22 });
+      });
+      const tr = D.caja(svg, { x: 365, y: 50, w: 190, h: 96, icono: "engranaje", titulo: "Transformar", sub: ["AWS Glue · Data Factory", "· Dataflow"], tam: 14, fill: K.zona, stroke: "#F3C8A6" });
+      D.caja(svg, { x: 200, y: 64, w: 120, h: 68, titulo: "Extraer", tam: 14 });
+      D.caja(svg, { x: 595, y: 64, w: 120, h: 68, titulo: "Cargar", tam: 14 });
+      D.caja(svg, { x: 200, y: 234, w: 120, h: 68, titulo: "Extraer", tam: 14 });
+      D.caja(svg, { x: 400, y: 234, w: 150, h: 68, titulo: "Cargar en crudo", tam: 14 });
+      RN.svg("rect", { x: 760, y: 30, width: 225, height: 300, rx: 14, fill: "#EEF2F7", stroke: K.borde, "stroke-width": 1.5 }, svg);
+      D.icono(svg, "bd", 872, 62, 34);
+      D.texto(svg, 872, 94, "Almacén de datos (OLAP)", { tam: 14, peso: 700 });
+      D.texto(svg, 872, 112, "BigQuery · Redshift · Synapse", { tam: 12, color: C.ink2 });
+      RN.svg("rect", { x: 778, y: 132, width: 190, height: 50, rx: 8, fill: "#fff", stroke: K.linea }, svg);
+      D.texto(svg, 873, 157, "tablas limpias", { tam: 12, peso: 700 });
+      RN.svg("rect", { x: 778, y: 246, width: 190, height: 30, rx: 8, fill: "#fff", stroke: K.linea }, svg);
+      D.texto(svg, 873, 261, "zona en crudo", { tam: 12, peso: 700 });
+      const dentro = D.caja(svg, { x: 778, y: 192, w: 190, h: 44, titulo: "transformar dentro (SQL, dbt)", tam: 12, fill: K.zona, stroke: "#F3C8A6" });
+      D.texto(svg, 872, 300, "→ paneles BI, datos de entrenamiento", { tam: 12, color: C.ink2 });
+      D.texto(svg, 872, 316, "y predicciones históricas", { tam: 12, color: C.ink2 });
+      [["M160 98 H198"], ["M320 98 H363"], ["M555 98 H593"], ["M715 98 H776 V150"], ["M160 268 H198"], ["M320 268 H398"], ["M550 268 H776"]].forEach(function (d) { D.ruta(svg, d[0], { color: K.borde, ancho: 2, flecha: true }); });
+      D.texto(svg, 500, 344, "Data lakehouse (Delta Lake, Apache Iceberg): combina el lago de datos en crudo con las ventajas del almacén.", { tam: 12, color: C.ink2 });
+      const fl = D.Flujo(svg);
+      const SUC = [C.s1, C.s2, C.s4, C.s5, C.s7];
+      let tt = 0;
+      pasoV = function (dt) {
+        tt += dt;
+        if (tt > 0.8) {
+          tt = 0;
+          const col = SUC[Math.floor(Math.random() * SUC.length)];
+          fl.add({ pts: [[160, 121], [365, 121]], dur: 0.8, r: 7, color: col, onFin: function () {
+            D.estado(tr, "activo"); setTimeout(function () { D.estado(tr, null); }, 250);
+            fl.add({ pts: [[555, 121], [745, 121], [776, 150], [800, 157]], dur: 1, texto: "limpio", ancho: 60, color: C.s3 });
+          } });
+          fl.add({ pts: [[160, 291], [745, 291], [800, 262]], dur: 1.6, r: 7, color: col, onFin: function () {
+            D.estado(dentro, "activo"); setTimeout(function () { D.estado(dentro, null); }, 300);
+            fl.add({ pts: [[873, 246], [873, 182]], dur: 0.6, retardo: 0.2, texto: "limpio", ancho: 60, color: C.s3 });
+          } });
+        }
+        fl.paso(dt);
+      };
+      txt.innerHTML = "<p>Transformar es limpiar duplicados, corregir errores, tratar los valores que faltan, normalizar formatos… y, para IA, crear las características (<em>features</em>). ELT gana terreno porque el almacén escala y herramientas como dbt transforman con SQL.</p>";
+    }
+    // ---------------------------------------------------------------- gobernanza
+    function vGob() {
+      limpiaSVG("Grafo de linaje de datos: desde las fuentes hasta el modelo y sus predicciones");
+      const N = {
+        crm: [15, 60, "bd", "CRM", "fuente"], tx: [15, 220, "tarjeta", "Transacciones", "fuente"],
+        etl: [210, 140, "engranaje", "Trabajo ETL", "AWS Glue"],
+        cli: [405, 60, "lista", "clientes_limpios", "tabla"], txl: [405, 220, "lista", "tx_limpias", "tabla"],
+        fea: [600, 140, "registro", "features_riesgo", "características"],
+        mod: [795, 60, "red", "modelo riesgo v3", "modelo"], pred: [795, 220, "grafica", "predicciones", "tabla"]
+      };
+      const E = [["crm", "etl"], ["tx", "etl"], ["etl", "cli"], ["etl", "txl"], ["cli", "fea"], ["txl", "fea"], ["fea", "mod"], ["mod", "pred"], ["txl", "pred"]];
+      const META2 = {
+        crm: ["Equipo comercial", "id_cliente, nombre, edad, ingresos", "PII · RGPD", "2 % de valores nulos", "cada noche"],
+        tx: ["Equipo de pagos", "id_tx, id_cliente, importe, fecha", "PCI DSS", "0,1 % de nulos", "en tiempo real"],
+        etl: ["Ingeniería de datos", "job: limpiar_clientes_y_tx", "—", "sin errores en la última ejecución", "02:00 cada día"],
+        cli: ["Ingeniería de datos", "id_cliente, edad, ingresos_mensuales…", "PII seudonimizada", "duplicados eliminados", "cada noche"],
+        txl: ["Ingeniería de datos", "id_tx, id_cliente, importe_eur, fecha", "—", "importes normalizados a €", "cada hora"],
+        fea: ["Ciencia de datos", "deuda_actual, meses_en_empleo, impagos_previos…", "uso: riesgo", "estadísticas vigiladas (deriva)", "cada noche"],
+        mod: ["Ciencia de datos", "entrada: features_riesgo · salida: probabilidad", "modelo de alto impacto", "AUC en validación: 0,87 (ejemplo)", "reentreno mensual"],
+        pred: ["Operaciones", "id_cliente, probabilidad, versión_modelo, fecha", "auditable", "se compara con impagos reales", "en tiempo real"]
+      };
+      const ar = E.map(function (e) {
+        const a = N[e[0]], b = N[e[1]];
+        const bz = D.bezier(a[0] + 175, a[1] + 28, b[0] - 3, b[1] + 28);
+        return { a: e[0], b: e[1], p: D.ruta(svg, bz.d, { color: K.linea, ancho: 2, flecha: true }) };
+      });
+      const nodos = {};
+      Object.keys(N).forEach(function (id) {
+        const n = N[id];
+        const g = tarjeta(svg, n[0], n[1], 175, 56, n[2], n[3], n[4], { tamIc: 22 });
+        D.clicable(g, function () { marca(id); }, n[3]);
+        nodos[id] = g;
+      });
+      D.texto(svg, 500, 320, "Herramientas: AWS Glue Data Catalog · Microsoft Purview · Dataplex Universal Catalog", { tam: 12, color: C.ink2 });
+      D.texto(svg, 500, 342, "naranja: de dónde viene (linaje) · azul: a qué afecta (impacto)", { tam: 12, peso: 700, color: C.ink2 });
+      function cierre(id, dir) {
+        const vis = {}, pila = [id];
+        while (pila.length) { const x = pila.pop(); E.forEach(function (e) { const s = dir > 0 ? e[0] : e[1], d = dir > 0 ? e[1] : e[0]; if (s === x && !vis[d]) { vis[d] = true; pila.push(d); } }); }
+        return vis;
+      }
+      function marca(id) {
+        const arriba = cierre(id, -1), abajo = cierre(id, 1);
+        Object.keys(nodos).forEach(function (k) {
+          D.estado(nodos[k], k === id ? "activo" : null);
+          nodos[k].rect.setAttribute("stroke", k === id ? K.acento : arriba[k] ? K.acento : abajo[k] ? C.s1 : K.borde);
+          nodos[k].rect.setAttribute("stroke-width", arriba[k] || abajo[k] || k === id ? 2.5 : 1.5);
+          nodos[k].style.opacity = k === id || arriba[k] || abajo[k] ? 1 : 0.45;
+        });
+        ar.forEach(function (a) {
+          const up = (arriba[a.a] || a.a === id) && (arriba[a.b] || a.b === id) && !(a.a === id);
+          const dn = (abajo[a.b]) && (abajo[a.a] || a.a === id);
+          const col = up ? K.acento : dn ? C.s1 : K.linea;
+          a.p.setAttribute("stroke", col); a.p.setAttribute("stroke-width", up || dn ? 3 : 2);
+          a.p.setAttribute("marker-end", D.flecha(svg, up || dn ? col : K.borde));
+        });
+        const m = META2[id];
+        txt.innerHTML = '<div class="detalle"><h3>' + N[id][3] + '</h3><table class="tabla"><tbody><tr><td><strong>Propietario</strong></td><td>' + m[0] + '</td></tr><tr><td><strong>Esquema</strong></td><td><code>' + m[1] + '</code></td></tr><tr><td><strong>Etiquetas</strong></td><td>' + m[2] + '</td></tr><tr><td><strong>Calidad</strong></td><td>' + m[3] + '</td></tr><tr><td><strong>Actualización</strong></td><td>' + m[4] + "</td></tr></tbody></table></div>";
+      }
+      marca("mod");
+      kc.innerHTML = "";
+      pasoV = null;
+    }
+    const VISTAS = { alm: vAlm, bd: vBD, ing: vIng, etl: vETL, gob: vGob };
+    function ponVista(v) {
+      vista = v; pasoV = null; ctl.innerHTML = ""; kc.innerHTML = ""; txt.innerHTML = "";
+      $("dt-meta").innerHTML = META[v]; $("dt-lead").textContent = LEAD[v];
+      VISTAS[v]();
+    }
+    D.seg($("dt-vista"), [["alm", "Almacenamiento"], ["bd", "Bases de datos y caché"], ["ing", "Ingesta y streaming"], ["etl", "ETL y almacén"], ["gob", "Gobernanza"]], "alm", ponVista, "Vista de datos");
+    ponVista("alm");
+    bucle(function (dt) { if (pasoV) pasoV(dt); }, svg.parentNode);
+  });
+  // =====================================================================================
+  // 9 · Costes
+  tab("costes", function () {
+    const svg = $("co-svg"), ctl = $("co-ctl"), kc = $("co-kpis"), cv = $("co-pres"), esc2 = $("co-esc"), ley = $("co-ley");
+    let pasoC = null;
+    const LEAD = {
+      tag: "Etiquetar cada recurso (proyecto, equipo, entorno) permite saber quién gasta qué.",
+      spot: "Las instancias spot usan capacidad sobrante con hasta un 90 % de descuento, pero el proveedor puede reclamarla con 2 minutos de aviso. Con puntos de control (checkpoints), el entrenamiento se retoma.",
+      pres: "Un presupuesto mensual con avisos al 50 %, 80 % y 100 % (y una previsión) es la red de seguridad financiera."
+    };
+    const TXT = {
+      tag: "Sin etiquetas, la factura es un único número que nadie sabe repartir; con ellas aparece hasta la instancia olvidada de nadie.",
+      spot: "Encajan con el entrenamiento (que puede retomarse desde un checkpoint), no con un servicio que debe responder siempre. Otros consejos: instancias reservadas para cargas estables y apagar los entornos de desarrollo por la noche y el fin de semana.",
+      pres: "AWS Budgets, los presupuestos de Cloud Billing o Microsoft Cost Management envían avisos por correo o chat. Configurarlos desde el primer día."
+    };
+    // ---------------------------------------------------------------- etiquetado
+    function vTag() {
+      D.prepara(svg, 1000, 300, "Factura mensual repartida por etiquetas de proyecto");
+      D.texto(svg, 20, 20, "Factura del mes: 12.400 € (orientativo)", { ancla: "start", tam: 14, peso: 700 });
+      const SEG = [["proyecto=riesgo", 4900, C.s1], ["proyecto=recomendador", 3700, C.s2], ["proyecto=chatbot", 2400, C.s3], ["sin etiquetar", 1400, "#B8C1CC"]];
+      const segs = SEG.map(function (s) { const g = D.g(svg); g.r = RN.svg("rect", { x: 20, y: 34, width: 0, height: 56, fill: s[2], stroke: "#fff", "stroke-width": 2 }, g); g.t1 = D.texto(g, 0, 54, s[0], { tam: 12, peso: 700, color: s[2] === "#B8C1CC" ? C.ink : "#fff" }); g.t2 = D.texto(g, 0, 72, RN.fmtN(s[1]) + " €", { tam: 12, color: s[2] === "#B8C1CC" ? C.ink : "#fff" }); g.w = 0; g.s = s; return g; });
+      const REC = [["servidor", "Notebook ml.p3.2xlarge", "proyecto=riesgo · equipo=datos · entorno=dev"], ["cubo", "Bucket datos-entrenamiento", "proyecto=riesgo · equipo=datos"], ["timon", "Clúster EKS de producción", "proyecto=recomendador · entorno=prod"],
+        ["bd", "Base de datos de recomendaciones", "proyecto=recomendador · entorno=prod"], ["funcion", "Funciones del chatbot", "proyecto=chatbot · entorno=prod"], ["chip", "Instancia GPU sin nombre", "(sin etiquetas: ¿de quién es?)"]];
+      const recs = REC.map(function (r, i) { return tarjeta(svg, 20 + (i % 2) * 485, 118 + Math.floor(i / 2) * 58, 470, 48, r[0], r[1], r[2], { tamIc: 22 }); });
+      ctl.innerHTML = '<label class="inline"><input type="checkbox" id="co-etq" checked> Etiquetar los recursos (proyecto, equipo, entorno)</label>';
+      kc.innerHTML = "";
+      const kA = kpi(kc, "ck-a", "Gasto atribuido a un proyecto");
+      function objetivo() {
+        const on = $("co-etq").checked;
+        segs.forEach(function (g, i) { g.obj = on ? g.s[1] / 12400 * 960 : (i === 3 ? 960 : 0); });
+        recs.forEach(function (g, i) { g.t2.textContent = on ? REC[i][2] : "sin etiquetas"; g.t2.setAttribute("fill", on && i < 5 ? C.ink2 : C.bad); });
+        kA.v.textContent = on ? RN.fmt(100 * 11000 / 12400, 0) + " %" : "0 %";
+        segs[3].t1.textContent = on ? "sin etiquetar" : "todo sin etiquetar: 12.400 €";
+        segs[3].t2.textContent = on ? "1.400 €" : "imposible repartir";
+      }
+      $("co-etq").addEventListener("change", objetivo);
+      objetivo();
+      pasoC = function (dt) {
+        let x = 20;
+        segs.forEach(function (g) {
+          g.w += (g.obj - g.w) * Math.min(1, dt * 6);
+          g.r.setAttribute("x", x); g.r.setAttribute("width", Math.max(0, g.w));
+          const vis = g.w > 92 ? 1 : 0;
+          g.t1.setAttribute("x", x + g.w / 2); g.t2.setAttribute("x", x + g.w / 2);
+          g.t1.style.opacity = vis; g.t2.style.opacity = vis;
+          x += g.w;
+        });
+      };
+      pasoC(1);
+    }
+    // ---------------------------------------------------------------- spot
+    function vSpot() {
+      D.prepara(svg, 1000, 300, "Cronograma de un entrenamiento de 10 horas bajo demanda frente a instancias spot con interrupciones y checkpoints");
+      ctl.innerHTML = '<div class="ctl"><label for="co-ck">Checkpoint cada</label><input id="co-ck" type="range" min="15" max="180" step="15" value="30"><output id="co-cko">30 min</output></div><div class="ctl"><label for="co-desc">Descuento spot</label><input id="co-desc" type="range" min="50" max="90" step="5" value="70"><output id="co-desco">70 %</output></div><button class="btn gris" id="co-otra" type="button">Otra simulación</button>';
+      kc.innerHTML = "";
+      const kT = kpi(kc, "ck-t", "Duración con spot"), kP = kpi(kc, "ck-p", "Trabajo perdido"), kS = kpi(kc, "ck-s", "Coste spot"), kD = kpi(kc, "ck-d", "Coste bajo demanda");
+      let semilla = 4;
+      const X = function (h) { return 130 + h * 35.4; };
+      function simula() {
+        const ck = +$("co-ck").value / 60, desc = +$("co-desc").value / 100, rng = RN.rng(semilla);
+        $("co-cko").textContent = (ck * 60) + " min"; $("co-desco").textContent = Math.round(desc * 100) + " %";
+        D.prepara(svg, 1000, 300, "Cronograma de un entrenamiento de 10 horas bajo demanda frente a instancias spot con interrupciones y checkpoints");
+        D.texto(svg, 16, 66, "Bajo demanda", { ancla: "start", tam: 13, peso: 700 });
+        D.texto(svg, 16, 156, "Spot", { ancla: "start", tam: 13, peso: 700 });
+        RN.svg("rect", { x: X(0), y: 48, width: X(10) - X(0), height: 36, rx: 6, fill: C.s1 }, svg);
+        D.texto(svg, (X(0) + X(10)) / 2, 66, "10 h de trabajo · 3 €/h", { tam: 12, peso: 700, color: "#fff" });
+        let t = 0, trabajo = 0, ejec = 0, perdidoTot = 0;
+        const segs = [], ints = [];
+        while (trabajo < 10 - 1e-9 && t < 24) {
+          const prox = D.expo(rng, 1 / 3.5), resto = 10 - trabajo;
+          if (prox >= resto) { segs.push(["util", t, t + resto]); t += resto; ejec += resto; trabajo = 10; break; }
+          t += prox; ejec += prox; trabajo += prox;
+          const perdido = trabajo - Math.floor(trabajo / ck + 1e-9) * ck;
+          segs.push(["util", t - prox, t - perdido]); segs.push(["perdido", t - perdido, t]);
+          trabajo -= perdido; perdidoTot += perdido; ints.push(t);
+          const esp = 0.15 + rng() * 0.6;
+          segs.push(["espera", t, t + esp]); t += esp;
+        }
+        segs.forEach(function (s) {
+          if (s[2] - s[1] < 0.003) return;
+          const col = s[0] === "util" ? C.s3 : s[0] === "perdido" ? "#F2A7A7" : "#E4E7EB";
+          RN.svg("rect", { x: X(s[1]), y: 138, width: Math.max(1, X(s[2]) - X(s[1])), height: 36, fill: col }, svg);
+        });
+        ints.forEach(function (h) {
+          RN.svg("line", { x1: X(h), y1: 128, x2: X(h), y2: 184, stroke: C.bad, "stroke-width": 2 }, svg);
+          D.texto(svg, X(h), 120, "✕", { tam: 14, peso: 800, color: C.bad });
+        });
+        [0, 4, 8, 12, 16, 20, 24].forEach(function (h) { RN.svg("line", { x1: X(h), y1: 200, x2: X(h), y2: 206, stroke: K.borde }, svg); D.texto(svg, X(h), 218, h + " h", { tam: 12, color: C.ink2 }); });
+        RN.svg("line", { x1: X(0), y1: 200, x2: X(24), y2: 200, stroke: K.borde }, svg);
+        [[C.s3, "trabajo útil"], ["#F2A7A7", "trabajo perdido (desde el último checkpoint)"], ["#E4E7EB", "esperando capacidad"]].forEach(function (l, i) {
+          const x = [130, 290, 650][i];
+          RN.svg("rect", { x: x, y: 246, width: 16, height: 12, rx: 2, fill: l[0], stroke: K.borde }, svg);
+          D.texto(svg, x + 22, 252, l[1], { ancla: "start", tam: 12, color: C.ink2 });
+        });
+        D.texto(svg, 820, 252, "✕ interrupción (aviso de 2 min)", { ancla: "start", tam: 12, color: C.bad });
+        const coste = ejec * 3 * (1 - desc);
+        kT.v.textContent = RN.fmt(t, 1) + " h";
+        kP.v.textContent = RN.fmt(perdidoTot * 60, 0) + " min";
+        kS.v.textContent = D.euros(coste, 2) + " (−" + RN.fmt(100 * (1 - coste / 30), 0) + " %)";
+        kD.v.textContent = "30,00 €";
+        kS.classList.add("bueno");
+      }
+      ["co-ck", "co-desc"].forEach(function (id) { $(id).addEventListener("input", simula); });
+      $("co-otra").addEventListener("click", function () { semilla++; simula(); });
+      simula();
+      pasoC = null;
+    }
+    // ---------------------------------------------------------------- presupuesto
+    let gp = null;
+    function vPres() {
+      ctl.innerHTML = '<label class="inline"><input type="checkbox" id="co-olv"> Olvidar una GPU encendida desde el día 12</label>';
+      kc.innerHTML = "";
+      const kG = kpi(kc, "ck-g", "Gasto a día 20"), kF = kpi(kc, "ck-f", "Previsión a fin de mes"), kA = kpi(kc, "ck-a2", "Avisos enviados");
+      const PRES = 1000, HOY = 20;
+      let real = [], prev = [], avisos = [];
+      function calcula() {
+        const olv = $("co-olv").checked, rng = RN.rng(12);
+        real = [[0, 0]]; prev = []; avisos = [];
+        let acc = 0;
+        const diario = [];
+        for (let d = 1; d <= 30; d++) { const g = 25 + 6 * RN.normal(rng) + (olv && d >= 12 ? 3.8 * 24 : 0); diario.push(Math.max(5, g)); }
+        for (let d = 1; d <= HOY; d++) { acc += diario[d - 1]; real.push([d, acc]); }
+        const media7 = (real[HOY][1] - real[HOY - 7][1]) / 7;
+        prev = [[HOY, acc]];
+        for (let d = HOY + 1; d <= 30; d++) prev.push([d, acc + media7 * (d - HOY)]);
+        [0.5, 0.8, 1].forEach(function (u) {
+          for (let i = 1; i < real.length; i++) if (real[i][1] >= u * PRES) { avisos.push([real[i][0], u, "real"]); return; }
+          const f = prev[prev.length - 1][1];
+          if (f >= u * PRES && u === 1) avisos.push([HOY, u, "previsión"]);
+        });
+        kG.v.textContent = RN.fmtN(acc) + " €";
+        kF.v.textContent = RN.fmtN(prev[prev.length - 1][1]) + " €"; kF.classList.toggle("alerta", prev[prev.length - 1][1] > PRES);
+        kA.v.textContent = avisos.length ? avisos.map(function (a) { return Math.round(a[1] * 100) + " %"; }).join(" · ") : "ninguno";
+        gp.op.y.max = Math.ceil(Math.max(1100, prev[prev.length - 1][1] * 1.08) / 500) * 500;
+        gp.dibujar([{ nombre: "gasto real", color: C.s1, puntos: real }, { nombre: "previsión", color: C.s1, discontinua: true, puntos: prev }]);
+      }
+      if (!gp) gp = RN.grafica(cv, {
+        alto: 280, x: { min: 0, max: 30, titulo: "día del mes" }, y: { min: 0, max: 1500, titulo: "gasto acumulado (€)" },
+        extras: function (ctx, g) {
+          ctx.save(); ctx.font = "600 12px system-ui, sans-serif";
+          [[0.5, "50 %"], [0.8, "80 %"], [1, "presupuesto: 1.000 €"]].forEach(function (u) {
+            const Y = g.sy(u[0] * 1000);
+            ctx.strokeStyle = u[0] === 1 ? C.ink2 : K.linea; ctx.lineWidth = u[0] === 1 ? 2 : 1.2; ctx.setLineDash(u[0] === 1 ? [] : [5, 4]);
+            ctx.beginPath(); ctx.moveTo(g.m.l, Y); ctx.lineTo(g.w - g.m.r, Y); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = C.ink2; ctx.textAlign = "right"; ctx.textBaseline = u[0] === 0.5 ? "top" : "bottom"; ctx.fillText(u[1], g.w - g.m.r - 6, u[0] === 0.5 ? Y + 3 : Y - 3);
+          });
+          const XH = g.sx(20);
+          ctx.strokeStyle = C.ink2; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(XH, g.m.t); ctx.lineTo(XH, g.h - g.m.b); ctx.stroke();
+          ctx.fillStyle = C.ink2; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText("hoy (día 20)", XH + 6, g.m.t + 4);
+          (gp.avisos || []).forEach(function (a, k) {
+            const X = g.sx(a[0]), Y = g.sy(a[1] * 1000);
+            ctx.beginPath(); ctx.arc(X, Y, 7, 0, 7); ctx.fillStyle = C.bad; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+            ctx.fillStyle = C.bad; ctx.textAlign = "left"; ctx.textBaseline = "top";
+            ctx.fillText("✉ aviso del " + Math.round(a[1] * 100) + " %" + (a[2] === "previsión" ? " (por previsión)" : "") + ": día " + a[0], g.m.l + 10, g.m.t + 6 + k * 17);
+          });
+          ctx.restore();
+        }
+      });
+      $("co-olv").addEventListener("change", function () { calcula(); gp.avisos = avisos; gp.dibujar(); });
+      calcula(); gp.avisos = avisos; gp.dibujar();
+      pasoC = null;
+    }
+    function ponVista(v) {
+      pasoC = null; ctl.innerHTML = ""; kc.innerHTML = "";
+      const pres = v === "pres";
+      esc2.classList.toggle("oculto", pres); cv.classList.toggle("oculto", !pres); ley.classList.toggle("oculto", !pres);
+      $("co-lead").textContent = LEAD[v]; $("co-txt").textContent = TXT[v];
+      if (v === "tag") vTag(); else if (v === "spot") vSpot(); else vPres();
+    }
+    D.seg($("co-vista"), [["tag", "Etiquetado"], ["spot", "Instancias spot"], ["pres", "Alertas de presupuesto"]], "tag", ponVista, "Palanca de coste");
+    ponVista("tag");
+    bucle(function (dt) { if (pasoC) pasoC(dt); }, esc2);
+
+    // ---------------------------------------------------------------- SageMaker
+    const ss = D.prepara($("sm-svg"), 1000, 250, "Estados de una instancia de notebook de SageMaker: Pending, InService, Stopping y Stopped");
+    const EST = [["Pending", ["prepara hardware y red", "2-5 min · no se factura"]], ["InService", ["lista para usar:", "se factura cada hora"]], ["Stopping", ["guardando y apagando", "≈ 1 min"]], ["Stopped", ["sin cómputo: solo", "se paga el disco"]]];
+    const cajas = EST.map(function (e, i) {
+      const g = D.caja(ss, { x: 20 + i * 250, y: 30, w: 210, h: 96, titulo: e[0], sub: e[1], tam: 16 });
+      if (i < 3) D.ruta(ss, "M" + (232 + i * 250) + " 78 H" + (268 + i * 250), { color: K.borde, ancho: 2, flecha: true });
+      return g;
+    });
+    const euro = D.icono(ss, "euro", 458, 46, 22, K.acento);
+    D.ruta(ss, "M875 128 V176 H125 V130", { color: K.borde, ancho: 2, flecha: true, dash: "6 4" });
+    D.texto(ss, 500, 192, "Iniciar (Start) · el disco EBS conserva los ficheros", { tam: 12, color: C.ink2 });
+    const tMsg = D.texto(ss, 500, 228, "", { tam: 13, peso: 700 });
+    const smk = $("sm-kpis");
+    const kE = kpi(smk, "sk-e", "Estado"), kT = kpi(smk, "sk-t", "Tiempo transcurrido"), kH = kpi(smk, "sk-h", "Horas facturadas"), kC = kpi(smk, "sk-c", "Coste acumulado");
+    let est = "Stopped", tEst = 0, simMin = 0, fact = 0, coste = 0, act = 0, ocio = 0, msgExtra = "";
+    function precio() { return +$("sm-tipo").value; }
+    function pasoSim(m) {
+      if (est === "Stopped") return;
+      simMin += m; tEst += m;
+      if (est === "Pending" && tEst >= 3) { est = "InService"; tEst = 0; act = 120; ocio = 0; }
+      else if (est === "InService") {
+        fact += m / 60; coste += m / 60 * precio();
+        if (act > 0) act -= m; else ocio += m;
+        if ($("sm-auto").checked && ocio >= 60) { est = "Stopping"; tEst = 0; msgExtra = "auto-stop: 1 h sin uso → se detiene sola"; }
+      } else if (est === "Stopping" && tEst >= 1) { est = "Stopped"; tEst = 0; }
+    }
+    function fmtT(min) { const h = Math.floor(min / 60), m = Math.floor(min % 60); return h + " h " + String(m).padStart(2, "0") + " min"; }
+    function pinta() {
+      cajas.forEach(function (g, i) { D.estado(g, EST[i][0] === est ? (est === "InService" ? "activo" : "activo") : null); });
+      euro.style.display = est === "InService" ? "" : "none";
+      kE.v.textContent = est; kT.v.textContent = fmtT(simMin); kH.v.textContent = RN.fmt(fact, 1) + " h"; kC.v.textContent = D.euros(coste, 2);
+      kC.classList.toggle("alerta", coste > 50);
+      tMsg.textContent = msgExtra || (est === "InService" ? (act > 0 ? "trabajando en el notebook…" : "ociosa desde hace " + fmtT(ocio) + ": se sigue pagando") : est === "Stopped" ? "parada: no se paga cómputo" : est === "Pending" ? "arrancando…" : "deteniendo…");
+      tMsg.setAttribute("fill", est === "InService" && act <= 0 ? C.bad : C.ink);
+    }
+    let tween = null;
+    bucle(function (dt) {
+      if (tween) {
+        tween.t += dt; const u = Math.min(1, tween.t / 1.4);
+        simMin = RN.lerp(tween.a[0], tween.b[0], u); fact = RN.lerp(tween.a[1], tween.b[1], u); coste = RN.lerp(tween.a[2], tween.b[2], u);
+        if (u >= 1) { tween = null; est = tween_est; }
+        pinta(); return;
+      }
+      pasoSim(dt * 10);
+      pinta();
+    }, ss.parentNode);
+    let tween_est = "Stopped";
+    $("sm-start").addEventListener("click", function () { if (est === "Stopped") { est = "Pending"; tEst = 0; msgExtra = ""; pinta(); } });
+    $("sm-stop").addEventListener("click", function () { if (est === "InService" || est === "Pending") { est = "Stopping"; tEst = 0; msgExtra = ""; pinta(); } });
+    $("sm-finde").addEventListener("click", function () {
+      if (est !== "InService") { msgExtra = "primero inicia la instancia y espera a que esté InService"; pinta(); setTimeout(function () { msgExtra = ""; }, 2500); return; }
+      const a = [simMin, fact, coste];
+      for (let i = 0; i < 3600; i++) pasoSim(1);
+      tween_est = est;
+      tween = { t: 0, a: a, b: [simMin, fact, coste] };
+      est = "InService";
+      msgExtra = tween_est === "Stopped" ? "el script la detuvo: el fin de semana solo cuesta el disco" : "60 horas encendida sin que nadie la use";
+      setTimeout(function () { msgExtra = ""; }, 4000);
+      if (reducido) { simMin = tween.b[0]; fact = tween.b[1]; coste = tween.b[2]; est = tween_est; tween = null; }
+    });
+    $("sm-tipo").addEventListener("change", pinta);
+    pinta();
+  });
+
+  // =====================================================================================
+  // 10 · Monitorización y checklist
+  tab("monit", function () {
+    const svg = D.prepara($("pm-svg"), 1000, 310, "Prometheus consulta las métricas de cada réplica, las guarda y alimenta Grafana y Alertmanager");
+    const tgts = [0, 1, 2].map(function (i) {
+      const g = tarjeta(svg, 20, 24 + i * 96, 210, 70, "servidor", "modelo · réplica " + (i + 1), "/metrics en el puerto 8080", { tamIc: 26 });
+      return g;
+    });
+    const prom = D.caja(svg, { x: 390, y: 86, w: 220, h: 140, icono: "medidor", iconoTam: 36, titulo: "Prometheus", sub: ["pregunta cada 15 s (pull)", "base de series temporales"], tam: 16, fill: K.zona, stroke: "#F3C8A6" });
+    const graf = D.caja(svg, { x: 760, y: 24, w: 220, h: 96, icono: "grafica", titulo: "Grafana", sub: "paneles (abajo)", tam: 15 });
+    const am = D.caja(svg, { x: 760, y: 170, w: 220, h: 96, icono: "campana", titulo: "Alertmanager", sub: "agrupa y avisa", tam: 15 });
+    D.texto(svg, 870, 290, "→ correo, chat o la persona de guardia", { tam: 12, color: C.ink2 });
+    tgts.forEach(function (g, i) { D.ruta(svg, "M388 " + (140 + (i - 1) * 22) + " L232 " + (59 + i * 96), { color: K.linea, ancho: 1.8, dash: "5 4" }); });
+    D.texto(svg, 310, 70, "GET /metrics", { tam: 12, peso: 700, color: C.ink2 });
+    D.ruta(svg, "M612 130 L758 80", { color: K.borde, ancho: 2, flecha: true });
+    D.ruta(svg, "M612 180 L758 214", { color: K.borde, ancho: 2, flecha: true });
+    const fl = D.Flujo(svg), alog = $("pm-alert");
+    const ESC = { normal: "Normal", caida: "Réplica caída", lento: "Modelo lento", errores: "Errores", deriva: "Deriva" };
+    let esc = "normal", tS = 0, n = 0;
+    const v = { p95: 80, err: 0.3, prob: 0.18 }, hist = [], cuenta = {}, activas = {}, tot = { pet: 18234, err: 41, b1: 17012, b3: 18190, suma: 1532.7 };
+    const rng = RN.rng(8);
+    const REGLAS = [
+      ["ModeloCaido", "up{job=\"modelo-riesgo\"} == 0", "1m", function () { return esc === "caida"; }, function () { return "la réplica 2 no responde (up = 0)"; }, 2],
+      ["LatenciaAlta", "histogram_quantile(0.95, sum(rate(latencia_segundos_bucket[5m])) by (le)) > 0.3", "5m", function () { return v.p95 > 300; }, function () { return "p95 = " + RN.fmt(v.p95, 0) + " ms > 300 ms"; }, 2],
+      ["TasaDeErrores", "sum(rate(errores_total[5m])) / sum(rate(peticiones_total[5m])) > 0.02", "5m", function () { return v.err > 2; }, function () { return "errores = " + RN.fmt(v.err, 1) + " % > 2 %"; }, 2],
+      ["DerivaPredicciones", "abs(avg_over_time(prediccion_probabilidad_media[1h]) - 0.18) > 0.1", "30m", function () { return Math.abs(v.prob - 0.18) > 0.1; }, function () { return "media de p = " + RN.fmt(v.prob, 2) + " (referencia 0,18)"; }, 2]
+    ];
+    function reglasHTML() {
+      const L = ["groups:", "- name: modelo-riesgo", "  rules:"];
+      const out = D.codigoHTML(L);
+      return out + REGLAS.map(function (r) {
+        const on = activas[r[0]];
+        return '<span class="ln' + (on ? " hl" : "") + '">  - alert: <span class="fn">' + r[0] + "</span></span>" + '<span class="ln' + (on ? " hl" : "") + '">    expr: ' + esc2(r[1]) + "</span>" + '<span class="ln' + (on ? " hl" : "") + '">    for: ' + r[2] + "</span>";
+      }).join("");
+    }
+    function esc2(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function metricasHTML() {
+      return D.codigoHTML([
+        '<span class="com"># HELP peticiones_total Peticiones atendidas por el modelo</span>', '<span class="com"># TYPE peticiones_total counter</span>',
+        'peticiones_total{modelo="riesgo",version="v3"} <span class="num">' + Math.round(tot.pet) + "</span>",
+        '<span class="com"># TYPE errores_total counter</span>', 'errores_total{modelo="riesgo",version="v3"} <span class="num">' + Math.round(tot.err) + "</span>",
+        '<span class="com"># TYPE latencia_segundos histogram</span>',
+        'latencia_segundos_bucket{le="0.1"} <span class="num">' + Math.round(tot.b1) + "</span>", 'latencia_segundos_bucket{le="0.3"} <span class="num">' + Math.round(tot.b3) + "</span>",
+        'latencia_segundos_bucket{le="+Inf"} <span class="num">' + Math.round(tot.pet) + "</span>", 'latencia_segundos_count <span class="num">' + Math.round(tot.pet) + "</span>",
+        '<span class="com"># TYPE prediccion_probabilidad_media gauge</span>', 'prediccion_probabilidad_media <span class="num">' + v.prob.toFixed(3) + "</span>"
+      ]);
+    }
+    const panel = function (id, ymax, titulo, umbral, banda) {
+      return RN.grafica($(id), {
+        alto: 210, hover: true, x: { min: -10, max: 0, titulo: "minutos (0 = ahora)" }, y: { min: 0, max: ymax, titulo: titulo },
+        extras: function (ctx, g) {
+          ctx.save();
+          if (banda) { ctx.fillStyle = "rgba(160,170,182,.22)"; ctx.fillRect(g.m.l, g.sy(banda[1]), g.w - g.m.l - g.m.r, g.sy(banda[0]) - g.sy(banda[1])); }
+          (Array.isArray(umbral) ? umbral : [umbral]).forEach(function (u) {
+            const Y = g.sy(u); ctx.strokeStyle = C.bad; ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(g.m.l, Y); ctx.lineTo(g.w - g.m.r, Y); ctx.stroke();
+          });
+          ctx.restore();
+        }
+      });
+    };
+    const g1 = panel("pm-g1", 600, "latencia p95 (ms)", 300), g2 = panel("pm-g2", 10, "errores (%)", 2), g3 = panel("pm-g3", 0.5, "media de p predicha", [0.08, 0.28], [0.08, 0.28]);
+    function serie(k) { return hist.map(function (h, i) { return [(i - hist.length + 1) * 0.25, h[k]]; }); }
+    function dibuja() {
+      g1.dibujar([{ nombre: "p95", color: C.s1, puntos: serie("p95") }]);
+      g2.dibujar([{ nombre: "errores", color: C.s1, puntos: serie("err") }]);
+      g3.dibujar([{ nombre: "media p", color: C.s1, puntos: serie("prob") }]);
+      $("pm-metrics").innerHTML = metricasHTML();
+      $("pm-reglas").innerHTML = reglasHTML();
+    }
+    function scrape(visual) {
+      n++;
+      const obj = { p95: esc === "lento" ? 450 : esc === "caida" ? 115 : 80, err: esc === "errores" ? 6 : 0.3 };
+      v.p95 += (obj.p95 - v.p95) * 0.5 + 8 * RN.normal(rng);
+      v.err = Math.max(0, v.err + (obj.err - v.err) * 0.5 + 0.12 * RN.normal(rng));
+      if (esc === "deriva") v.prob = Math.min(0.4, v.prob + 0.014 + 0.004 * RN.normal(rng));
+      else v.prob += (0.18 - v.prob) * 0.3 + 0.005 * RN.normal(rng);
+      hist.push({ p95: v.p95, err: v.err, prob: v.prob });
+      if (hist.length > 41) hist.shift();
+      const pet = 600 * (esc === "caida" ? 2 / 3 : 1);
+      tot.pet += pet; tot.err += pet * v.err / 100; tot.b1 += pet * (v.p95 < 150 ? 0.93 : 0.4); tot.b3 += pet * (v.p95 < 300 ? 0.99 : 0.85);
+      REGLAS.forEach(function (r) {
+        if (r[3]()) { cuenta[r[0]] = (cuenta[r[0]] || 0) + 1; if (cuenta[r[0]] >= r[5] && !activas[r[0]]) { activas[r[0]] = true; D.estado(am, "error"); if (visual) registra(alog, "FIRING " + r[0] + ": " + r[4](), "mal"); if (visual) fl.add({ pts: [[870, 268], [870, 300]], dur: 0.5, r: 6, color: C.bad }); } }
+        else { cuenta[r[0]] = 0; if (activas[r[0]]) { activas[r[0]] = false; if (visual) registra(alog, "RESOLVED " + r[0], "ok"); } }
+      });
+      if (!Object.keys(activas).some(function (k) { return activas[k]; })) D.estado(am, null);
+      tgts.forEach(function (g, i) { D.estado(g, esc === "caida" && i === 1 ? "error" : null); });
+      if (visual) {
+        tgts.forEach(function (g, i) {
+          const y = 59 + i * 96, abajo = esc === "caida" && i === 1;
+          fl.add({ pts: [[388, 140 + (i - 1) * 22], [234, y]], dur: 0.5, r: 5, color: C.s1, onFin: function () {
+            if (abajo) fl.add({ pts: [[234, y], [250, y]], dur: 0.4, texto: "✕ up = 0", ancho: 76, color: C.bad });
+            else fl.add({ pts: [[234, y + 8], [388, 148 + (i - 1) * 22]], dur: 0.6, texto: "métricas", ancho: 70, color: C.s3 });
+          } });
+        });
+        D.estado(prom, "activo"); setTimeout(function () { D.estado(prom, null); }, 500);
+      }
+      dibuja();
+    }
+    for (let i = 0; i < 40; i++) scrape(false);
+    registra(alog, "Sin alertas activas. Cambia la situación para provocar una.", "t");
+    D.seg($("pm-esc"), Object.keys(ESC).map(function (k) { return [k, ESC[k]]; }), "normal", function (e) { esc = e; registra(alog, "Situación: " + ESC[e].toLowerCase(), "t"); }, "Situación");
+    bucle(function (dt) {
+      tS += dt;
+      if (tS > 1.5) { tS = 0; scrape(true); }
+      fl.paso(dt);
+    }, svg.parentNode);
+    dibuja();
+
+    // ---------- checklist
+    const ITEMS = [
+      ["¿Código versionado y dependencias congeladas?", "Git y requirements.txt con versiones exactas."],
+      ["¿Modelo empaquetado en Docker?", "Reproducible, sin sorpresas de entorno."],
+      ["¿Credenciales gestionadas por IAM, no escritas en el código?", "Roles, variables de entorno o un gestor de secretos."],
+      ["¿Datos sensibles cifrados en S3 y en la base de datos?", "Cifrado en reposo activado y TLS en todas las comunicaciones."],
+      ["¿Alertas de presupuesto configuradas?", "Desde el primer día."],
+      ["¿Estrategia de monitorización activa?", "Prometheus o equivalente: salud, latencia, errores y deriva."]
+    ];
+    const ul = $("ck-lista");
+    const cks = ITEMS.map(function (it, i) {
+      const li = RN.el("li", null, ul);
+      const cb = RN.el("input", { type: "checkbox", id: "ck-" + i, "aria-label": it[0] }, li);
+      const d = RN.el("div", null, li);
+      RN.el("strong", null, d, it[0]); RN.el("small", null, d, it[1]);
+      li.addEventListener("click", function (e) { if (e.target !== cb) cb.checked = !cb.checked; pintaCk(); });
+      cb.addEventListener("change", pintaCk);
+      return { li: li, cb: cb };
+    });
+    const sk = D.prepara($("ck-svg"), 300, 300, "Progreso de la checklist de despliegue");
+    RN.svg("circle", { cx: 150, cy: 140, r: 100, fill: "none", stroke: "#E4E7EB", "stroke-width": 22 }, sk);
+    const arco = RN.svg("circle", { cx: 150, cy: 140, r: 100, fill: "none", stroke: K.acento, "stroke-width": 22, "stroke-linecap": "round", transform: "rotate(-90 150 140)", "stroke-dasharray": "0 1000" }, sk);
+    const tN = D.texto(sk, 150, 132, "", { tam: 40, peso: 800 });
+    const tS2 = D.texto(sk, 150, 172, "", { tam: 13, peso: 700, color: C.ink2 });
+    const tFin = D.texto(sk, 150, 276, "", { tam: 15, peso: 800 });
+    function pintaCk() {
+      const k = cks.filter(function (c) { return c.cb.checked; }).length, L = 2 * Math.PI * 100;
+      cks.forEach(function (c) { c.li.classList.toggle("hecho", c.cb.checked); });
+      arco.setAttribute("stroke-dasharray", (L * k / 6).toFixed(1) + " " + L.toFixed(1));
+      arco.setAttribute("stroke", k === 6 ? C.ok : K.acento);
+      tN.textContent = k + " / 6";
+      tS2.textContent = k === 6 ? "todo en orden" : "faltan " + (6 - k);
+      tFin.textContent = k === 6 ? "✓ Listo para producción" : "Aún no está listo";
+      tFin.setAttribute("fill", k === 6 ? C.ok : C.ink2);
+    }
+    [0, 1, 2].forEach(function (i) { cks[i].cb.checked = true; });
+    pintaCk();
+  });
+
+})();
+</script>
+</body>
+</html>

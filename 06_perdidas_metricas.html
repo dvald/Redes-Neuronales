@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 6 · Pérdidas, salidas y métricas — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .fila2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.3rem; align-items: start; }
+  .fila2.ancha-izq { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+  .fila2.ancha-der { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  @media (max-width: 900px) { .fila2, .fila2.ancha-izq, .fila2.ancha-der { grid-template-columns: 1fr; } }
+  .pila > * + * { margin-top: .8rem; }
+  .ok-t { color: var(--ok); font-weight: 800; }
+  .bad-t { color: var(--bad); font-weight: 800; }
+  .kpi .t.nm, table.tabla th.nm { text-transform: none; }
+  .kpi .s { font-size: .8rem; color: var(--ink2); margin-top: .1rem; }
+  .kpis.compactos .kpi { min-width: 0; flex: 1 1 0; }
+  .titulo-graf { font-weight: 800; font-size: .95rem; color: var(--ink); margin: 0 0 .35rem; }
+  .casos { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: .5rem; margin: .4rem 0 1rem; }
+  .caso { font: inherit; text-align: left; background: #fff; border: 1px solid #CFD8DC; border-radius: 10px; padding: .55rem .7rem; cursor: pointer; color: var(--ink); }
+  .caso b { display: block; font-size: .92rem; }
+  .caso span { display: block; font-size: .78rem; color: var(--ink2); margin-top: .1rem; }
+  .caso[aria-pressed="true"] { border-color: var(--acento); box-shadow: inset 0 0 0 2px var(--acento); background: var(--acento-l); }
+  .caso:focus-visible { outline: 3px solid #90CAF9; outline-offset: 2px; }
+  table.decision td:first-child { font-weight: 700; color: var(--ink2); width: 38%; }
+  table.decision td code { font-size: .88em; }
+  table.cm { border-collapse: separate; border-spacing: 4px; width: 100%; font-size: .9rem; }
+  table.cm th { font-size: .78rem; color: var(--ink2); font-weight: 700; padding: .2rem .3rem; text-align: center; }
+  table.cm th.fila { text-align: right; }
+  table.cm td { text-align: center; border-radius: 8px; padding: .55rem .3rem; }
+  table.cm td .n { font-size: 1.6rem; font-weight: 800; line-height: 1.1; display: block; }
+  table.cm td .e { font-size: .76rem; font-weight: 700; display: block; }
+  table.cm td.bien { background: var(--ok-l); color: #1B5E20; }
+  table.cm td.mal { background: var(--bad-l); color: #8E1B1B; }
+  .lienzo.mosaico { touch-action: none; }
+  .conm { font: inherit; font-size: .86rem; font-weight: 700; color: var(--ink); background: #fff; border: 1px solid #CFD8DC; border-radius: 999px; padding: .32rem .8rem; cursor: pointer; }
+  .conm[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: #fff; }
+  .conm:focus-visible { outline: 3px solid #90CAF9; outline-offset: 2px; }
+  .pie.centro { text-align: center; }
+  .dif-arriba { color: var(--bad); font-weight: 700; }
+  #h-svg text, #s-svg text, #o-svg text, #c-svg text { pointer-events: none; }
+  pre.code.peq { font-size: .8rem; }
+  #f-kpis { display: grid; grid-template-columns: 1fr 1fr; }
+  #f-kpis .kpi .v { font-size: 1.4rem; }
+</style>
+</head>
+<body class="bloque-arq" data-pagina="06_perdidas_metricas.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 6</span>Pérdidas, salidas y métricas: evaluar una red</h1>
+  <p>Qué minimiza la red, cómo se codifican las etiquetas, qué capa de salida usar y cómo saber si funciona de verdad.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-pm" aria-controls="p-pm" aria-selected="true">1 · Pérdida y métrica</button>
+  <button class="tab" role="tab" id="t-ce" aria-controls="p-ce" aria-selected="false">2 · MSE o entropía</button>
+  <button class="tab" role="tab" id="t-oh" aria-controls="p-oh" aria-selected="false">3 · One-hot</button>
+  <button class="tab" role="tab" id="t-sal" aria-controls="p-sal" aria-selected="false">4 · Capa de salida</button>
+  <button class="tab" role="tab" id="t-par" aria-controls="p-par" aria-selected="false">5 · Paradoja</button>
+  <button class="tab" role="tab" id="t-cm" aria-controls="p-cm" aria-selected="false">6 · Confusión</button>
+  <button class="tab" role="tab" id="t-val" aria-controls="p-val" aria-selected="false">7 · Validación</button>
+  <button class="tab" role="tab" id="t-reg" aria-controls="p-reg" aria-selected="false">8 · Regresión</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 · PÉRDIDA Y MÉTRICA -->
+  <section id="p-pm" class="panel">
+    <div class="card">
+      <h2>Pérdida frente a métrica</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">La <strong>pérdida</strong> la minimiza el optimizador y tiene que ser diferenciable. La <strong>métrica</strong> la mira la persona y tiene que ser fácil de interpretar.</p>
+      <div class="controles">
+        <button class="btn" id="m-play">▶ Entrenar de nuevo</button>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Época</div><div class="v" id="m-ep">—</div></div>
+          <div class="kpi"><div class="t">Pérdida (validación)</div><div class="v" id="m-lv">—</div></div>
+          <div class="kpi"><div class="t">Exactitud (validación)</div><div class="v" id="m-av">—</div></div>
+        </div>
+      </div>
+      <div class="fila2">
+        <div><p class="titulo-graf">Pérdida: entropía cruzada binaria</p><canvas id="m-cl" class="lienzo" aria-label="Pérdida de entrenamiento y validación por época"></canvas></div>
+        <div><p class="titulo-graf">Métrica: exactitud (accuracy)</p><canvas id="m-ca" class="lienzo" aria-label="Exactitud de entrenamiento y validación por época"></canvas></div>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>entrenamiento</span><span><i style="background:var(--s2)"></i>validación</span></div>
+      <pre class="code peq">model.<span class="fn">compile</span>(optimizer=<span class="str">"adam"</span>, loss=<span class="str">"binary_crossentropy"</span>, metrics=[<span class="str">"accuracy"</span>])   <span class="com"># loss → optimizador · metrics → tú</span></pre>
+      <p class="pie">Red 2 → 10 (ReLU) → 1 (sigmoide) sobre 160 puntos de dos «lunas»; validación con otros 80. Fíjate en el final: la exactitud apenas se mueve, pero la pérdida sigue bajando porque la red gana seguridad.</p>
+    </div>
+    <div class="card">
+      <h2>¿Por qué no entrenar directamente con la exactitud?</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Una neurona p = σ(w·x − 2) clasifica 12 puntos. Al mover el peso w, la exactitud avanza a escalones; la entropía cruzada cambia de forma suave.</p>
+      <div class="controles">
+        <div class="ctl"><label for="m-w">Peso w</label><input id="m-w" type="range" min="0" max="4" step="0.01" value="0.9"><output id="m-wo">0,90</output></div>
+        <button class="btn gris" id="m-wplay">▶ Barrer w</button>
+      </div>
+      <div class="fila2 ancha-izq">
+        <div class="pila">
+          <canvas id="m-tira" class="lienzo" aria-label="Los 12 puntos sobre el eje x con el umbral de decisión de la neurona"></canvas>
+          <canvas id="m-gacc" class="lienzo" aria-label="Exactitud en función del peso w: una escalera"></canvas>
+          <canvas id="m-gbce" class="lienzo" aria-label="Entropía cruzada en función del peso w: una curva suave"></canvas>
+        </div>
+        <div class="pila">
+          <div class="kpis compactos">
+            <div class="kpi"><div class="t">Exactitud</div><div class="v" id="m-acc">—</div><div class="s" id="m-accp"></div></div>
+            <div class="kpi"><div class="t">Entropía cruzada</div><div class="v" id="m-bce">—</div><div class="s" id="m-bcep"></div></div>
+          </div>
+          <ul>
+            <li>El umbral de decisión está en x = 2/w. La exactitud solo cambia cuando un punto cruza el umbral: entre medias es <strong>plana</strong>.</li>
+            <li>Donde la función es plana, su derivada es 0: el descenso del gradiente no sabría hacia dónde mover w.</li>
+            <li>La entropía cruzada tiene pendiente en casi todas partes y su mínimo cae donde la exactitud es alta.</li>
+          </ul>
+          <div class="clave"><strong>Idea clave:</strong> se entrena con una pérdida diferenciable (entropía cruzada, MSE) y se informa con una métrica comprensible (exactitud, F1, MAE). En Keras: <code>loss=</code> frente a <code>metrics=</code>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 · MSE O ENTROPÍA -->
+  <section id="p-ce" class="panel">
+    <div class="card">
+      <h2>MSE frente a entropía cruzada en clasificación</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Un ejemplo de la clase 1 y una neurona sigmoide que le da probabilidad p. ¿Cuánto se castiga el error y con cuánta fuerza se corrige?</p>
+      <div class="controles">
+        <div class="ctl"><label for="c-p">Probabilidad p de la clase correcta</label><input id="c-p" type="range" min="0.01" max="0.99" step="0.01" value="0.05"><output id="c-po">0,05</output></div>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t nm">Logit z</div><div class="v" id="c-z">—</div></div>
+          <div class="kpi"><div class="t nm">MSE = (1 − p)²</div><div class="v" id="c-mse">—</div></div>
+          <div class="kpi"><div class="t nm">Entropía = −ln p</div><div class="v" id="c-bce">—</div></div>
+        </div>
+      </div>
+      <div class="fila2">
+        <div><p class="titulo-graf">Castigo: la pérdida</p><canvas id="c-cl" class="lienzo" aria-label="Pérdida MSE y entropía cruzada en función de p"></canvas></div>
+        <div><p class="titulo-graf">Corrección: |∂L/∂z|, lo que llega a los pesos</p><canvas id="c-cg" class="lienzo" aria-label="Magnitud del gradiente respecto al logit para MSE y entropía cruzada en función de p"></canvas></div>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>MSE</span><span><i style="background:var(--s2)"></i>entropía cruzada binaria</span></div>
+      <div class="fila2 ancha-der" style="margin-top:.6rem">
+        <div class="pila">
+          <div class="formula" style="white-space:normal;font-size:1.08rem">Entropía cruzada: ∂L/∂z = p − 1<span class="com">grande si p ≈ 0</span><br>MSE: ∂L/∂z = −2·p·(1 − p)²<span class="com">≈ 0 si p ≈ 0</span></div>
+          <p id="c-txt"></p>
+          <div class="controles" style="margin-top:0"><button class="btn" id="c-play">▶ Corregir un error seguro</button><button class="btn gris" id="c-reset">Reiniciar</button></div>
+        </div>
+        <div><p class="titulo-graf">Descenso del gradiente desde p ≈ 0,007 (η = 1)</p><canvas id="c-cr" class="lienzo" aria-label="Probabilidad de la clase correcta paso a paso con MSE y con entropía cruzada"></canvas></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> en clasificación con sigmoide o softmax, usa entropía cruzada. Castiga muy fuerte estar seguro y equivocado, y mantiene un gradiente grande justo cuando más falta hace. El MSE queda para la regresión.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 · ONE-HOT -->
+  <section id="p-oh" class="panel">
+    <div class="card">
+      <h2>Codificar etiquetas: one-hot</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Para 10 dígitos, la etiqueta «5» se convierte en un vector de 10 posiciones con un 1 en la posición 5 (se cuenta desde 0) y 0 en el resto. La red responde con 10 probabilidades softmax.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Dígito</span><div class="seg" id="o-dig"></div></div>
+        <div class="ctl"><span class="etq">Respuesta de la red (ejemplo)</span><div class="seg" id="o-esc"><button type="button" data-v="ok" aria-pressed="true">Segura y acierta</button><button type="button" data-v="duda" aria-pressed="false">Duda</button><button type="button" data-v="mal" aria-pressed="false">Segura y falla</button></div></div>
+        <button class="btn" id="o-play">▶ Recorrer dígitos</button>
+      </div>
+      <div class="escena"><svg id="o-svg" aria-label="Imagen de 28 por 28 píxeles del dígito, su vector one-hot, la salida softmax de la red y la entropía cruzada"></svg></div>
+      <div class="fila2" style="margin-top:1rem">
+        <pre class="code peq" id="o-code1"></pre>
+        <pre class="code peq" id="o-code2"></pre>
+      </div>
+      <ul>
+        <li>One-hot evita inventar un orden falso: el «9» no está «más lejos» del «0» que el «1».</li>
+        <li>Como el objetivo vale 0 en todas las clases menos una, la entropía cruzada categórica se queda en <strong>−ln p(clase correcta)</strong>.</li>
+        <li>Mismo cálculo con etiquetas enteras: <code>sparse_categorical_crossentropy</code> recibe el 5 directamente.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> 10 clases excluyentes → 10 neuronas softmax + entropía cruzada categórica, con etiquetas one-hot (<code>to_categorical</code>) o enteras (<em>sparse</em>).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 · CAPA DE SALIDA -->
+  <section id="p-sal" class="panel">
+    <div class="card">
+      <h2>Salida y pérdida según el problema</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Elige un caso: el tipo de problema decide las neuronas de salida, su activación, la pérdida y la métrica.</p>
+      <div class="casos" id="s-casos"></div>
+      <div class="fila2">
+        <div class="pila">
+          <div class="escena"><svg id="s-svg" aria-label="Dibujo de la red del caso elegido y ejemplo de su salida"></svg></div>
+          <p class="pie" id="s-param"></p>
+        </div>
+        <div class="pila">
+          <table class="tabla decision" id="s-tabla"></table>
+          <pre class="code peq" id="s-code"></pre>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> binaria → 1 neurona sigmoide + entropía cruzada binaria; multiclase → K neuronas softmax + entropía cruzada categórica; multietiqueta → K sigmoides independientes + entropía cruzada binaria; regresión → salida lineal + MSE (y MAE como métrica).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 · PARADOJA DE LA EXACTITUD -->
+  <section id="p-par" class="panel">
+    <div class="card">
+      <h2>La paradoja de la exactitud: fraude al 2 %</h2>
+      <div class="meta"><span class="tag illus">Datos simulados</span><span class="tag real">Entrenamiento y métricas reales en el navegador</span></div>
+      <p class="lead">1.000 transacciones, 20 fraudulentas. Un modelo que dice siempre «no fraude» acierta el 98 %… y no detecta ni un solo fraude.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Modelo</span><div class="seg" id="f-mod"><button type="button" data-v="nunca" aria-pressed="false">Siempre «no fraude»</button><button type="button" data-v="red" aria-pressed="true">Neurona sigmoide</button><button type="button" data-v="pesos" aria-pressed="false">… con pesos de clase</button></div></div>
+        <div class="ctl"><label for="f-u">Umbral de decisión</label><input id="f-u" type="range" min="0.02" max="0.98" step="0.01" value="0.5"><output id="f-uo">0,50</output></div>
+        <button class="conm" id="f-orden" aria-pressed="false">Ordenar por puntuación</button>
+      </div>
+      <div class="fila2 ancha-izq">
+        <div>
+          <canvas id="f-mos" class="lienzo mosaico" aria-label="Mosaico de 1.000 transacciones coloreadas por su clase real y rodeadas si el modelo las marca como fraude"></canvas>
+          <div class="leyenda">
+            <span><i class="punto" style="background:var(--s1)"></i>fraude real</span>
+            <span><i class="punto" style="background:#F7C9B5"></i>legítima</span>
+            <span><i class="punto" style="background:#fff;box-shadow:inset 0 0 0 2.5px #1F2933"></i>aro = el modelo la marca como fraude</span>
+          </div>
+        </div>
+        <div class="pila">
+          <table class="cm" id="f-cm"></table>
+          <div class="kpis compactos" id="f-kpis"></div>
+        </div>
+      </div>
+      <div class="fila2" style="margin-top:.8rem">
+        <div><p class="titulo-graf">Curva precisión-recall de la clase fraude</p><canvas id="f-pr" class="lienzo" aria-label="Curva precisión-recall con el punto del umbral actual"></canvas></div>
+        <div class="pila">
+          <ul>
+            <li><strong>Precisión</strong>: de lo que marco como fraude, ¿cuánto lo es? <strong>Recall</strong>: de los fraudes reales, ¿cuántos detecto? <strong>F1</strong> combina ambas.</li>
+            <li>Bajar el umbral detecta más fraudes (sube el recall) a costa de más falsas alarmas (baja la precisión). La curva recorre ese compromiso.</li>
+            <li><strong>Pesos de clase</strong> (<code>class_weight={0: 1, 1: 49}</code>, porque 980/20 = 49): cada fraude pesa en la pérdida como 49 legítimas. La red deja de ignorarlos y, con umbral 0,5, marca muchos más.</li>
+          </ul>
+          <p class="pie">Cada transacción tiene 2 rasgos simulados. La neurona (regresión logística) se entrena de verdad al cargar la página, con y sin pesos de clase, con entropía cruzada binaria.</p>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> con clases desbalanceadas, la exactitud engaña. Usa entropía cruzada binaria (con pesos de clase si hace falta) para entrenar y mide con precisión, recall, F1 o la curva PR de la clase minoritaria.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 · MATRIZ DE CONFUSIÓN -->
+  <section id="p-cm" class="panel">
+    <div class="card">
+      <h2>Matriz de confusión multiclase</h2>
+      <div class="meta" id="h-meta"><span class="tag illus">Recuentos ilustrativos</span><span class="tag real">Métricas calculadas en el navegador</span></div>
+      <p class="lead">Filas: clase real. Columnas: clase predicha. La diagonal son los aciertos; cada celda fuera de ella es un tipo concreto de error.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Ejemplo</span><div class="seg" id="h-ej"><button type="button" data-v="resenas" aria-pressed="true">Reseñas: 3 opiniones</button><button type="button" data-v="animales" aria-pressed="false">Imágenes: gato, perro, pájaro</button></div></div>
+        <div class="ctl"><span class="etq">Mostrar</span><div class="seg" id="h-modo"><button type="button" data-v="n" aria-pressed="true">Recuentos</button><button type="button" data-v="pct" aria-pressed="false">% de cada fila</button></div></div>
+      </div>
+      <div class="fila2 ancha-izq">
+        <div class="escena"><svg id="h-svg" aria-label="Mapa de calor de la matriz de confusión con precisión y recall por clase"></svg></div>
+        <div class="pila">
+          <div class="formula" id="h-sel" style="white-space:normal;font-family:inherit;font-size:1rem"></div>
+          <table class="tabla" id="h-tabla"></table>
+          <div class="kpis compactos" id="h-kpis"></div>
+        </div>
+      </div>
+      <p class="pie" id="h-nota"></p>
+      <ul>
+        <li><strong>Recall</strong> de una clase: lee su <em>fila</em> (de las que eran de esa clase, ¿cuántas acerté?).</li>
+        <li><strong>Precisión</strong> de una clase: lee su <em>columna</em> (de las que predije de esa clase, ¿cuántas lo eran?).</li>
+        <li>Pulsa una celda para leer el error en palabras.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> la exactitud resume todo en un número; la matriz de confusión dice <em>qué</em> se confunde con <em>qué</em>. Es lo que hay que mirar para decidir cómo mejorar la red.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 · VALIDACIÓN Y PARADA TEMPRANA -->
+  <section id="p-val" class="panel">
+    <div class="card">
+      <h2>Entrenamiento, validación y prueba</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Los datos (aquí, unos 54.000 diamantes) se barajan y se reparten 70 / 20 / 10. Cada conjunto tiene un papel distinto y no se mezclan.</p>
+      <div class="controles"><button class="btn" id="v-split">▶ Barajar y repartir</button></div>
+      <div class="escena"><svg id="v-svg" aria-label="Cien puntos que representan los datos se barajan y se reparten en entrenamiento, validación y prueba"></svg></div>
+    </div>
+    <div class="card">
+      <h2>Curvas de aprendizaje y parada temprana</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Una red grande (1 → 48 → 48 → 1) con solo 14 puntos ruidosos: el error de entrenamiento no deja de bajar, pero el de validación toca fondo y vuelve a subir.</p>
+      <div class="controles">
+        <div class="ctl"><label for="v-pac">Paciencia (épocas)</label><input id="v-pac" type="range" min="1" max="80" step="1" value="20"><output id="v-paco">20</output></div>
+        <label class="inline"><input type="checkbox" id="v-rest" checked> Restaurar los mejores pesos</label>
+        <button class="btn" id="v-play">▶ Entrenar con parada temprana</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Mejor época</div><div class="v" id="v-best">—</div></div>
+        <div class="kpi"><div class="t">Se para en la época</div><div class="v" id="v-stop">—</div></div>
+        <div class="kpi"><div class="t">MAE de validación de la red final</div><div class="v" id="v-mae">—</div></div>
+        <div class="kpi"><div class="t">Sin parada (400 épocas)</div><div class="v" id="v-mae400">—</div></div>
+      </div>
+      <div class="fila2">
+        <div><p class="titulo-graf">Error absoluto medio (MAE) por época</p><canvas id="v-curvas" class="lienzo" aria-label="MAE de entrenamiento y validación por época con la mejor época y el punto de parada"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>entrenamiento</span><span><i style="background:var(--s2)"></i>validación</span><span><i style="background:#1F2933"></i>mejor época</span><span><i style="background:#C3C2B7"></i>épocas que se ahorra</span></div></div>
+        <div><p class="titulo-graf" id="v-tajuste">La red que te quedas</p><canvas id="v-ajuste" class="lienzo" aria-label="Datos de entrenamiento y validación con la curva aprendida por la red"></canvas>
+          <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>entrenamiento (14)</span><span><i class="punto" style="background:var(--s2)"></i>validación (60)</span><span><i style="background:var(--s3)"></i>red</span><span><i style="background:#9AA5B1"></i>función real</span></div></div>
+      </div>
+      <pre class="code peq">EarlyStopping(monitor=<span class="str">"val_mae"</span>, patience=<span class="num" id="v-codep">20</span>, restore_best_weights=<span class="kw" id="v-coder">True</span>)</pre>
+      <div class="clave"><strong>Idea clave:</strong> la validación vigila el sobreajuste mientras se entrena. La parada temprana corta cuando la validación lleva «paciencia» épocas sin mejorar y, con <code>restore_best_weights=True</code>, se queda con los pesos de la mejor época.</div>
+    </div>
+    <div class="card">
+      <h2>Ejemplo: precio de vivienda</h2>
+      <div class="meta"><span class="tag illus">Curvas orientativas</span></div>
+      <p class="lead">Dense(32) → Dense(16) → Dense(1) con 40 épocas: mae_train ≈ 2,5 y mae_val ≈ 4,8 al final; la mejor mae_val (≈ 3,6) llega en la época 15.</p>
+      <canvas id="v-viv" class="lienzo" aria-label="Curvas orientativas de MAE de entrenamiento y validación con los tres valores de referencia marcados"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>mae_train</span><span><i style="background:var(--s2)"></i>mae_val</span><span><i class="punto" style="background:#1F2933"></i>valores de referencia</span></div>
+      <p class="pie">Los tres puntos marcados son los valores de referencia; la forma de las curvas es orientativa.</p>
+      <div class="clave"><strong>Idea clave:</strong> el entrenamiento mejora y la validación empeora desde la época 15 → sobreajuste. Con parada temprana y paciencia pequeña (2-3 épocas) se pararía hacia la 17-18 y se recuperarían los pesos de la 15.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 · MÉTRICAS DE REGRESIÓN -->
+  <section id="p-reg" class="panel">
+    <div class="card">
+      <h2>Métricas de regresión: MAE, MSE, RMSE y R²</h2>
+      <div class="meta"><span class="tag illus">Datos simulados</span><span class="tag real">Métricas calculadas en el navegador</span></div>
+      <p class="lead">40 viviendas: precio real frente a precio predicho. Arrastra la vivienda marcada para convertirla en un error atípico y mira cómo reacciona cada métrica.</p>
+      <div class="controles">
+        <div class="ctl"><label for="g-ruido">Error típico del modelo (miles de €)</label><input id="g-ruido" type="range" min="5" max="80" step="1" value="25"><output id="g-ruidoo">25</output></div>
+        <button class="btn gris" id="g-quita">Quitar el atípico</button>
+        <button class="btn gris" id="g-pon">Atípico de +200</button>
+      </div>
+      <div class="kpis compactos" id="g-kpis"></div>
+      <div class="fila2">
+        <div><p class="titulo-graf">Predicho frente a real (miles de €)</p><canvas id="g-disp" class="lienzo mosaico" aria-label="Dispersión de precio predicho frente a real con la diagonal de predicción perfecta, los residuos y un punto arrastrable"></canvas>
+          <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>vivienda</span><span><i class="punto" style="background:#fff;box-shadow:inset 0 0 0 2.5px #1F2933"></i>atípico (arrastrable)</span><span><i style="background:#52606D"></i>predicción perfecta</span><span><i style="background:#9AA5B1"></i>residuo</span></div></div>
+        <div><p class="titulo-graf">Cuánto crece cada métrica por un solo atípico</p><canvas id="g-ind" class="lienzo" aria-label="Valor de MAE, RMSE y MSE relativo al caso sin atípico en función del error del punto atípico"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>MAE</span><span><i style="background:var(--s2)"></i>MSE</span><span><i style="background:var(--s3)"></i>RMSE</span></div></div>
+      </div>
+      <div class="formula" style="white-space:normal">MAE = media |y − ŷ| <span class="com">mismas unidades (miles de €)</span> · MSE = media (y − ŷ)² <span class="com">unidades al cuadrado</span> · RMSE = √MSE<br>R² = 1 − Σ(y − ŷ)² / Σ(y − ȳ)²<span class="com">fracción de la variación explicada</span></div>
+      <ul>
+        <li>El MSE eleva los errores al cuadrado: un error de 200 pesa como 64 errores de 25. Por eso un solo atípico lo dispara.</li>
+        <li>El <strong>R²</strong> compara con predecir siempre la media: 1 es perfecto, 0 no mejora a la media.</li>
+        <li>En el ejemplo de la vivienda: <code>loss="mse"</code> para entrenar y <code>metrics=["mae"]</code> para leer el error en miles de euros.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> MAE se lee directamente («me equivoco unos 20.000 € de media») y es robusto a atípicos; MSE/RMSE castigan mucho los errores grandes; R² dice qué parte de la variación explica el modelo.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/mlp.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, S = RN.svg;
+  const $ = (id) => document.getElementById(id);
+  const F = (x, d) => { if (d === undefined) d = 2; const r = Math.round(x * Math.pow(10, d)); return RN.fmt(r === 0 ? 0 : x, d); };
+  const pct = (x, d) => (Number.isFinite(x) ? F(x * 100, d === undefined ? 1 : d) + " %" : "—");
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  const fmtPct = (v) => RN.fmt(v * 100, 0) + " %";
+
+  function seg(cont, alElegir) {
+    const bs = Array.from(cont.querySelectorAll("button"));
+    bs.forEach((b) => b.addEventListener("click", () => {
+      bs.forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      alElegir(b.dataset.v, b);
+    }));
+    return {
+      valor: () => (bs.find((b) => b.getAttribute("aria-pressed") === "true") || bs[0]).dataset.v,
+      poner: (v) => bs.forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === v ? "true" : "false"))
+    };
+  }
+  function rango(id, dec, alCambiar) {
+    const r = $(id), o = $(id + "o");
+    const leer = () => { o.textContent = F(+r.value, dec); };
+    r.addEventListener("input", () => { leer(); alCambiar(+r.value); });
+    leer();
+    return { get v() { return +r.value; }, poner(v) { r.value = v; leer(); } };
+  }
+  function punto(ctx, x, y, r, color, aro) {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.fill();
+    ctx.lineWidth = aro || 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+  }
+  function rotulo(ctx, t, x, y, op) {
+    op = op || {};
+    ctx.font = (op.peso || "700") + " " + (op.tam || 12.5) + "px system-ui, sans-serif";
+    ctx.textAlign = op.al || "left"; ctx.textBaseline = op.base || "middle";
+    ctx.lineWidth = 4; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(252,252,251,.92)"; ctx.strokeText(t, x, y);
+    ctx.fillStyle = op.color || C.ink; ctx.fillText(t, x, y);
+  }
+  function vline(ctx, g, x, color, ancho, guion) {
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = ancho || 1.5; ctx.setLineDash(guion || []);
+    ctx.beginPath(); ctx.moveTo(g.sx(x), g.m.t); ctx.lineTo(g.sx(x), g.h - g.m.b); ctx.stroke(); ctx.restore();
+  }
+
+  // =================================================================== 1 · PÉRDIDA Y MÉTRICA
+  (function perdidaMetrica() {
+    const tr = RNmlp.datos.clasif("lunas", 160, 0.1, 4), va = RNmlp.datos.clasif("lunas", 80, 0.1, 54);
+    const EP = 100;
+    let m, H, ep;
+    function nuevo() { m = new RNmlp.MLP({ capas: [2, 10, 1], activacion: "relu", salida: "sigmoid", semilla: 4 }); H = { lt: [], lv: [], at: [], av: [] }; ep = 0; }
+    function epoca() {
+      m.entrenarEpoca(tr.X, tr.Y, { lote: 16, lr: 0.02, opt: "adam" });
+      ep++;
+      const a = m.evaluar(tr.X, tr.Y), b = m.evaluar(va.X, va.Y);
+      H.lt.push([ep, a.perdida]); H.lv.push([ep, b.perdida]); H.at.push([ep, a.precision]); H.av.push([ep, b.precision]);
+    }
+    const gL = RN.grafica($("m-cl"), { alto: 290, x: { min: 0, max: EP, titulo: "época" }, y: { min: 0, max: 0.6, titulo: "pérdida" } });
+    const gA = RN.grafica($("m-ca"), { alto: 290, x: { min: 0, max: EP, titulo: "época" }, y: { min: 0.6, max: 1, titulo: "exactitud", fmt: fmtPct, fmtTip: (v) => RN.fmt(v * 100, 1) + " %" } });
+    function pinta() {
+      gL.dibujar([{ nombre: "entrenamiento", color: C.s1, puntos: H.lt }, { nombre: "validación", color: C.s2, puntos: H.lv }]);
+      gA.dibujar([{ nombre: "entrenamiento", color: C.s1, puntos: H.at }, { nombre: "validación", color: C.s2, puntos: H.av }]);
+      $("m-ep").textContent = ep;
+      $("m-lv").textContent = H.lv.length ? F(H.lv[H.lv.length - 1][1], 3) : "—";
+      $("m-av").textContent = H.av.length ? pct(H.av[H.av.length - 1][1], 1) : "—";
+    }
+    nuevo(); for (let k = 0; k < EP; k++) epoca(); pinta();
+    let acc = 0;
+    const anim = RN.anima(function (dt) {
+      acc += dt; if (acc < 0.045) return; acc = 0;
+      epoca(); pinta();
+      if (ep >= EP) return false;
+    }, $("m-cl"));
+    RN.botonPlay($("m-play"), anim, ["▶ Entrenar de nuevo", "⏸ Pausa"]);
+    $("m-play").addEventListener("click", () => {
+      if (anim.activo && ep >= EP) { nuevo(); pinta(); }
+      if (anim.activo && RN.reducirMovimiento) { anim.parar(); while (ep < EP) epoca(); pinta(); }
+    });
+
+    // ---- escalera frente a curva suave
+    const XS = [0.3, 0.5, 0.7, 1.0, 1.4, 2.1, 1.2, 1.8, 2.3, 2.6, 2.9, 3.4], YS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], B = -2;
+    const exac = (w) => XS.reduce((s, x, k) => s + ((sig(w * x + B) >= 0.5 ? 1 : 0) === YS[k] ? 1 : 0), 0) / XS.length;
+    const bce = (w) => XS.reduce((s, x, k) => { const p = sig(w * x + B); return s - (YS[k] ? Math.log(p) : Math.log(1 - p)); }, 0) / XS.length;
+    let w = 0.9;
+    const curvaA = [], curvaB = [];
+    for (let k = 0; k <= 800; k++) { const v = k / 200; curvaA.push([v, exac(v)]); curvaB.push([v, bce(v)]); }
+    const tira = $("m-tira");
+    function pintaTira() {
+      const L = RN.lienzo(tira, 104), c = L.ctx, x0 = 56, x1 = L.w - 18, X = (v) => x0 + v / 3.8 * (x1 - x0), yb = 58;
+      c.fillStyle = C.surface; c.fillRect(0, 0, L.w, L.h);
+      const u = w > 0 ? -B / w : Infinity;
+      const uX = Math.min(x1, X(Math.min(u, 3.8)));
+      c.fillStyle = RN.mezcla("#ffffff", C.clase0, 0.18); c.fillRect(x0, 22, uX - x0, 64);
+      if (uX < x1) { c.fillStyle = RN.mezcla("#ffffff", C.clase1, 0.18); c.fillRect(uX, 22, x1 - uX, 64); }
+      c.strokeStyle = C.axis; c.lineWidth = 1; c.beginPath(); c.moveTo(x0, yb); c.lineTo(x1, yb); c.stroke();
+      c.font = "12px system-ui, sans-serif"; c.fillStyle = C.muted; c.textAlign = "center"; c.textBaseline = "top";
+      for (let v = 0; v <= 3.5; v += 0.5) c.fillText(F(v, 1), X(v), 90);
+      c.textAlign = "left"; c.fillStyle = C.ink2; c.font = "700 12.5px system-ui, sans-serif"; c.fillText("x", 18, 50);
+      XS.forEach((x, k) => {
+        const pred = sig(w * x + B) >= 0.5 ? 1 : 0, ok = pred === YS[k];
+        const y = yb + (YS[k] ? -12 : 12);
+        punto(c, X(x), y, 6.5, YS[k] ? C.clase1 : C.clase0, 2);
+        if (!ok) { c.fillStyle = C.bad; c.font = "800 13px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("✗", X(x), YS[k] ? y - 15 : y + 15); }
+      });
+      if (uX < x1) {
+        c.strokeStyle = C.ink; c.lineWidth = 2.5; c.beginPath(); c.moveTo(uX, 16); c.lineTo(uX, 90); c.stroke();
+        rotulo(c, "umbral x = 2/w = " + F(u, 2), uX + 6, 12, { tam: 12.5, al: uX > x1 - 190 ? "right" : "left" });
+      } else rotulo(c, "umbral fuera del gráfico: todo se predice 0", x0 + 4, 12, { tam: 12.5 });
+      if (uX > x0 + 70) rotulo(c, "predice 0", x0 + 4, 31, { tam: 12, color: C.ink2, peso: "600" });
+      if (uX < x1 - 70) rotulo(c, "predice 1", x1 - 4, 31, { tam: 12, color: C.ink2, peso: "600", al: "right" });
+    }
+    function tangente(ctx, g, f, v, color) {
+      const h = 0.01, d = (f(Math.min(4, v + h)) - f(Math.max(0, v - h))) / (Math.min(4, v + h) - Math.max(0, v - h));
+      const y0 = f(v), a = Math.max(0, v - 0.45), b = Math.min(4, v + 0.45);
+      ctx.save(); ctx.beginPath(); ctx.rect(g.m.l, g.m.t, g.w - g.m.l - g.m.r, g.h - g.m.t - g.m.b); ctx.clip();
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(g.sx(a), g.sy(y0 + d * (a - v))); ctx.lineTo(g.sx(b), g.sy(y0 + d * (b - v))); ctx.stroke(); ctx.restore();
+      punto(ctx, g.sx(v), g.sy(y0), 6.5, C.ink, 2.5);
+      return d;
+    }
+    let pendA = 0, pendB = 0;
+    const gAcc = RN.grafica($("m-gacc"), { alto: 185, margen: { l: 56, r: 18, t: 12, b: 34 }, x: { min: 0, max: 4, titulo: "" }, y: { min: 0.4, max: 1, titulo: "exactitud", fmt: fmtPct, fmtTip: fmtPct },
+      extras: (ctx, g) => { pendA = tangente(ctx, g, exac, w, C.ink2); } });
+    const gBce = RN.grafica($("m-gbce"), { alto: 205, margen: { l: 56, r: 18, t: 12, b: 44 }, x: { min: 0, max: 4, titulo: "peso w" }, y: { min: 0, max: 1.3, titulo: "entropía" },
+      extras: (ctx, g) => { pendB = tangente(ctx, g, bce, w, C.ink2); } });
+    function pintaW() {
+      pintaTira();
+      gAcc.dibujar([{ nombre: "exactitud", color: C.s4, puntos: curvaA }]);
+      gBce.dibujar([{ nombre: "entropía cruzada", color: C.s7, puntos: curvaB }]);
+      $("m-acc").textContent = pct(exac(w), 0);
+      $("m-accp").innerHTML = "pendiente: <b>" + F(Math.abs(pendA) < 1e-9 ? 0 : pendA, 2) + "</b>" + (Math.abs(pendA) < 1e-9 ? " (plana)" : " (salto)");
+      $("m-bce").textContent = F(bce(w), 3);
+      $("m-bcep").innerHTML = "pendiente: <b>" + F(pendB, 2) + "</b>";
+    }
+    const cw = rango("m-w", 2, (v) => { w = v; animW.parar(); pintaW(); });
+    let dir = 1;
+    const animW = RN.anima(function (dt) {
+      w += dir * dt * 0.6; if (w > 4) { w = 4; dir = -1; } if (w < 0) { w = 0; dir = 1; }
+      cw.poner(w); pintaW();
+    }, tira);
+    RN.botonPlay($("m-wplay"), animW, ["▶ Barrer w", "⏸ Pausa"]);
+    RN.alCambiarTam(tira, pintaW);
+  })();
+
+  // =================================================================== 2 · MSE O ENTROPÍA
+  (function mseEntropia() {
+    let p = 0.05;
+    const malla = []; for (let k = 1; k <= 499; k++) malla.push(k / 500);
+    const L_mse = (q) => (1 - q) * (1 - q), L_ce = (q) => -Math.log(q);
+    const G_mse = (q) => 2 * q * (1 - q) * (1 - q), G_ce = (q) => 1 - q;
+    function marcadores(f1, f2) {
+      return function (ctx, g) {
+        vline(ctx, g, p, "rgba(31,41,51,.35)", 1);
+        [[f1, C.s1], [f2, C.s2]].forEach((q) => { const v = q[0](p); if (v <= g.op.y.max) punto(ctx, g.sx(p), g.sy(v), 6.5, q[1], 2.5); });
+      };
+    }
+    const op1 = { alto: 290, x: { min: 0, max: 1, titulo: "p (probabilidad de la clase correcta)" }, y: { min: 0, max: 4.5, titulo: "pérdida" }, extras: marcadores(L_mse, L_ce) };
+    const op2 = { alto: 290, x: { min: 0, max: 1, titulo: "p (probabilidad de la clase correcta)" }, y: { min: 0, max: 1.05, titulo: "|∂L/∂z|" }, extras: marcadores(G_mse, G_ce) };
+    const g1 = RN.grafica($("c-cl"), op1), g2 = RN.grafica($("c-cg"), op2);
+    function pinta() {
+      g1.dibujar([{ nombre: "MSE", color: C.s1, puntos: malla.map((q) => [q, L_mse(q)]) }, { nombre: "entropía cruzada", color: C.s2, puntos: malla.map((q) => [q, L_ce(q)]) }]);
+      g2.dibujar([{ nombre: "MSE", color: C.s1, puntos: malla.map((q) => [q, G_mse(q)]) }, { nombre: "entropía cruzada", color: C.s2, puntos: malla.map((q) => [q, G_ce(q)]) }]);
+      $("c-z").textContent = F(Math.log(p / (1 - p)), 2);
+      $("c-mse").textContent = F(L_mse(p), 3);
+      $("c-bce").textContent = F(L_ce(p), 3);
+      const r = G_ce(p) / G_mse(p);
+      $("c-txt").innerHTML = "Con p = " + F(p) + ", la entropía cruzada empuja con |∂L/∂z| = <b>" + F(G_ce(p), 3) + "</b> y el MSE con <b>" + F(G_mse(p), 3) + "</b>" +
+        (r > 1.5 ? ": la corrección con entropía es <b>" + (r >= 10 ? RN.fmtN(r) : F(r, 1)) + " veces</b> mayor." : ".") +
+        (p < 0.15 ? " La red está <b>segura y equivocada</b>: justo cuando más falta hace, el MSE apenas corrige." : "");
+    }
+    rango("c-p", 2, (v) => { p = v; pinta(); });
+    pinta();
+    // ---- carrera de descenso del gradiente
+    const Z0 = -5, ETA = 1, PASOS = 40;
+    const tray = { mse: [[0, sig(Z0)]], ce: [[0, sig(Z0)]] };
+    let zM = Z0, zC = Z0, paso = 0;
+    const opR = { alto: 260, x: { min: 0, max: PASOS, titulo: "paso del descenso del gradiente" }, y: { min: 0, max: 1, titulo: "p" },
+      extras: (ctx, g) => {
+        [[tray.mse, C.s1, "MSE"], [tray.ce, C.s2, "entropía"]].forEach((q) => { const u = q[0][q[0].length - 1]; punto(ctx, g.sx(u[0]), g.sy(u[1]), 6, q[1], 2); });
+        if (paso > 0) {
+          const u1 = tray.ce[tray.ce.length - 1], u2 = tray.mse[tray.mse.length - 1];
+          rotulo(ctx, "entropía: p = " + F(u1[1]), g.sx(u1[0]) - 8, g.sy(u1[1]) - 14, { al: "right", tam: 12.5 });
+          rotulo(ctx, "MSE: p = " + F(u2[1], 3), g.sx(u2[0]) - 8, g.sy(u2[1]) - 14, { al: "right", tam: 12.5 });
+        }
+      } };
+    const gR = RN.grafica($("c-cr"), opR);
+    function pintaR() { gR.dibujar([{ nombre: "MSE", color: C.s1, puntos: tray.mse }, { nombre: "entropía cruzada", color: C.s2, puntos: tray.ce }]); }
+    function avanza() {
+      paso++;
+      zM += ETA * G_mse(sig(zM)); zC += ETA * G_ce(sig(zC));
+      tray.mse.push([paso, sig(zM)]); tray.ce.push([paso, sig(zC)]);
+    }
+    function reinicia() { zM = Z0; zC = Z0; paso = 0; tray.mse = [[0, sig(Z0)]]; tray.ce = [[0, sig(Z0)]]; }
+    // estado inicial útil: la carrera completa
+    while (paso < PASOS) avanza();
+    pintaR();
+    let acc = 0;
+    const anim = RN.anima(function (dt) {
+      acc += dt; if (acc < 0.11) return; acc = 0;
+      avanza(); pintaR();
+      if (paso >= PASOS) return false;
+    }, $("c-cr"));
+    RN.botonPlay($("c-play"), anim, ["▶ Corregir un error seguro", "⏸ Pausa"]);
+    $("c-play").addEventListener("click", () => {
+      if (anim.activo && paso >= PASOS) { reinicia(); pintaR(); }
+      if (anim.activo && RN.reducirMovimiento) { anim.parar(); while (paso < PASOS) avanza(); pintaR(); }
+    });
+    $("c-reset").addEventListener("click", () => { anim.parar(); reinicia(); pintaR(); });
+  })();
+
+  // =================================================================== 3 · ONE-HOT
+  (function oneHot() {
+    const svg = $("o-svg");
+    svg.setAttribute("viewBox", "0 0 1100 446");
+    const CONF = [6, 7, 3, 8, 9, 3, 5, 1, 3, 4]; // clase con la que se confunde cada dígito
+    let dig = 5, esc = "ok";
+    // --- imagen 28×28 generada dibujando el dígito
+    const off = document.createElement("canvas"); off.width = 28; off.height = 28;
+    const oc = off.getContext("2d", { willReadFrequently: true });
+    function pixeles(d) {
+      oc.setTransform(1, 0, 0, 1, 0, 0);
+      oc.fillStyle = "#000"; oc.fillRect(0, 0, 28, 28);
+      oc.translate(14, 15); oc.rotate((d % 3 - 1) * 0.08); oc.translate(-14, -15);
+      oc.fillStyle = "#fff"; oc.font = "600 23px system-ui, -apple-system, sans-serif"; oc.textAlign = "center"; oc.textBaseline = "middle";
+      oc.filter = "blur(0.5px)";
+      oc.fillText(String(d), 14, 15.5);
+      oc.filter = "none";
+      const D = oc.getImageData(0, 0, 28, 28).data, out = [];
+      for (let k = 0; k < 784; k++) out.push(D[4 * k]);
+      return out;
+    }
+    const IMG = { x: 40, y: 78, c: 9 };
+    S("text", { x: IMG.x, y: 40, "font-size": 15, "font-weight": 800, fill: C.ink, text: "Imagen 28 × 28 (784 píxeles)" }, svg);
+    S("text", { x: IMG.x, y: 60, "font-size": 13, fill: C.ink2, text: "0 = negro · 255 = blanco" }, svg);
+    S("rect", { x: IMG.x - 2, y: IMG.y - 2, width: 28 * IMG.c + 4, height: 28 * IMG.c + 4, rx: 4, fill: "#000" }, svg);
+    const celdas = [];
+    for (let k = 0; k < 784; k++) celdas.push(S("rect", { x: IMG.x + (k % 28) * IMG.c, y: IMG.y + Math.floor(k / 28) * IMG.c, width: IMG.c + 0.4, height: IMG.c + 0.4, fill: "#000" }, svg));
+    const tEtq = S("text", { x: IMG.x + 14 * IMG.c, y: IMG.y + 28 * IMG.c + 34, "text-anchor": "middle", "font-size": 16, "font-weight": 800, fill: C.ink }, svg);
+    // --- columnas: clase · one-hot · softmax · −y·ln p
+    const FIL = { y0: 92, h: 30 }, COL = { cls: 362, oh: 418, bar0: 560, bar1: 860, ce: 960 };
+    const defs = S("defs", {}, svg);
+    const mk = S("marker", { id: "o-punta", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" }, defs);
+    S("path", { d: "M0,0 L10,5 L0,10 z", fill: C.ink2 }, mk);
+    S("line", { x1: IMG.x + 28 * IMG.c + 14, y1: IMG.y + 14 * IMG.c, x2: COL.cls - 26, y2: IMG.y + 14 * IMG.c, stroke: C.ink2, "stroke-width": 2, "marker-end": "url(#o-punta)" }, svg);
+    [["clase", COL.cls], ["one-hot", COL.oh + 20], ["salida softmax de la red", (COL.bar0 + COL.bar1) / 2], ["−y·ln p", COL.ce + 40]].forEach((q) =>
+      S("text", { x: q[1], y: 60, "text-anchor": "middle", "font-size": 13.5, "font-weight": 800, fill: C.ink2, text: q[0] }, svg));
+    const filas = [];
+    for (let k = 0; k < 10; k++) {
+      const y = FIL.y0 + k * FIL.h;
+      const fondo = S("rect", { x: COL.cls - 20, y: y - 13, width: 1080 - COL.cls, height: 26, rx: 6, fill: "transparent" }, svg);
+      S("text", { x: COL.cls, y: y + 1, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 15, "font-weight": 800, fill: C.ink, text: String(k) }, svg);
+      const caja = S("rect", { x: COL.oh, y: y - 12, width: 40, height: 24, rx: 5, fill: "#fff", stroke: C.axis }, svg);
+      const val = S("text", { x: COL.oh + 20, y: y + 1, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 15, "font-weight": 800, fill: C.muted, text: "0" }, svg);
+      S("rect", { x: COL.bar0, y: y - 9, width: COL.bar1 - COL.bar0, height: 18, rx: 4, fill: "#EEF1F4" }, svg);
+      const bar = S("rect", { x: COL.bar0, y: y - 9, width: 0, height: 18, rx: 4, fill: C.s1 }, svg);
+      const pv = S("text", { x: COL.bar0 - 8, y: y + 1, "text-anchor": "end", "dominant-baseline": "middle", "font-size": 13, "font-weight": 700, fill: C.ink }, svg);
+      const ce = S("text", { x: COL.ce + 40, y: y + 1, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 13.5, "font-weight": 700, fill: C.muted }, svg);
+      filas.push({ y: y, fondo: fondo, caja: caja, val: val, bar: bar, pv: pv, ce: ce });
+    }
+    const tTotal = S("text", { x: (COL.bar0 + 1080) / 2, y: FIL.y0 + 10 * FIL.h + 16, "text-anchor": "middle", "font-size": 17, "font-weight": 800, fill: C.ink }, svg);
+    const tSuma = S("text", { x: (COL.bar0 + COL.bar1) / 2, y: FIL.y0 + 10 * FIL.h + 40, "text-anchor": "middle", "font-size": 13, fill: C.ink2, text: "las 10 probabilidades suman 1" }, svg);
+    void tSuma;
+    const marcaOH = S("rect", { x: COL.oh, width: 40, height: 24, rx: 5, fill: C.s1 }, svg);
+    const marcaTx = S("text", { x: COL.oh + 20, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 15, "font-weight": 800, fill: "#fff", text: "1" }, svg);
+    function logits(d, e) {
+      const r = RN.rng(100 + d), z = [];
+      for (let k = 0; k < 10; k++) z.push(RN.normal(r) * 0.5);
+      const c = CONF[d];
+      if (e === "ok") { z[d] = 5; z[c] = 2.2; }
+      else if (e === "duda") { z[d] = 1.9; z[c] = 1.7; z.forEach((v, k) => { if (k !== d && k !== c) z[k] = v * 0.5 + 0.5; }); }
+      else { z[d] = 0.4; z[c] = 5; }
+      return z;
+    }
+    let probs = RNmlp.softmax(logits(dig, esc)), yOH = FIL.y0 + dig * FIL.h;
+    function pinta(pr, yMarca) {
+      const pimg = pixeles(dig);
+      celdas.forEach((c, k) => { const v = pimg[k]; c.setAttribute("fill", "rgb(" + v + "," + v + "," + v + ")"); });
+      tEtq.textContent = "etiqueta: " + dig;
+      marcaOH.setAttribute("y", yMarca - 12); marcaTx.setAttribute("y", yMarca + 1);
+      filas.forEach((f, k) => {
+        const esta = k === dig;
+        f.fondo.setAttribute("fill", esta ? RN.rgba(RN.acento(), 0.09) : "transparent");
+        f.val.textContent = esta ? "" : "0";
+        f.bar.setAttribute("width", Math.max(0, pr[k]) * (COL.bar1 - COL.bar0));
+        f.bar.setAttribute("fill", esta ? C.s1 : "#9AA5B1");
+        f.pv.textContent = F(pr[k], 2);
+        f.ce.textContent = esta ? F(-Math.log(pr[k]), 3) : "0";
+        f.ce.setAttribute("fill", esta ? C.ink : C.muted);
+      });
+      tTotal.textContent = "Entropía cruzada = −ln(" + F(pr[dig], 3) + ") = " + F(-Math.log(pr[dig]), 3);
+      const oh = Array.from({ length: 10 }, (_, k) => (k === dig ? 1 : 0)).join(", ");
+      $("o-code1").innerHTML = '<span class="com"># etiquetas one-hot (to_categorical)</span>\ny = [' + oh + ']\nmodel.<span class="fn">compile</span>(loss=<span class="str">"categorical_crossentropy"</span>, ...)\n<span class="com"># pérdida de este ejemplo: ' + F(-Math.log(pr[dig]), 3) + '</span>';
+      $("o-code2").innerHTML = '<span class="com"># etiquetas enteras (sparse)</span>\ny = <span class="num">' + dig + '</span>\nmodel.<span class="fn">compile</span>(loss=<span class="str">"sparse_categorical_crossentropy"</span>, ...)\n<span class="com"># pérdida de este ejemplo: ' + F(-Math.log(pr[dig]), 3) + ' (la misma)</span>';
+    }
+    let tok = 0;
+    async function cambia() {
+      const yo = ++tok;
+      const p0 = probs.slice(), y0 = yOH;
+      const p1 = RNmlp.softmax(logits(dig, esc)), y1 = FIL.y0 + dig * FIL.h;
+      probs = p1; yOH = y1;
+      await RN.tween(550, (t) => { if (yo !== tok) return; pinta(p0.map((v, k) => RN.lerp(v, p1[k], t)), RN.lerp(y0, y1, t)); });
+      if (yo === tok) pinta(p1, y1);
+    }
+    const sd = $("o-dig");
+    for (let k = 0; k < 10; k++) RN.el("button", { type: "button", "data-v": String(k), "aria-pressed": k === dig ? "true" : "false" }, sd, String(k));
+    const sDig = seg(sd, (v) => { anim.parar(); dig = +v; cambia(); });
+    seg($("o-esc"), (v) => { esc = v; cambia(); });
+    let acc = 0;
+    const anim = RN.anima(function (dt) {
+      acc += dt; if (acc < 1.3) return; acc = 0;
+      dig = (dig + 1) % 10; sDig.poner(String(dig)); cambia();
+    }, svg);
+    RN.botonPlay($("o-play"), anim, ["▶ Recorrer dígitos", "⏸ Pausa"]);
+    $("o-play").addEventListener("click", () => { acc = 1.3; });
+    pinta(probs, yOH);
+  })();
+
+  // =================================================================== 4 · CAPA DE SALIDA SEGÚN EL PROBLEMA
+  (function salida() {
+    const CASOS = [
+      { id: "fraude", t: "Fraude (2 %)", s: "binaria, desbalanceada", entrada: 30, entradaTxt: "30 rasgos (p. ej.)", ocultas: [32, 16], k: 1, act: "sigmoid", loss: "binary_crossentropy",
+        metr: "keras.metrics.Precision(), keras.metrics.Recall()", metrTxt: "precisión, recall y F1 de la clase fraude (no la exactitud)", etiq: "0 / 1", clases: ["fraude"], logits: [1.6], extra: "class_weight={0: 1, 1: 49}",
+        nota: "La exactitud sería ≈ 98 % prediciendo siempre «no fraude»." },
+      { id: "digitos", t: "Dígitos 28×28", s: "multiclase, 10 clases", entrada: 784, entradaTxt: "784 (Flatten de 28×28)", flatten: true, ocultas: [128], k: 10, act: "softmax", loss: "categorical_crossentropy",
+        metr: '"accuracy"', metrTxt: "exactitud y matriz de confusión 10×10", etiq: "one-hot de 10 posiciones (o enteras con sparse_categorical_crossentropy)", clases: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"], logits: [0.2, -0.5, 0.4, 3.1, -0.3, 0.9, -0.8, 0.1, 1.4, 0.3],
+        nota: "Como MNIST: dígitos manuscritos de 28×28 píxeles." },
+      { id: "opinion", t: "Opinión", s: "multiclase, 3 clases", entrada: 300, entradaTxt: "300 (embedding de la reseña)", ocultas: [128, 64], k: 3, act: "softmax", loss: "categorical_crossentropy",
+        metr: '"accuracy"', metrTxt: "exactitud + matriz de confusión 3×3 y F1 por clase", etiq: "one-hot de 3 posiciones", clases: ["negativa", "neutra", "positiva"], logits: [0.3, 0.9, 2.2],
+        nota: "Una arquitectura razonable: 300 → 128 → 64 → 3." },
+      { id: "vivienda", t: "Vivienda", s: "regresión del precio", entrada: 8, entradaTxt: "8 variables numéricas", ocultas: [32, 16], k: 1, act: "linear", loss: "mse",
+        metr: '"mae"', metrTxt: "MAE (error medio en miles de €)", etiq: "el precio, sin codificar", clases: ["precio"], logits: [312.4],
+        nota: "La primera capa tiene 8·32 + 32 = 288 parámetros." },
+      { id: "spam", t: "Spam", s: "binaria, 20 rasgos", entrada: 20, entradaTxt: "20 rasgos del correo", ocultas: [16, 8], k: 1, act: "sigmoid", loss: "binary_crossentropy",
+        metr: '"accuracy"', metrTxt: "exactitud + precisión de la clase spam (un falso positivo cuesta caro)", etiq: "0 / 1", clases: ["spam"], logits: [0.9],
+        nota: "Si marcar un correo legítimo como spam es grave, sube el umbral (p. ej. 0,8)." },
+      { id: "churn", t: "Churn", s: "binaria, 10 variables", entrada: 10, entradaTxt: "10 variables del cliente", ocultas: [16], k: 1, act: "sigmoid", loss: "binary_crossentropy",
+        metr: '"accuracy"', metrTxt: "exactitud (y F1 o AUC si hay desbalanceo)", etiq: "0 / 1", clases: ["se va"], logits: [-1.1],
+        nota: "La primera capa tiene 10·16 + 16 = 176 parámetros." },
+      { id: "multi", t: "Temas de un artículo", s: "multietiqueta", entrada: 300, entradaTxt: "300 (vector del texto, p. ej.)", ocultas: [64], k: 3, act: "sigmoid", loss: "binary_crossentropy",
+        metr: '"binary_accuracy"', metrTxt: "exactitud binaria o F1 por etiqueta", etiq: "vector 0/1 por etiqueta (varias a 1 a la vez)", clases: ["Tecnología", "Viajes", "Deportes"], logits: [1.386, -0.847, -2.197],
+        nota: "Tema 4: un artículo puede ser de Tecnología y de Viajes a la vez; softmax obligaría a elegir una." }
+    ];
+    const cont = $("s-casos");
+    CASOS.forEach((c, i) => {
+      const b = RN.el("button", { type: "button", class: "caso", "aria-pressed": i === 0 ? "true" : "false", "data-v": c.id }, cont);
+      RN.el("b", {}, b, c.t); RN.el("span", {}, b, c.s);
+    });
+    const svg = $("s-svg");
+    svg.setAttribute("viewBox", "0 0 600 400");
+    const NOMBRE_ACT = { sigmoid: "sigmoide", softmax: "softmax", linear: "lineal" };
+    function dibujaRed(c) {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      const capas = [c.entrada].concat(c.ocultas, [c.k]);
+      const n = capas.length, xs = capas.map((_, l) => 48 + l * (280 - 48) / (n - 1));
+      const gA = S("g", {}, svg), gN = S("g", {}, svg);
+      const cols = capas.map((cnt, l) => {
+        const vis = cnt <= 6 ? cnt : 5, alto = 250, y0 = 48, esp = Math.min(46, alto / Math.max(1, vis));
+        const ys = [];
+        const yc = y0 + alto / 2;
+        for (let j = 0; j < vis; j++) ys.push(yc + (j - (vis - 1) / 2) * esp);
+        return { cnt: cnt, vis: vis, ys: ys, x: xs[l], hueco: cnt > 6 };
+      });
+      for (let l = 0; l < n - 1; l++) cols[l].ys.forEach((ya, i) => { if (cols[l].hueco && i === 3) return; cols[l + 1].ys.forEach((yb, j) => { if (cols[l + 1].hueco && j === 3) return; S("line", { x1: cols[l].x, y1: ya, x2: cols[l + 1].x, y2: yb, stroke: "#CDD3D9", "stroke-width": 1 }, gA); }); });
+      cols.forEach((col, l) => {
+        const salida = l === n - 1;
+        col.ys.forEach((y, j) => {
+          if (col.hueco && j === 3) { S("text", { x: col.x, y: y + 2, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 20, "font-weight": 800, fill: C.ink2, text: "⋮" }, gN); return; }
+          S("circle", { cx: col.x, cy: y, r: 13, fill: salida ? RN.mezcla("#ffffff", RN.acento(), 0.25) : "#fff", stroke: salida ? RN.acento() : C.ink2, "stroke-width": salida ? 2.5 : 1.8 }, gN);
+        });
+        const etq = l === 0 ? String(col.cnt) : salida ? col.cnt + " · " + NOMBRE_ACT[c.act] : col.cnt + " · ReLU";
+        S("text", { x: col.x, y: 330, "text-anchor": "middle", "font-size": 13, "font-weight": 800, fill: C.ink, text: etq }, gN);
+        S("text", { x: col.x, y: 348, "text-anchor": "middle", "font-size": 12, fill: C.ink2, text: l === 0 ? "entrada" : salida ? "salida" : "oculta" }, gN);
+      });
+      S("text", { x: 20, y: 28, "font-size": 14, "font-weight": 800, fill: C.ink, text: "Red" }, svg);
+      S("text", { x: 20, y: 380, "font-size": 12.5, fill: C.ink2, text: "Entrada: " + c.entradaTxt }, svg);
+      // ---- ejemplo de salida (cálculo real con logits de ejemplo)
+      const X0 = 345, X1 = 585;
+      S("line", { x1: 334, y1: 40, x2: 334, y2: 360, stroke: C.grid }, svg);
+      S("text", { x: X0, y: 28, "font-size": 14, "font-weight": 800, fill: C.ink, text: "Salida de ejemplo" }, svg);
+      const ox = cols[n - 1];
+      if (c.act === "linear") {
+        S("text", { x: (X0 + X1) / 2, y: 150, "text-anchor": "middle", "font-size": 30, "font-weight": 800, fill: C.ink, text: "ŷ = " + F(c.logits[0], 1) }, svg);
+        S("text", { x: (X0 + X1) / 2, y: 178, "text-anchor": "middle", "font-size": 13, fill: C.ink2, text: "miles de € · sin límite de rango" }, svg);
+        S("text", { x: (X0 + X1) / 2, y: 236, "text-anchor": "middle", "font-size": 13, fill: C.ink, text: "Con sigmoide saldría σ(" + F(c.logits[0], 1) + ") ≈ 1:" }, svg);
+        S("text", { x: (X0 + X1) / 2, y: 256, "text-anchor": "middle", "font-size": 13, fill: C.ink, text: "nunca podría predecir 312.400 €." }, svg);
+        return capas;
+      }
+      const probs = c.act === "softmax" ? RNmlp.softmax(c.logits) : c.logits.map(sig);
+      const k = probs.length, mostrar = k <= 10 ? k : 10, h = Math.min(30, 250 / mostrar), y0 = 70;
+      const argmax = probs.indexOf(Math.max.apply(null, probs));
+      const labW = 74;
+      for (let j = 0; j < mostrar; j++) {
+        const y = y0 + j * h, bw = (X1 - X0 - labW - 46) * probs[j];
+        const elegido = c.act === "softmax" ? j === argmax : probs[j] >= 0.5;
+        S("text", { x: X0 + labW - 6, y: y + h / 2, "text-anchor": "end", "dominant-baseline": "middle", "font-size": 12.5, "font-weight": 700, fill: C.ink, text: c.clases[j] }, svg);
+        S("rect", { x: X0 + labW, y: y + 3, width: X1 - X0 - labW - 46, height: h - 6, rx: 3, fill: "#EEF1F4" }, svg);
+        S("rect", { x: X0 + labW, y: y + 3, width: Math.max(1, bw), height: h - 6, rx: 3, fill: elegido ? C.s1 : "#9AA5B1" }, svg);
+        S("text", { x: X1, y: y + h / 2, "text-anchor": "end", "dominant-baseline": "middle", "font-size": 12.5, "font-weight": 700, fill: C.ink, text: F(probs[j], 2) }, svg);
+      }
+      if (c.act === "sigmoid") {
+        const xu = X0 + labW + (X1 - X0 - labW - 46) * 0.5;
+        S("line", { x1: xu, y1: y0 - 6, x2: xu, y2: y0 + mostrar * h + 4, stroke: C.ink, "stroke-width": 1.5, "stroke-dasharray": "4 3" }, svg);
+        S("text", { x: xu, y: y0 + mostrar * h + 20, "text-anchor": "middle", "font-size": 12, fill: C.ink2, text: "umbral 0,5" }, svg);
+      }
+      const suma = probs.reduce((a, b) => a + b, 0);
+      const ytxt = y0 + mostrar * h + 48;
+      const lineas = c.act === "softmax" ? ["Suman " + F(suma, 2) + ": se elige", "la mayor («" + c.clases[argmax] + "»)."]
+        : k > 1 ? ["Suman " + F(suma, 2) + ": cada etiqueta", "se decide por separado."]
+        : ["p = " + F(probs[0], 2) + " → " + (probs[0] >= 0.5 ? "clase 1" : "clase 0"), "con umbral 0,5"];
+      lineas.forEach((t, q) => S("text", { x: (X0 + X1) / 2, y: ytxt + q * 18, "text-anchor": "middle", "font-size": 13, fill: C.ink, text: t }, svg));
+      void ox;
+      return capas;
+    }
+    function codigo(c) {
+      const L = [];
+      L.push('model = <span class="fn">Sequential</span>([');
+      if (c.flatten) {
+        L.push('    <span class="fn">Flatten</span>(input_shape=(<span class="num">28</span>, <span class="num">28</span>)),');
+        c.ocultas.forEach((h) => L.push('    <span class="fn">Dense</span>(<span class="num">' + h + '</span>, activation=<span class="str">"relu"</span>),'));
+      } else {
+        c.ocultas.forEach((h, i) => L.push('    <span class="fn">Dense</span>(<span class="num">' + h + '</span>, activation=<span class="str">"relu"</span>' + (i === 0 ? ', input_shape=(<span class="num">' + c.entrada + '</span>,)' : '') + '),'));
+      }
+      L.push('<span class="hl">    <span class="fn">Dense</span>(<span class="num">' + c.k + '</span>, activation=<span class="str">"' + c.act + '"</span>)</span>');
+      L.push('])');
+      L.push('model.<span class="fn">compile</span>(optimizer=<span class="str">"adam"</span>,');
+      L.push('<span class="hl">              loss=<span class="str">"' + c.loss + '"</span>,</span>');
+      L.push('              metrics=[' + c.metr.replace(/"([^"]+)"/g, '<span class="str">"$1"</span>').replace(/, keras/g, ',\n                       keras') + '])');
+      if (c.extra) L.push('model.<span class="fn">fit</span>(X, y, ..., ' + c.extra.replace(/(\d+)/g, '<span class="num">$1</span>') + ')');
+      return L.join("\n");
+    }
+    function elige(id) {
+      const c = CASOS.find((q) => q.id === id);
+      const capas = dibujaRed(c);
+      let tot = 0; const des = [];
+      for (let l = 0; l < capas.length - 1; l++) { const p = capas[l] * capas[l + 1] + capas[l + 1]; tot += p; des.push(RN.fmtN(capas[l]) + "·" + RN.fmtN(capas[l + 1]) + " + " + RN.fmtN(capas[l + 1]) + " = " + RN.fmtN(p)); }
+      $("s-param").innerHTML = "<b>Parámetros entrenables: " + RN.fmtN(tot) + "</b> (" + des.join(" · ") + "). " + c.nota;
+      $("s-tabla").innerHTML = "<tbody>" +
+        "<tr><td>Tipo de problema</td><td>" + c.s.charAt(0).toUpperCase() + c.s.slice(1) + "</td></tr>" +
+        "<tr><td>Neuronas de salida</td><td><b>" + c.k + "</b>" + (c.k > 1 ? " (una por " + (c.act === "softmax" ? "clase" : "etiqueta") + ")" : "") + "</td></tr>" +
+        "<tr><td>Activación de salida</td><td><b>" + NOMBRE_ACT[c.act] + "</b></td></tr>" +
+        "<tr><td>Función de pérdida</td><td><code>" + c.loss + "</code></td></tr>" +
+        "<tr><td>Métrica</td><td>" + c.metrTxt + "</td></tr>" +
+        "<tr><td>Etiquetas</td><td>" + c.etiq + "</td></tr></tbody>";
+      $("s-code").innerHTML = codigo(c);
+    }
+    seg(cont, (v) => elige(v));
+    elige("fraude");
+  })();
+
+  // =================================================================== 5 · PARADOJA DE LA EXACTITUD
+  (function paradoja() {
+    const N = 1000, NF = 20;
+    // datos simulados: legítimas ~ N(0, I); fraudes ~ N((2,2; 1,8), 0,8² I)
+    const r = RN.rng(3), X = [], y = [];
+    for (let k = 0; k < N; k++) { const f = k < NF ? 1 : 0; const a = RN.normal(r), b = RN.normal(r); X.push(f ? [2.2 + 0.8 * a, 1.8 + 0.8 * b] : [a, b]); y.push(f); }
+    function entrena(wpos) {
+      let w = [0, 0], b = 0;
+      for (let e = 0; e < 3000; e++) {
+        let g0 = 0, g1 = 0, gb = 0, Sw = 0;
+        for (let k = 0; k < N; k++) { const p = sig(w[0] * X[k][0] + w[1] * X[k][1] + b), c = y[k] ? wpos : 1, g = c * (p - y[k]); g0 += g * X[k][0]; g1 += g * X[k][1]; gb += g; Sw += c; }
+        w[0] -= g0 / Sw; w[1] -= g1 / Sw; b -= gb / Sw;
+      }
+      return X.map((x) => sig(w[0] * x[0] + w[1] * x[1] + b));
+    }
+    const PUNT = { red: entrena(1), pesos: entrena(49), nunca: X.map(() => 0) };
+    // posiciones del mosaico: aleatorias (barajadas) u ordenadas por puntuación
+    const perm = Array.from({ length: N }, (_, k) => k);
+    const rr = RN.rng(11);
+    for (let k = N - 1; k > 0; k--) { const j = Math.floor(rr() * (k + 1)); const t = perm[k]; perm[k] = perm[j]; perm[j] = t; }
+    const posAzar = new Array(N); perm.forEach((idx, slot) => { posAzar[idx] = slot; });
+    let modo = "red", umbral = 0.5, ordenado = false;
+    function posOrden() {
+      const s = PUNT[modo === "nunca" ? "red" : modo];
+      const o = Array.from({ length: N }, (_, k) => k).sort((a, b) => s[b] - s[a]);
+      const p = new Array(N); o.forEach((idx, slot) => { p[idx] = slot; });
+      return p;
+    }
+    let slots = posAzar.map((v) => v), slotsDe = null, slotsA = null, tMov = 1;
+    const cv = $("f-mos");
+    const COLS = 50, FILAS = 20;
+    let G = null;
+    const TINTE_LEG = "#F7C9B5";
+    function geom() { const L = RN.lienzo(cv, (w) => Math.round(w * FILAS / COLS) + 16); const cel = (L.w - 16) / COLS; return { L: L, cel: cel, ox: 8 + cel / 2, oy: 8 + cel / 2 }; }
+    function xyDe(slot, g) { return [g.ox + (slot % COLS) * g.cel, g.oy + Math.floor(slot / COLS) * g.cel]; }
+    function pintaMosaico() {
+      G = geom();
+      const c = G.L.ctx, sc = PUNT[modo];
+      c.fillStyle = C.surface; c.fillRect(0, 0, G.L.w, G.L.h);
+      const rad = Math.max(3, G.cel * 0.36);
+      for (let k = 0; k < N; k++) {
+        let p;
+        if (tMov < 1 && slotsDe) { const a = xyDe(slotsDe[k], G), b = xyDe(slotsA[k], G), t = RN.suave(tMov); p = [RN.lerp(a[0], b[0], t), RN.lerp(a[1], b[1], t)]; }
+        else p = xyDe(slots[k], G);
+        const marcado = modo !== "nunca" && sc[k] >= umbral;
+        c.beginPath(); c.arc(p[0], p[1], rad, 0, 2 * Math.PI);
+        c.fillStyle = y[k] ? C.clase1 : TINTE_LEG; c.fill();
+        if (marcado) { c.lineWidth = 2.2; c.strokeStyle = C.ink; c.stroke(); }
+      }
+      // en vista ordenada, línea del umbral
+      if (ordenado && tMov >= 1 && modo !== "nunca") {
+        let n1 = 0; for (let k = 0; k < N; k++) if (sc[k] >= umbral) n1++;
+        if (n1 > 0 && n1 < N) {
+          const fila = Math.floor(n1 / COLS), col = n1 % COLS, x = 8 + col * G.cel, yy = 8 + fila * G.cel;
+          c.strokeStyle = RN.acento(); c.lineWidth = 3; c.beginPath();
+          c.moveTo(8, yy + G.cel); c.lineTo(x, yy + G.cel); c.lineTo(x, yy); c.lineTo(8 + COLS * G.cel, yy); c.stroke();
+        }
+      }
+    }
+    function metricas(sc, u) {
+      let vp = 0, fp = 0, fn = 0, vn = 0;
+      for (let k = 0; k < N; k++) { const m = modo !== "nunca" && sc[k] >= u; if (m && y[k]) vp++; else if (m) fp++; else if (y[k]) fn++; else vn++; }
+      const prec = vp + fp ? vp / (vp + fp) : NaN, rec = vp / (vp + fn), f1 = prec + rec > 0 && Number.isFinite(prec) ? 2 * prec * rec / (prec + rec) : 0;
+      return { vp: vp, fp: fp, fn: fn, vn: vn, exac: (vp + vn) / N, prec: prec, rec: rec, f1: f1 };
+    }
+    // curva PR
+    const prOp = { alto: 280, x: { min: 0, max: 1, titulo: "recall", fmt: fmtPct, fmtTip: fmtPct }, y: { min: 0, max: 1.02, titulo: "precisión", fmt: fmtPct, fmtTip: fmtPct },
+      extras: (ctx, g) => {
+        ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = C.muted; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(g.sx(0), g.sy(0.02)); ctx.lineTo(g.sx(1), g.sy(0.02)); ctx.stroke(); ctx.restore();
+        rotulo(ctx, "azar: 2 %", g.sx(1) - 4, g.sy(0.02) - 10, { al: "right", tam: 12, color: C.ink2, peso: "600" });
+        if (modo === "nunca") { rotulo(ctx, "sin curva: nunca marca nada (recall 0)", g.sx(0.5), g.sy(0.55), { al: "center", tam: 13 }); return; }
+        const m = metricas(PUNT[modo], umbral);
+        if (Number.isFinite(m.prec)) { punto(ctx, g.sx(m.rec), g.sy(m.prec), 7.5, C.ink, 2.5); rotulo(ctx, "umbral " + F(umbral), g.sx(m.rec) + (m.rec > 0.7 ? -12 : 12), g.sy(m.prec) + 16, { al: m.rec > 0.7 ? "right" : "left", tam: 12.5 }); }
+      } };
+    const gPR = RN.grafica($("f-pr"), prOp);
+    function curvaPR(sc) {
+      const o = Array.from({ length: N }, (_, k) => k).sort((a, b) => sc[b] - sc[a]);
+      const pts = []; let vp = 0, fp = 0;
+      o.forEach((k) => { if (y[k]) vp++; else fp++; pts.push([vp / NF, vp / (vp + fp)]); });
+      // envolvente escalonada por recall
+      return pts;
+    }
+    const PR = { red: curvaPR(PUNT.red), pesos: curvaPR(PUNT.pesos) };
+    function pintaMetricas() {
+      const m = metricas(PUNT[modo], umbral);
+      $("f-cm").innerHTML = "<thead><tr><th></th><th>Predicho: fraude</th><th>Predicho: legítima</th></tr></thead><tbody>" +
+        "<tr><th class=\"fila\">Real: fraude</th><td class=\"bien\"><span class=\"n\">" + m.vp + "</span><span class=\"e\">✓ verdaderos positivos</span></td><td class=\"mal\"><span class=\"n\">" + m.fn + "</span><span class=\"e\">✗ falsos negativos</span></td></tr>" +
+        "<tr><th class=\"fila\">Real: legítima</th><td class=\"mal\"><span class=\"n\">" + m.fp + "</span><span class=\"e\">✗ falsos positivos</span></td><td class=\"bien\"><span class=\"n\">" + RN.fmtN(m.vn) + "</span><span class=\"e\">✓ verdaderos negativos</span></td></tr></tbody>";
+      $("f-kpis").innerHTML =
+        '<div class="kpi"><div class="t">Exactitud</div><div class="v">' + pct(m.exac, 1) + '</div><div class="s">(VP + VN) / 1.000</div></div>' +
+        '<div class="kpi"><div class="t">Precisión</div><div class="v">' + pct(m.prec, 0) + '</div><div class="s">VP / (VP + FP)</div></div>' +
+        '<div class="kpi"><div class="t">Recall</div><div class="v">' + pct(m.rec, 0) + '</div><div class="s">VP / (VP + FN)</div></div>' +
+        '<div class="kpi"><div class="t">F1</div><div class="v">' + F(m.f1, 2) + '</div><div class="s">media armónica</div></div>';
+      gPR.dibujar(modo === "nunca" ? [] : [{ nombre: "precisión", color: C.s1, puntos: PR[modo] }]);
+    }
+    function pinta() { pintaMosaico(); pintaMetricas(); }
+    const anim = RN.anima(function (dt) {
+      tMov = Math.min(1, tMov + dt / 0.8); pintaMosaico();
+      if (tMov >= 1) return false;
+    }, cv);
+    function recoloca() {
+      const destino = ordenado ? posOrden() : posAzar;
+      if (RN.reducirMovimiento) { slots = destino.slice(); tMov = 1; pinta(); return; }
+      slotsDe = slots.slice(); slotsA = destino.slice(); slots = destino.slice(); tMov = 0; anim.iniciar();
+    }
+    seg($("f-mod"), (v) => { modo = v; if (ordenado) recoloca(); pinta(); });
+    rango("f-u", 2, (v) => { umbral = v; pinta(); });
+    const bo = $("f-orden");
+    bo.addEventListener("click", () => { ordenado = !ordenado; bo.setAttribute("aria-pressed", ordenado ? "true" : "false"); recoloca(); pintaMetricas(); });
+    cv.addEventListener("mousemove", (e) => {
+      if (!G) return;
+      const rc = cv.getBoundingClientRect(), px = e.clientX - rc.left, py = e.clientY - rc.top;
+      const col = Math.floor((px - 8) / G.cel), fila = Math.floor((py - 8) / G.cel);
+      if (col < 0 || col >= COLS || fila < 0 || fila >= FILAS) { RN.tip.ocultar(); return; }
+      const slot = fila * COLS + col, k = slots.indexOf(slot);
+      if (k < 0) { RN.tip.ocultar(); return; }
+      const s = PUNT[modo][k], marc = modo !== "nunca" && s >= umbral;
+      RN.tip.mostrar("<b>" + (y[k] ? "Fraude" : "Legítima") + "</b><br>puntuación: <b>" + F(s, 3) + "</b><br>" + (marc ? "marcada como fraude" : "no marcada") + (marc === !!y[k] ? " ✓" : " ✗"), e.clientX, e.clientY);
+    });
+    cv.addEventListener("mouseleave", () => RN.tip.ocultar());
+    RN.alCambiarTam(cv, pinta);
+  })();
+
+  // =================================================================== 6 · MATRIZ DE CONFUSIÓN
+  (function confusion() {
+    const EJ = {
+      resenas: { clases: ["negativa", "neutra", "positiva"], M: [[170, 22, 8], [30, 120, 50], [6, 24, 170]], nota: "Recuentos ilustrativos de 600 reseñas de validación (200 por clase). Las métricas se calculan de verdad a partir de ellos." },
+      animales: { clases: ["gato", "perro", "pájaro"], M: [[80, 10, 5], [15, 60, 15], [8, 12, 95]], nota: "Recuentos ilustrativos de 300 imágenes. Fíjate en la fila «perro» (15, 60, 15): de 90 perros, 15 se toman por gatos y 15 por pájaros." }
+    };
+    let ej = "resenas", modo = "n", sel = [1, 2];
+    const svg = $("h-svg");
+    svg.setAttribute("viewBox", "0 0 660 470");
+    function metr(M) {
+      const k = M.length, tot = M.flat().reduce((a, b) => a + b, 0);
+      const fila = M.map((r) => r.reduce((a, b) => a + b, 0)), col = M[0].map((_, j) => M.reduce((a, r) => a + r[j], 0));
+      const rec = M.map((r, i) => r[i] / fila[i]), prec = M.map((r, i) => M[i][i] / col[i]);
+      const f1 = rec.map((rc, i) => 2 * prec[i] * rc / (prec[i] + rc));
+      const diag = M.reduce((a, r, i) => a + r[i], 0);
+      return { k: k, tot: tot, fila: fila, col: col, rec: rec, prec: prec, f1: f1, exac: diag / tot, diag: diag, macro: f1.reduce((a, b) => a + b, 0) / k };
+    }
+    function pinta() {
+      const E = EJ[ej], M = E.M, R = metr(M), k = M.length;
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      const X0 = 150, Y0 = 70, CW = 130, CH = 105;
+      S("text", { x: X0 + k * CW / 2, y: 22, "text-anchor": "middle", "font-size": 14, "font-weight": 800, fill: C.ink2, text: "clase predicha" }, svg);
+      const tr = S("text", { x: 22, y: Y0 + k * CH / 2, "text-anchor": "middle", "font-size": 14, "font-weight": 800, fill: C.ink2, text: "clase real", transform: "rotate(-90 22 " + (Y0 + k * CH / 2) + ")" }, svg);
+      void tr;
+      const mx = Math.max.apply(null, M.flat());
+      E.clases.forEach((c, j) => S("text", { x: X0 + j * CW + CW / 2, y: Y0 - 12, "text-anchor": "middle", "font-size": 14, "font-weight": 800, fill: C.ink, text: c }, svg));
+      E.clases.forEach((c, i) => S("text", { x: X0 - 12, y: Y0 + i * CH + CH / 2, "text-anchor": "end", "dominant-baseline": "middle", "font-size": 14, "font-weight": 800, fill: C.ink, text: c }, svg));
+      for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) {
+        const v = M[i][j], fr = v / R.fila[i];
+        const t = modo === "n" ? v / mx : fr;
+        const g = S("g", { style: "cursor:pointer", role: "button", tabindex: "0", "aria-label": E.clases[i] + " predicha como " + E.clases[j] + ": " + v }, svg);
+        S("rect", { x: X0 + j * CW + 2, y: Y0 + i * CH + 2, width: CW - 4, height: CH - 4, rx: 8, fill: RN.colorSeq(0.06 + 0.86 * t) }, g);
+        const claro = 0.06 + 0.86 * t > 0.5;
+        S("text", { x: X0 + j * CW + CW / 2, y: Y0 + i * CH + CH / 2 - 6, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 26, "font-weight": 800, fill: claro ? "#fff" : C.ink, text: modo === "n" ? String(v) : RN.fmt(fr * 100, 0) + " %" }, g);
+        S("text", { x: X0 + j * CW + CW / 2, y: Y0 + i * CH + CH / 2 + 20, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 12, "font-weight": 600, fill: claro ? "rgba(255,255,255,.85)" : C.ink2, text: i === j ? "aciertos" : modo === "n" ? RN.fmt(fr * 100, 0) + " % de la fila" : v + " casos" }, g);
+        if (sel[0] === i && sel[1] === j) S("rect", { x: X0 + j * CW + 2, y: Y0 + i * CH + 2, width: CW - 4, height: CH - 4, rx: 8, fill: "none", stroke: C.s2, "stroke-width": 4 }, svg);
+        const elegir = () => { sel = [i, j]; pinta(); };
+        g.addEventListener("click", elegir);
+        g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elegir(); } });
+      }
+      // recall (por filas, a la derecha) y precisión (por columnas, debajo)
+      const XR = X0 + k * CW + 14, BW = 80;
+      S("text", { x: XR + BW / 2, y: Y0 - 12, "text-anchor": "middle", "font-size": 13, "font-weight": 800, fill: C.ink2, text: "recall" }, svg);
+      R.rec.forEach((v, i) => {
+        const y = Y0 + i * CH + CH / 2;
+        S("rect", { x: XR, y: y - 9, width: BW, height: 18, rx: 4, fill: "#EEF1F4" }, svg);
+        S("rect", { x: XR, y: y - 9, width: BW * v, height: 18, rx: 4, fill: C.s1 }, svg);
+        S("text", { x: XR + BW / 2, y: y + 26, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: C.ink, text: pct(v, 0) }, svg);
+      });
+      const YP = Y0 + k * CH + 14;
+      S("text", { x: X0 - 12, y: YP + 9, "text-anchor": "end", "dominant-baseline": "middle", "font-size": 13, "font-weight": 800, fill: C.ink2, text: "precisión" }, svg);
+      R.prec.forEach((v, j) => {
+        const x = X0 + j * CW + (CW - 100) / 2;
+        S("rect", { x: x, y: YP, width: 100, height: 18, rx: 4, fill: "#EEF1F4" }, svg);
+        S("rect", { x: x, y: YP, width: 100 * v, height: 18, rx: 4, fill: C.s3 }, svg);
+        S("text", { x: x + 50, y: YP + 36, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: C.ink, text: pct(v, 0) }, svg);
+      });
+      // texto de la celda elegida
+      const i = sel[0], j = sel[1], v = M[i][j];
+      $("h-sel").innerHTML = i === j
+        ? "<b>" + v + "</b> de " + R.fila[i] + " casos de clase «<b>" + E.clases[i] + "</b>» se clasificaron bien: recall = " + v + " / " + R.fila[i] + " = <b>" + pct(R.rec[i], 1) + "</b>."
+        : "<b>" + v + "</b> casos de clase «<b>" + E.clases[i] + "</b>» se predijeron como «<b>" + E.clases[j] + "</b>» (" + pct(v / R.fila[i], 0) + " de su fila). Bajan el recall de «" + E.clases[i] + "» y la precisión de «" + E.clases[j] + "».";
+      let h = "<thead><tr><th>Clase</th><th class=\"n\">Precisión</th><th class=\"n\">Recall</th><th class=\"n\">F1</th><th class=\"n\">Casos</th></tr></thead><tbody>";
+      E.clases.forEach((c, q) => { h += "<tr" + (q === i ? " class=\"sel\"" : "") + "><td>" + c + "</td><td class=\"n\">" + F(R.prec[q], 2) + "</td><td class=\"n\">" + F(R.rec[q], 2) + "</td><td class=\"n\">" + F(R.f1[q], 2) + "</td><td class=\"n\">" + R.fila[q] + "</td></tr>"; });
+      $("h-tabla").innerHTML = h + "</tbody>";
+      $("h-kpis").innerHTML = '<div class="kpi"><div class="t">Exactitud</div><div class="v">' + pct(R.exac, 1) + '</div><div class="s">' + R.diag + " / " + R.tot + '</div></div>' +
+        '<div class="kpi"><div class="t">F1 macro</div><div class="v">' + F(R.macro, 2) + '</div><div class="s">media de las F1</div></div>';
+      $("h-nota").textContent = E.nota;
+    }
+    seg($("h-ej"), (v) => { ej = v; sel = v === "animales" ? [1, 0] : [1, 2]; pinta(); });
+    seg($("h-modo"), (v) => { modo = v; pinta(); });
+    pinta();
+  })();
+
+  // =================================================================== 7 · VALIDACIÓN Y PARADA TEMPRANA
+  (function validacion() {
+    // ---- partición 70/20/10
+    const svg = $("v-svg");
+    svg.setAttribute("viewBox", "0 0 1100 382");
+    const COLS3 = [C.s1, C.s2, C.s3];
+    const BIN = [
+      { x: 400, y: 116, cols: 10, nombre: "Entrenamiento · 70 %", n: "≈ 37.700 diamantes", rol: "ajusta los pesos" },
+      { x: 735, y: 116, cols: 5, nombre: "Validación · 20 %", n: "≈ 10.800", rol: "vigila el sobreajuste" },
+      { x: 935, y: 116, cols: 5, nombre: "Prueba · 10 %", n: "≈ 5.400", rol: "nota final, una sola vez" }
+    ];
+    const P = 27, R = 9;
+    S("text", { x: 40, y: 36, "font-size": 15, "font-weight": 800, fill: C.ink, text: "Datos (≈ 54.000 diamantes)" }, svg);
+    S("text", { x: 40, y: 56, "font-size": 12.5, fill: C.ink2, text: "cada punto ≈ 540 diamantes" }, svg);
+    BIN.forEach((b, i) => {
+      const filas = i === 0 ? 7 : i === 1 ? 4 : 2;
+      S("rect", { x: b.x - 16, y: b.y - 18, width: b.cols * P + 22, height: filas * P + 26, rx: 10, fill: RN.mezcla("#ffffff", COLS3[i], 0.08), stroke: RN.mezcla("#ffffff", COLS3[i], 0.5) }, svg);
+      S("text", { x: b.x - 14, y: 36, "font-size": 14.5, "font-weight": 800, fill: C.ink, text: b.nombre }, svg);
+      S("text", { x: b.x - 14, y: 56, "font-size": 12.5, fill: C.ink2, text: b.n }, svg);
+      S("text", { x: b.x - 14, y: 78, "font-size": 13, "font-weight": 700, fill: C.ink, text: b.rol }, svg);
+    });
+    const destino = [];
+    for (let k = 0; k < 100; k++) {
+      let bi, idx;
+      if (k < 70) { bi = 0; idx = k; } else if (k < 90) { bi = 1; idx = k - 70; } else { bi = 2; idx = k - 90; }
+      const b = BIN[bi];
+      destino.push({ x: b.x + (idx % b.cols) * P, y: b.y + Math.floor(idx / b.cols) * P, c: COLS3[bi] });
+    }
+    const origen = []; for (let k = 0; k < 100; k++) origen.push({ x: 52 + (k % 10) * P, y: 116 + Math.floor(k / 10) * P });
+    origen.forEach((o) => S("circle", { cx: o.x, cy: o.y, r: R, fill: "#E4E7EB" }, svg));
+    const puntos = []; for (let k = 0; k < 100; k++) puntos.push(S("circle", { r: R, stroke: "#fff", "stroke-width": 2 }, svg));
+    const flecha = S("text", { x: 345, y: 252, "text-anchor": "middle", "font-size": 30, fill: C.ink2, text: "→" }, svg);
+    void flecha;
+    let orden = Array.from({ length: 100 }, (_, k) => k);
+    function colocar(t, fase) {
+      // fase 0: origen sin barajar (gris) · fase 1: barajado (colores) · fase 2: en su conjunto
+      puntos.forEach((c, k) => {
+        const o = origen[orden[k]], d = destino[k];
+        let x, y, col;
+        if (fase === 0) { const o0 = origen[k]; x = RN.lerp(o0.x, o.x, t); y = RN.lerp(o0.y, o.y, t); col = RN.mezcla("#B8C0C8", d.c, t); }
+        else { x = RN.lerp(o.x, d.x, t); y = RN.lerp(o.y, d.y, t); col = d.c; }
+        c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("fill", col);
+      });
+    }
+    function baraja() { const r = RN.rng(Math.floor(Math.random() * 1e6) + 1); orden = Array.from({ length: 100 }, (_, k) => k); for (let k = 99; k > 0; k--) { const j = Math.floor(r() * (k + 1)); const t = orden[k]; orden[k] = orden[j]; orden[j] = t; } }
+    let tokP = 0;
+    async function reparte() {
+      const yo = ++tokP;
+      baraja();
+      if (RN.reducirMovimiento) { colocar(1, 1); return; }
+      puntos.forEach((c, k) => { c.setAttribute("cx", origen[k].x); c.setAttribute("cy", origen[k].y); c.setAttribute("fill", "#B8C0C8"); });
+      await RN.espera(250); if (yo !== tokP) return;
+      await RN.tween(900, (t) => { if (yo === tokP) colocar(t, 0); }); if (yo !== tokP) return;
+      await RN.espera(350); if (yo !== tokP) return;
+      await RN.tween(1100, (t) => { if (yo === tokP) colocar(t, 1); });
+    }
+    $("v-split").addEventListener("click", reparte);
+    baraja(); colocar(1, 1);
+
+    // ---- entrenamiento real con sobreajuste
+    const tr = RNmlp.datos.regresion("seno", 14, 0.3, 3), va = RNmlp.datos.regresion("seno", 60, 0.3, 103);
+    const EP = 400, MALLA = 90;
+    const m = new RNmlp.MLP({ capas: [1, 48, 48, 1], activacion: "tanh", salida: "lineal", semilla: 3 });
+    const mae = (X, Y) => X.reduce((s, x, k) => s + Math.abs(m.forward(x)[0] - Y[k][0]), 0) / X.length;
+    const Ht = [], Hv = [], fotos = [];
+    const gx = Array.from({ length: MALLA }, (_, k) => -1 + 2 * k / (MALLA - 1));
+    for (let e = 1; e <= EP; e++) {
+      m.entrenarEpoca(tr.X, tr.Y, { lote: 14, lr: 0.01, opt: "adam" });
+      Ht.push([e, mae(tr.X, tr.Y)]); Hv.push([e, mae(va.X, va.Y)]);
+      fotos.push(gx.map((x) => m.forward([x])[0]));
+    }
+    let pac = 20, rest = true, vista = EP; // vista: épocas mostradas (animación)
+    function parada(p) {
+      let mejor = Infinity, eb = 0, espera = 0;
+      for (let e = 1; e <= EP; e++) {
+        const v = Hv[e - 1][1];
+        if (v < mejor) { mejor = v; eb = e; espera = 0; } else { espera++; if (espera >= p) return { mejor: eb, para: e }; }
+      }
+      return { mejor: eb, para: EP };
+    }
+    let estado = parada(pac);
+    const opC = { alto: 300, x: { min: 0, max: EP, titulo: "época" }, y: { min: 0, max: 0.9, titulo: "MAE" },
+      extras: (ctx, g) => {
+        const e = estado;
+        if (vista >= e.para && e.para < EP) {
+          ctx.fillStyle = "rgba(195,194,183,.28)"; ctx.fillRect(g.sx(e.para), g.m.t, g.sx(EP) - g.sx(e.para), g.h - g.m.t - g.m.b);
+          vline(ctx, g, e.para, C.axis, 1.5);
+          rotulo(ctx, "se para: época " + e.para, g.sx(e.para) + 6, g.m.t + 12, { tam: 12.5 });
+        }
+        if (vista >= e.mejor) {
+          vline(ctx, g, e.mejor, C.ink, 1.5, [5, 4]);
+          const v = Hv[e.mejor - 1][1];
+          punto(ctx, g.sx(e.mejor), g.sy(v), 6.5, C.ink, 2.5);
+          rotulo(ctx, "mejor: época " + e.mejor, g.sx(e.mejor) + 6, g.h - g.m.b - 12, { tam: 12.5 });
+        }
+        if (vista < EP) {
+          const ult = Hv[vista - 1];
+          if (ult) { let mejor = Infinity, eb = 0; for (let q = 0; q < vista; q++) if (Hv[q][1] < mejor) { mejor = Hv[q][1]; eb = q + 1; } rotulo(ctx, "sin mejorar: " + (vista - eb) + " / " + pac, g.sx(vista) + 8, g.sy(ult[1]) - 14, { tam: 12.5, al: g.sx(vista) > g.w - 160 ? "right" : "left" }); }
+        }
+      } };
+    const gC = RN.grafica($("v-curvas"), opC);
+    const opA = { alto: 300, x: { min: -1, max: 1, titulo: "x" }, y: { min: -1.6, max: 1.6, titulo: "y" } };
+    const gA = RN.grafica($("v-ajuste"), opA);
+    const real = gx.map((x) => [x, Math.sin(Math.PI * x) * 0.8]);
+    function pinta() {
+      estado = parada(pac);
+      const e = estado;
+      gC.dibujar([{ nombre: "entrenamiento", color: C.s1, puntos: Ht.slice(0, vista) }, { nombre: "validación", color: C.s2, puntos: Hv.slice(0, vista) }]);
+      let eMod;
+      if (vista < e.para) eMod = vista; else eMod = rest ? e.mejor : e.para;
+      gA.dibujar([
+        { nombre: "función real", color: "#9AA5B1", discontinua: true, puntos: real, hover: false },
+        { nombre: "validación", color: RN.rgba(C.s2, 0.75), tipo: "puntos", radio: 4, puntos: va.X.map((x, k) => [x[0], va.Y[k][0]]) },
+        { nombre: "entrenamiento", color: C.s1, tipo: "puntos", radio: 5.5, puntos: tr.X.map((x, k) => [x[0], tr.Y[k][0]]) },
+        { nombre: "red", color: C.s3, ancho: 2.5, puntos: gx.map((x, k) => [x, fotos[eMod - 1][k]]) }
+      ]);
+      $("v-tajuste").textContent = vista < e.para ? "La red en la época " + vista + " (entrenando…)" : rest ? "La red que te quedas: pesos de la época " + e.mejor + " (restaurados)" : "La red que te quedas: pesos de la época " + e.para + " (la última)";
+      $("v-best").textContent = e.mejor;
+      $("v-stop").textContent = e.para >= EP ? "no para" : String(e.para);
+      $("v-mae").textContent = F(Hv[eMod - 1][1], 3);
+      $("v-mae400").textContent = F(Hv[EP - 1][1], 3);
+      $("v-codep").textContent = pac;
+      $("v-coder").textContent = rest ? "True" : "False";
+    }
+    rango("v-pac", 0, (v) => { pac = v; anim.parar(); vista = EP; pinta(); });
+    $("v-rest").addEventListener("change", (e) => { rest = e.target.checked; pinta(); });
+    let acc = 0;
+    const anim = RN.anima(function (dt) {
+      acc += dt; if (acc < 0.016) return; acc = 0;
+      vista = Math.min(EP, vista + 2);
+      const e = parada(pac);
+      if (vista >= e.para) { vista = EP; pinta(); return false; }
+      pinta();
+    }, $("v-curvas"));
+    RN.botonPlay($("v-play"), anim, ["▶ Entrenar con parada temprana", "⏸ Pausa"]);
+    $("v-play").addEventListener("click", () => {
+      if (anim.activo && vista >= EP) { vista = 1; pinta(); }
+      if (anim.activo && RN.reducirMovimiento) { anim.parar(); vista = EP; pinta(); }
+    });
+    pinta();
+
+    // ---- ejemplo de la vivienda (curvas orientativas que pasan por los tres valores de referencia)
+    const tr2 = (e) => 2.45 + 6.5 * Math.exp(-e / 7);
+    const va2 = (e) => (e <= 15 ? 3.6 + 0.025 * (15 - e) * (15 - e) : 3.6 + 0.0019 * (e - 15) * (e - 15));
+    const E2 = Array.from({ length: 40 }, (_, k) => k + 1);
+    const gE = RN.grafica($("v-viv"), { alto: 300, x: { min: 0, max: 41, titulo: "época", marcas: [1, 5, 10, 15, 20, 25, 30, 35, 40], fmt: (v) => String(v) }, y: { min: 0, max: 9, titulo: "MAE (miles de €)" },
+      extras: (ctx, g) => {
+        ctx.fillStyle = "rgba(195,194,183,.28)"; ctx.fillRect(g.sx(18), g.m.t, g.sx(41) - g.sx(18), g.h - g.m.t - g.m.b);
+        vline(ctx, g, 15, C.ink, 1.5, [5, 4]);
+        rotulo(ctx, "paciencia 3 → se para en la 18", g.sx(18) + 8, g.m.t + 12, { tam: 12.5 });
+        [[15, 3.6, "mejor mae_val ≈ 3,6 (época 15)", "right", -12, 36], [40, 4.8, "mae_val ≈ 4,8", "right", -10, -14], [40, 2.5, "mae_train ≈ 2,5", "right", -10, 18]].forEach((q) => {
+          punto(ctx, g.sx(q[0]), g.sy(q[1]), 7, C.ink, 2.5);
+          rotulo(ctx, q[2], g.sx(q[0]) + q[4], g.sy(q[1]) + q[5], { al: q[3], tam: 13 });
+        });
+      } });
+    gE.dibujar([{ nombre: "mae_train", color: C.s1, puntos: E2.map((e) => [e, tr2(e)]) }, { nombre: "mae_val", color: C.s2, puntos: E2.map((e) => [e, va2(e)]) }]);
+  })();
+
+  // =================================================================== 8 · MÉTRICAS DE REGRESIÓN
+  (function regresion() {
+    const N = 40, r = RN.rng(8), real = [], ruido = [];
+    for (let k = 0; k < N; k++) { real.push(120 + 360 * r()); ruido.push(RN.normal(r)); }
+    real[0] = 300; ruido[0] = 0;
+    let sigma = 25, eAt = 200;
+    const pred = () => real.map((v, k) => (k === 0 ? v + eAt : v + sigma * ruido[k]));
+    function metricas(P) {
+      const n = real.length, mu = real.reduce((a, b) => a + b, 0) / n;
+      let sa = 0, ss = 0, st = 0;
+      real.forEach((v, k) => { const e = v - P[k]; sa += Math.abs(e); ss += e * e; st += (v - mu) * (v - mu); });
+      return { mae: sa / n, mse: ss / n, rmse: Math.sqrt(ss / n), r2: 1 - ss / st };
+    }
+    const cv = $("g-disp");
+    const op = { alto: 380, x: { min: 80, max: 520, titulo: "precio real" }, y: { min: 0, max: 600, titulo: "precio predicho" },
+      extras: (ctx, g) => {
+        const P = pred();
+        ctx.save(); ctx.beginPath(); ctx.rect(g.m.l, g.m.t, g.w - g.m.l - g.m.r, g.h - g.m.t - g.m.b); ctx.clip();
+        ctx.strokeStyle = C.ink2; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(g.sx(80), g.sy(80)); ctx.lineTo(g.sx(520), g.sy(520)); ctx.stroke();
+        ctx.strokeStyle = "#9AA5B1"; ctx.lineWidth = 1.3;
+        real.forEach((v, k) => { ctx.beginPath(); ctx.moveTo(g.sx(v), g.sy(v)); ctx.lineTo(g.sx(v), g.sy(P[k])); ctx.stroke(); });
+        real.forEach((v, k) => { if (k) punto(ctx, g.sx(v), g.sy(P[k]), 5, C.s1, 1.5); });
+        ctx.restore();
+        const X = g.sx(real[0]), Y = g.sy(P[0]);
+        ctx.beginPath(); ctx.arc(X, Y, 9, 0, 2 * Math.PI); ctx.fillStyle = "#fff"; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = C.ink; ctx.stroke();
+        rotulo(ctx, "error " + (eAt >= 0 ? "+" : "") + F(eAt, 0), X + 14, Y, { tam: 13 });
+      } };
+    const gD = RN.grafica(cv, op);
+    const opI = { alto: 380, x: { min: 0, max: 300, titulo: "|error| del punto atípico (miles de €)" }, y: { min: 0, max: 5, titulo: "valor relativo (sin atípico = 1)" },
+      extras: (ctx, g) => {
+        const a = Math.abs(eAt), I = indices(a);
+        vline(ctx, g, Math.min(300, a), "rgba(31,41,51,.35)", 1);
+        [[I.mae, C.s1], [I.mse, C.s2], [I.rmse, C.s3]].forEach((q) => { if (q[0] <= g.op.y.max) punto(ctx, g.sx(Math.min(300, a)), g.sy(q[0]), 6.5, q[1], 2.5); });
+        if (I.mse <= g.op.y.max) rotulo(ctx, "MSE ×" + F(I.mse, 1), g.sx(Math.min(300, a)) - 10, g.sy(I.mse) - 14, { al: "right", tam: 12.5 });
+      } };
+    const gI = RN.grafica($("g-ind"), opI);
+    function base() { const P = pred(); P[0] = real[0]; return metricas(P); }
+    function indices(a) { const b = base(); const P = pred(); P[0] = real[0] + a; const m = metricas(P); return { mae: m.mae / b.mae, mse: m.mse / b.mse, rmse: m.rmse / b.rmse }; }
+    function pinta() {
+      const m = metricas(pred()), b = base();
+      gD.dibujar([]);
+      const malla = Array.from({ length: 61 }, (_, k) => k * 5);
+      const ser = malla.map((a) => [a, indices(a)]);
+      opI.y.max = Math.max(2, Math.ceil(ser[ser.length - 1][1].mse + 0.3));
+      gI.dibujar([
+        { nombre: "MAE", color: C.s1, puntos: ser.map((q) => [q[0], q[1].mae]) },
+        { nombre: "MSE", color: C.s2, puntos: ser.map((q) => [q[0], q[1].mse]) },
+        { nombre: "RMSE", color: C.s3, puntos: ser.map((q) => [q[0], q[1].rmse]) }
+      ]);
+      const fila = (t, v, vb, d, u) => '<div class="kpi"><div class="t' + (t === "R²" ? " nm" : "") + '">' + t + '</div><div class="v">' + F(v, d) + '</div><div class="s">sin atípico: ' + F(vb, d) + (u ? " " + u : "") + (Math.abs(v - vb) > 1e-9 && t !== "R²" ? ' · <span class="dif-arriba">×' + F(v / vb, 1) + "</span>" : "") + "</div></div>";
+      $("g-kpis").innerHTML = fila("MAE", m.mae, b.mae, 1, "") + fila("MSE", m.mse, b.mse, 0, "") + fila("RMSE", m.rmse, b.rmse, 1, "") + fila("R²", m.r2, b.r2, 3, "");
+    }
+    rango("g-ruido", 0, (v) => { sigma = v; pinta(); });
+    $("g-quita").addEventListener("click", () => { eAt = 0; pinta(); });
+    $("g-pon").addEventListener("click", () => { eAt = 200; pinta(); });
+    // arrastrar el punto atípico en vertical
+    let arr = false;
+    const pos = (e) => { const rc = cv.getBoundingClientRect(); return [e.clientX - rc.left, e.clientY - rc.top]; };
+    const cerca = (p) => { const P = pred(); return Math.hypot(p[0] - gD.sx(real[0]), p[1] - gD.sy(P[0])) < 18; };
+    cv.addEventListener("pointerdown", (e) => { const p = pos(e); if (cerca(p)) { arr = true; cv.setPointerCapture(e.pointerId); e.preventDefault(); } });
+    cv.addEventListener("pointermove", (e) => {
+      const p = pos(e);
+      if (arr) { eAt = RN.limita(Math.round(gD.iy(p[1]) - real[0]), -290, 290); pinta(); RN.tip.ocultar(); }
+      else cv.style.cursor = cerca(p) ? "ns-resize" : "default";
+    });
+    const fin = () => { arr = false; };
+    cv.addEventListener("pointerup", fin); cv.addEventListener("pointercancel", fin);
+    pinta();
+  })();
+})();
+</script>
+</body>
+</html>

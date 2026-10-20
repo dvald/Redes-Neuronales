@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redes Neuronales · Demos visuales</title>
+<meta name="description" content="Visualizaciones y animaciones interactivas para explicar en clase la asignatura Redes Neuronales del Grado en Ciencia de Datos (UNIR).">
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .content { max-width: 1120px; }
+  .intro { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; align-items: center; justify-content: center; margin-top: 1rem; position: relative; }
+  .intro .tag { font-size: .8rem; }
+  .portada .sub { font-size: .92rem; color: #8FA3B8; margin-top: .3rem; }
+  .temas.dos { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+  @media (max-width: 720px) { .temas.dos { grid-template-columns: 1fr; } }
+  .portada h1, .portada p { text-shadow: 0 1px 12px rgba(15,27,45,.9); }
+</style>
+</head>
+<body>
+
+<header class="portada">
+  <canvas id="fondo" aria-hidden="true"></canvas>
+  <h1>Redes Neuronales · Demos visuales</h1>
+  <p>Visualizaciones y animaciones para explicar en clase cada tema de la asignatura, de la neurona artificial a la puesta en producción.</p>
+  <p class="sub">Grado en Ciencia de Datos · UNIR</p>
+  <div class="intro">
+    <span class="tag real">Cálculo real en el navegador</span>
+    <span class="tag illus">Animación ilustrativa</span>
+  </div>
+</header>
+
+<main class="content">
+
+  <div class="bloque-titulo" style="--c: var(--fund)">Fundamentos</div>
+  <div class="temas">
+    <a class="tema" style="--c: var(--fund)" href="01_introduccion.html">
+      <span class="n">TEMA 1</span>
+      <h2>Introducción a las redes neuronales</h2>
+      <p>Neurona biológica frente a artificial, capas, historia, aplicaciones por sectores, reglas frente a ejemplos, cuándo usar (o no) una red y la neurona como regresión lineal.</p>
+    </a>
+    <a class="tema" style="--c: var(--fund)" href="02_frameworks.html">
+      <span class="n">TEMA 2</span>
+      <h2>Frameworks: TensorFlow y Keras</h2>
+      <p>Pila de abstracción, tensores, grafo de computación con gradientes automáticos, por qué grafos, TensorFlow 1 frente a 2, otros frameworks, constructor de modelos Keras y de compile a fit.</p>
+    </a>
+    <a class="tema" style="--c: var(--fund)" href="03_neurona_perceptron.html">
+      <span class="n">TEMA 3</span>
+      <h2>La neurona artificial y el perceptrón</h2>
+      <p>Anatomía de la neurona, funciones de activación, pesos y sesgo en el plano, puertas lógicas, regla del perceptrón, épocas y tasa de aprendizaje, regresión con una neurona y el límite del XOR.</p>
+    </a>
+  </div>
+
+  <div class="bloque-titulo" style="--c: var(--arq)">Arquitectura y aprendizaje</div>
+  <div class="temas">
+    <a class="tema" style="--c: var(--arq)" href="04_perceptron_multicapa.html">
+      <span class="n">TEMA 4</span>
+      <h2>Perceptrón multicapa</h2>
+      <p>Del XOR al MLP, capas y pesos, por qué la no linealidad, representaciones jerárquicas, propagación hacia delante paso a paso, salida según el problema, recuento de parámetros, laboratorio de fronteras y flujo de trabajo.</p>
+    </a>
+    <a class="tema" style="--c: var(--arq)" href="05_entrenamiento.html">
+      <span class="n">TEMA 5</span>
+      <h2>Cómo aprende la red</h2>
+      <p>El bucle de aprendizaje, función de pérdida, descenso del gradiente en 1D y 2D, regla de la cadena, retropropagación paso a paso con números, lotes, desvanecimiento del gradiente y mínimos locales.</p>
+    </a>
+    <a class="tema" style="--c: var(--arq)" href="06_perdidas_metricas.html">
+      <span class="n">TEMA 6</span>
+      <h2>Pérdidas, salidas y métricas</h2>
+      <p>Pérdida frente a métrica, MSE frente a entropía cruzada, one-hot, salida según el problema, paradoja de la exactitud, matriz de confusión, validación y métricas de regresión.</p>
+    </a>
+  </div>
+
+  <div class="bloque-titulo" style="--c: var(--apl)">Aplicaciones y optimización</div>
+  <div class="temas">
+    <a class="tema" style="--c: var(--apl)" href="07_no_supervisado.html">
+      <span class="n">TEMA 7</span>
+      <h2>Aplicaciones: aprendizaje no supervisado</h2>
+      <p>Agrupamiento más allá de K-Means, autoencoder y cuello de botella, mapas autoorganizados, reducción de dimensionalidad, CNN y RNN como compresores, redes generativas, casos de uso y desafíos.</p>
+    </a>
+    <a class="tema" style="--c: var(--apl)" href="08_optimizacion.html">
+      <span class="n">TEMA 8</span>
+      <h2>Optimización y regularización</h2>
+      <p>Capacidad y diagnóstico, estandarización, L2 y L1, dropout, parada temprana, carrera de optimizadores, tamaño de lote y tasa de aprendizaje, y búsqueda de hiperparámetros.</p>
+    </a>
+  </div>
+
+  <div class="bloque-titulo" style="--c: var(--esc)">Escala y producción</div>
+  <div class="temas dos">
+    <a class="tema" style="--c: var(--esc)" href="09_gpu.html">
+      <span class="n">TEMA 9 · PARTE I</span>
+      <h2>Big Data: aceleración con GPU</h2>
+      <p>Las 4V, el coste de entrenar, CPU frente a GPU, multiplicación de matrices en paralelo, CUDA y cuDNN, el cuello de botella de los datos, lote y VRAM, y puesta a punto.</p>
+    </a>
+    <a class="tema" style="--c: var(--esc)" href="09_distribuido.html">
+      <span class="n">TEMA 9 · PARTE II</span>
+      <h2>Big Data: entrenamiento distribuido</h2>
+      <p>Paralelismo de datos y de modelo, All-Reduce en anillo, straggler, pipeline y burbujas, gradientes obsoletos, Downpour SGD, síncrono frente a asíncrono, acumulación de gradientes y qué estrategia elegir.</p>
+    </a>
+    <a class="tema" style="--c: var(--esc)" href="10_produccion.html">
+      <span class="n">TEMA 10 · PARTE I</span>
+      <h2>Puesta en producción</h2>
+      <p>Del notebook a producción, ciclo de vida, servidor de modelos, versiones y canary, carga y colas, integración y seguridad, tipos de servidor, serverless y cómo decidir.</p>
+    </a>
+    <a class="tema" style="--c: var(--esc)" href="10_nube.html">
+      <span class="n">TEMA 10 · PARTE II</span>
+      <h2>Ecosistemas en la nube</h2>
+      <p>Nube sí o no, AWS, GCP y Azure, empaquetado con Docker, Kubernetes, REST y gRPC, red y seguridad, escalado y pruebas, datos en la nube, costes y monitorización.</p>
+    </a>
+  </div>
+
+  <div class="bloque-titulo" style="--c: var(--esc)">Laboratorio</div>
+  <div class="temas">
+    <a class="tema" style="--c: var(--esc)" href="lab_empresa.html">
+      <span class="n">LABORATORIO · PARTE I</span>
+      <h2>La red neuronal como sistema</h2>
+      <p>La nueva ley del progreso, economía de escalar, mover datos es caro, el iceberg de costes, inferencia y ROI, evaluación real, atajos y robustez, privacidad y ciencia.</p>
+    </a>
+    <a class="tema" style="--c: var(--esc)" href="lab_llm.html">
+      <span class="n">LABORATORIO · PARTE II</span>
+      <h2>Transformers, RAG y MCP</h2>
+      <p>De la recurrencia a la atención, autoatención paso a paso, cabezas y codificación posicional, paralelismo, RAG de la ingesta a la consulta, embeddings, MCP y nodos en local.</p>
+    </a>
+  </div>
+
+</main>
+
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Fondo animado de la portada: una red por capas con señales que viajan.
+  const cv = document.getElementById("fondo");
+  const capas = [4, 6, 6, 5, 3];
+  let nodos = [], aristas = [], pulsos = [], L = null;
+  const r = RN.rng(7);
+  function montar() {
+    L = RN.lienzo(cv, cv.parentElement.clientHeight);
+    nodos = capas.map(function (n, l) {
+      const x = L.w * (0.08 + 0.84 * l / (capas.length - 1));
+      return Array.from({ length: n }, function (_, j) { return { x: x + (r() - 0.5) * 30, y: L.h * (j + 1) / (n + 1) + (r() - 0.5) * 20 }; });
+    });
+    aristas = [];
+    for (let l = 0; l < capas.length - 1; l++) nodos[l].forEach(function (a) { nodos[l + 1].forEach(function (b) { aristas.push({ a: a, b: b, w: r() * 2 - 1 }); }); });
+    dibujar(0);
+  }
+  function dibujar() {
+    const c = L.ctx;
+    c.clearRect(0, 0, L.w, L.h);
+    aristas.forEach(function (e) {
+      c.strokeStyle = RN.rgba(e.w > 0 ? "#64B5F6" : "#FFA270", 0.10 + 0.25 * Math.abs(e.w));
+      c.lineWidth = 0.6 + 1.6 * Math.abs(e.w);
+      c.beginPath(); c.moveTo(e.a.x, e.a.y); c.lineTo(e.b.x, e.b.y); c.stroke();
+    });
+    pulsos.forEach(function (p) {
+      const x = RN.lerp(p.e.a.x, p.e.b.x, p.t), y = RN.lerp(p.e.a.y, p.e.b.y, p.t);
+      c.fillStyle = p.e.w > 0 ? "#9ECBFF" : "#FFC1A1";
+      c.beginPath(); c.arc(x, y, 2.6, 0, 7); c.fill();
+    });
+    nodos.forEach(function (col) { col.forEach(function (n) {
+      c.fillStyle = "#16263B"; c.strokeStyle = "#4F86C6"; c.lineWidth = 1.6;
+      c.beginPath(); c.arc(n.x, n.y, 6, 0, 7); c.fill(); c.stroke();
+    }); });
+  }
+  RN.alCambiarTam(cv.parentElement, montar);
+  if (!RN.reducirMovimiento) {
+    let acum = 0;
+    RN.anima(function (dt) {
+      if (!L) return;
+      acum += dt;
+      if (acum > 0.12) { acum = 0; const e = aristas[Math.floor(r() * aristas.length)]; if (e) pulsos.push({ e: e, t: 0, v: 0.5 + r() * 0.6 }); }
+      pulsos.forEach(function (p) { p.t += dt * p.v; });
+      pulsos = pulsos.filter(function (p) { return p.t < 1; });
+      dibujar();
+    }).iniciar();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 7 · Aprendizaje no supervisado — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  /* Estilos propios del Tema 7 */
+  .lado { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, 1fr); gap: 1.1rem; align-items: start; }
+  .lado.mitad { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  @media (max-width: 860px) { .lado, .lado.mitad { grid-template-columns: 1fr; } }
+  .titulo-vis { font-size: .8rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink2); margin: .2rem 0 .4rem; }
+  .panel-lat .kpis { margin-top: 0; }
+  .panel-lat .kpi { min-width: 7rem; flex: 1; }
+  .panel-lat .pasos li { font-size: .95rem; }
+  .estado { font-size: .92rem; padding: .5rem .75rem; border-radius: 8px; background: var(--soft); border: 1px solid var(--line); color: var(--ink2); margin: .5rem 0; min-height: 2.6rem; }
+  .estado b { color: var(--ink); }
+  .ok-t { color: var(--ok); font-weight: 700; }
+  .bad-t { color: var(--bad); font-weight: 700; }
+  .muestras { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; margin: .2rem 0 .6rem; }
+  .muestra { display: flex; flex-direction: column; align-items: center; gap: .25rem; font-size: .8rem; color: var(--ink2); font-weight: 700; }
+  .muestra i { display: block; width: 58px; height: 58px; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); box-shadow: inset 0 0 0 3px #fff; }
+  .paleta { display: flex; gap: 4px; flex-wrap: wrap; }
+  .paleta i { width: 18px; height: 18px; border-radius: 4px; display: block; border: 1px solid rgba(0,0,0,.1); }
+  .lat-ley { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .85rem; color: var(--ink2); margin: .4rem 0; }
+  .lat-ley span { display: inline-flex; align-items: center; gap: .35rem; }
+  .lat-ley i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  canvas.cuadrado { aspect-ratio: auto; }
+  .reto svg { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin: .2rem 0 .6rem; }
+  .reto p { font-size: .95rem; margin-bottom: .35rem; }
+  .reto h3 { margin-bottom: .5rem !important; }
+  .fluye { stroke-dasharray: 7 6; animation: fluir .8s linear infinite; }
+  @keyframes fluir { to { stroke-dashoffset: -13; } }
+  @media (prefers-reduced-motion: reduce) { .fluye { animation: none; } }
+  svg .tr-fill { transition: fill .6s ease, opacity .6s ease; }
+  svg .tr-op { transition: opacity .6s ease; }
+  .kpi .t .gr { text-transform: none; }
+  .ctl > .seg { align-self: flex-start; }
+  .retos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  @media (max-width: 760px) { .retos { grid-template-columns: 1fr; } }
+  .chk { display: inline-flex; gap: .45rem; align-items: center; font-size: .9rem; font-weight: 600; color: var(--ink2); cursor: pointer; }
+  .fila-ctl { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+</style>
+</head>
+<body class="bloque-apl" data-pagina="07_no_supervisado.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 7</span>Aplicaciones avanzadas: agrupamiento y reducción de dimensionalidad</h1>
+  <p>Aprendizaje no supervisado con redes neuronales: descubrir la estructura de los datos cuando nadie nos da las etiquetas.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-idea" aria-controls="p-idea" aria-selected="true">1 · Sin etiquetas</button>
+  <button class="tab" role="tab" id="t-kmeans" aria-controls="p-kmeans" aria-selected="false">2 · Agrupar</button>
+  <button class="tab" role="tab" id="t-ae" aria-controls="p-ae" aria-selected="false">3 · Autoencoder</button>
+  <button class="tab" role="tab" id="t-som" aria-controls="p-som" aria-selected="false">4 · SOM</button>
+  <button class="tab" role="tab" id="t-dim" aria-controls="p-dim" aria-selected="false">5 · Dimensiones</button>
+  <button class="tab" role="tab" id="t-cnn" aria-controls="p-cnn" aria-selected="false">6 · CNN y RNN</button>
+  <button class="tab" role="tab" id="t-gen" aria-controls="p-gen" aria-selected="false">7 · Generativas</button>
+  <button class="tab" role="tab" id="t-casos" aria-controls="p-casos" aria-selected="false">8 · Casos de uso</button>
+  <button class="tab" role="tab" id="t-retos" aria-controls="p-retos" aria-selected="false">9 · Desafíos</button>
+</div>
+
+<main class="content">
+
+  <!-- =============================================================== 1 · SIN ETIQUETAS -->
+  <section id="p-idea" class="panel">
+    <div class="card">
+      <h2>Del «¿qué etiqueta tiene?» al «¿qué estructura tiene?»</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Los mismos clientes vistos de dos maneras: con una etiqueta que hay que predecir o sin ninguna, buscando qué forma tienen los datos.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Cómo miramos los datos</span>
+          <div class="seg" id="i-modo" role="group" aria-label="Modo de aprendizaje">
+            <button type="button" aria-pressed="true" data-v="0">Con etiquetas</button>
+            <button type="button" aria-pressed="false" data-v="1">Sin etiquetas</button>
+            <button type="button" aria-pressed="false" data-v="2">Grupos descubiertos</button>
+          </div>
+        </div>
+      </div>
+      <div class="escena"><svg id="i-svg" aria-label="Nube de clientes con y sin etiquetas y tabla de los datos que recibe el modelo"></svg></div>
+      <ul style="margin-top:.9rem">
+        <li><strong>Supervisado:</strong> pares entrada–salida. La red aprende a predecir la etiqueta y su pérdida mide cuánto se equivoca respecto a ella.</li>
+        <li><strong>No supervisado:</strong> solo entradas. La red busca regularidades por sí misma (grupos, representaciones comprimidas, patrones latentes) optimizando el error de reconstrucción o lo compactos que quedan los grupos.</li>
+        <li>En la era del Big Data casi nada está etiquetado, y etiquetar es caro. Además, a menudo no sabemos <em>a priori</em> qué categorías existen.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> la etiqueta solo distinguía dos tipos de cliente; los datos esconden cuatro. Los grupos salen de los datos sin que nadie corrija a la red; ponerles nombre sigue siendo trabajo nuestro.</div>
+    </div>
+
+    <div class="card">
+      <h2>Dos grandes áreas de aplicación</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <div class="grid2">
+        <div class="box acento">
+          <h3>Agrupamiento (clustering)</h3>
+          <svg id="i-area1" viewBox="0 0 460 190" role="img" aria-label="Puntos grises que se organizan en grupos de colores"></svg>
+          <p style="margin:.5rem 0 0">Encontrar subconjuntos homogéneos dentro de datos heterogéneos. La red aprende a medir similitudes complejas y no lineales.</p>
+        </div>
+        <div class="box acento">
+          <h3>Reducción de dimensionalidad</h3>
+          <svg id="i-area2" viewBox="0 0 460 190" role="img" aria-label="Una imagen de 64 píxeles comprimida en dos números"></svg>
+          <p style="margin:.5rem 0 0">Comprimir con inteligencia: pocas dimensiones que conservan el significado y las relaciones de vecindad del original.</p>
+        </div>
+      </div>
+      <h3 style="margin-top:1.1rem">¿Qué optimiza la red en cada caso?</h3>
+      <div class="escena"><svg id="i-obj" aria-label="Comparación del objetivo de entrenamiento en aprendizaje supervisado y no supervisado"></svg></div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 · AGRUPAMIENTO -->
+  <section id="p-kmeans" class="panel">
+    <div class="card">
+      <h2>K-Means paso a paso</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">El algoritmo clásico de agrupamiento: funciona muy bien con grupos redondos y falla cuando los grupos tienen formas curvas o anidadas.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Datos</span>
+          <div class="seg" id="k-datos" role="group" aria-label="Conjunto de datos">
+            <button type="button" aria-pressed="true" data-v="manchas">Grupos redondos</button>
+            <button type="button" aria-pressed="false" data-v="anillos">Anillos</button>
+            <button type="button" aria-pressed="false" data-v="lunas">Lunas</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="k-k">Número de grupos K</label><input id="k-k" type="range" min="2" max="6" step="1" value="3"><output id="k-ko">3</output></div>
+        <div class="fila-ctl">
+          <button class="btn" id="k-play" type="button">▶ Reproducir</button>
+          <button class="btn gris" id="k-paso" type="button">Paso</button>
+          <button class="btn gris" id="k-nuevo" type="button">Nuevos centroides</button>
+        </div>
+      </div>
+      <div class="lado">
+        <canvas id="k-cv" class="lienzo" aria-label="Puntos coloreados por grupo, centroides y regiones de K-Means"></canvas>
+        <div class="panel-lat">
+          <ol class="pasos" id="k-pasos">
+            <li>Elegir K centroides al azar.</li>
+            <li><strong>Asignar</strong> cada punto al centroide más cercano.</li>
+            <li><strong>Actualizar</strong> cada centroide a la media de sus puntos.</li>
+            <li>Repetir hasta que ningún punto cambie de grupo.</li>
+          </ol>
+          <div class="kpis">
+            <div class="kpi"><div class="t">Iteración</div><div class="v" id="k-it">0</div></div>
+            <div class="kpi"><div class="t">Pureza</div><div class="v" id="k-pur">—</div></div>
+          </div>
+          <div class="estado" id="k-estado">Pulsa «Reproducir» o avanza con «Paso».</div>
+          <p class="pie">Pureza: porcentaje de puntos que caen en un grupo donde domina su grupo real. Se calcula para mostrar el fallo; K-Means no ve esa información.</p>
+        </div>
+      </div>
+      <ul style="margin-top:.8rem">
+        <li>Cada grupo es «lo más cercano a un centro»: las fronteras entre grupos son siempre <strong>rectas</strong> (regiones de Voronoi).</li>
+        <li>Con anillos o lunas, K-Means converge igual… pero corta los datos por donde no es.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> K-Means asume grupos compactos y separables con rectas. Las redes neuronales superan esa limitación porque aprenden a medir similitudes no lineales.</div>
+    </div>
+
+    <div class="card">
+      <h2>Con otra representación, sí funciona</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">El mismo K-Means separa los anillos si en vez de (x, y) le damos un rasgo mejor: la distancia al centro.</p>
+      <div class="controles">
+        <button class="btn" id="r-play" type="button">▶ Transformar y agrupar</button>
+        <button class="btn gris" id="r-reset" type="button">Reiniciar</button>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Pureza con (x, y)</div><div class="v" id="r-p1">—</div></div>
+          <div class="kpi"><div class="t">Pureza con el radio r</div><div class="v" id="r-p2">—</div></div>
+        </div>
+      </div>
+      <canvas id="r-cv" class="lienzo" aria-label="Anillos que se transforman a coordenadas radio y ángulo y se agrupan"></canvas>
+      <div class="nota">La representación r = √(x² + y²) está elegida a mano para el ejemplo. Es el tipo de transformación no lineal que una red (por ejemplo, el codificador de un autoencoder) aprende por sí sola a partir de los datos.</div>
+      <div class="clave"><strong>Idea clave:</strong> agrupar bien depende de <em>en qué espacio</em> se mide la distancia. La red aporta ese espacio: primero transforma, después agrupa.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 · AUTOENCODER -->
+  <section id="p-ae" class="panel">
+    <div class="card">
+      <h2>Autoencoder: comprimir para entender</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Una red que aprende a copiar su entrada pasando por un cuello de botella de solo 2 neuronas. Para lograrlo tiene que descubrir qué distingue a cada imagen.</p>
+      <div class="controles">
+        <button class="btn" id="ae-play" type="button">▶ Entrenar</button>
+        <button class="btn gris" id="ae-reset" type="button">Reiniciar</button>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Época</div><div class="v" id="ae-ep">0</div></div>
+          <div class="kpi"><div class="t">Error de reconstrucción</div><div class="v" id="ae-err">—</div></div>
+          <div class="kpi"><div class="t">Parámetros</div><div class="v" id="ae-par">—</div></div>
+        </div>
+      </div>
+      <div class="escena"><svg id="ae-svg" aria-label="Arquitectura del autoencoder 64, 16, 2, 16, 64 con la imagen de entrada, el código latente y la reconstrucción"></svg></div>
+      <div class="lado mitad" style="margin-top:1rem">
+        <div>
+          <div class="titulo-vis">Espacio latente (z₁, z₂): una imagen = un punto</div>
+          <canvas id="ae-lat" class="lienzo" aria-label="Espacio latente de dos dimensiones coloreado por tipo de forma"></canvas>
+          <div class="lat-ley" id="ae-ley"></div>
+          <label class="chk"><input type="checkbox" id="ae-mapa"> Mostrar qué imagen genera cada zona del espacio</label>
+        </div>
+        <div>
+          <div class="titulo-vis">Originales (arriba) y reconstrucciones (abajo)</div>
+          <canvas id="ae-gal" class="lienzo" aria-label="Imágenes originales y sus reconstrucciones"></canvas>
+          <p class="pie">Pulsa una imagen o un punto del espacio latente para seguirla en el diagrama.</p>
+          <canvas id="ae-curva" class="lienzo" aria-label="Error de reconstrucción por época"></canvas>
+        </div>
+      </div>
+      <ul style="margin-top:.8rem">
+        <li><strong>Codificador:</strong> 64 píxeles → 16 → 2 números. <strong>Decodificador:</strong> 2 → 16 → 64 píxeles.</li>
+        <li>Se entrena con la propia imagen como objetivo: no hay etiquetas. Los colores del espacio latente solo sirven para que <em>nosotros</em> veamos el resultado.</li>
+        <li>Las activaciones del cuello de botella (la capa central) son la nueva representación reducida: el <strong>espacio latente</strong>.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> nadie le dice a la red qué forma es cada imagen, y aun así las agrupa en el espacio latente: comprimir bien obliga a separar lo que es distinto. Es como describir una foto con solo dos palabras clave.</div>
+    </div>
+
+    <div class="card">
+      <h2>¿Cuánto cabe en el cuello de botella?</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Cuatro autoencoders iguales salvo por el tamaño de la capa central: 1, 2, 4 u 8 neuronas. Se entrenan a la vez al abrir esta pestaña.</p>
+      <div class="controles">
+        <button class="btn" id="cb-play" type="button">▶ Entrenar</button>
+        <button class="btn gris" id="cb-reset" type="button">Reiniciar</button>
+        <div class="kpis" style="margin:0"><div class="kpi"><div class="t">Época</div><div class="v" id="cb-ep">0</div></div></div>
+      </div>
+      <div class="lado mitad">
+        <div>
+          <canvas id="cb-curva" class="lienzo" aria-label="Error de reconstrucción por época para cada tamaño del cuello de botella"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>1 neurona</span><span><i style="background:var(--s2)"></i>2 neuronas</span><span><i style="background:var(--s3)"></i>4 neuronas</span><span><i style="background:var(--s4)"></i>8 neuronas</span></div>
+        </div>
+        <canvas id="cb-gal" class="lienzo" aria-label="La misma imagen reconstruida con cuellos de botella de 1, 2, 4 y 8 neuronas"></canvas>
+      </div>
+      <ul style="margin-top:.8rem">
+        <li>Con <strong>1 número</strong> la red solo puede guardar «qué tipo de forma, más o menos»: reconstruye borrones promedio.</li>
+        <li>Con <strong>8</strong> cabe la posición, el tamaño y el grosor: la copia es casi perfecta, pero comprime menos.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> el tamaño del cuello de botella es un compromiso entre comprimir (descartar ruido y redundancia) y conservar detalle. Es un hiperparámetro, y elegirlo mal cambia mucho el resultado.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 · SOM -->
+  <section id="p-som" class="panel">
+    <div class="card">
+      <h2>Mapa autoorganizado de colores</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Una rejilla de 20 × 20 neuronas que recibe colores (3 números: rojo, verde y azul) y se ordena sola: colores parecidos acaban en casillas vecinas.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Colores de entrada</span>
+          <div class="seg" id="sc-datos" role="group" aria-label="Colores de entrada">
+            <button type="button" aria-pressed="true" data-v="paleta">8 colores</button>
+            <button type="button" aria-pressed="false" data-v="todos">Cualquier color</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="sc-vel">Muestras por fotograma</label><input id="sc-vel" type="range" min="1" max="40" step="1" value="10"><output id="sc-velo">10</output></div>
+        <div class="fila-ctl">
+          <button class="btn" id="sc-play" type="button">▶ Entrenar</button>
+          <button class="btn gris" id="sc-paso" type="button">Una muestra</button>
+          <button class="btn gris" id="sc-reset" type="button">Reiniciar</button>
+        </div>
+      </div>
+      <div class="lado">
+        <canvas id="sc-cv" class="lienzo" aria-label="Rejilla de neuronas del mapa autoorganizado, cada una pintada con su vector de pesos como color"></canvas>
+        <div class="panel-lat">
+          <div class="muestras">
+            <div class="muestra"><i id="sc-x"></i>Entrada x</div>
+            <div style="font-size:1.4rem;color:var(--muted)">→</div>
+            <div class="muestra"><i id="sc-bmu"></i>Ganadora (BMU)</div>
+          </div>
+          <div class="formula" style="font-size:1.08rem">w ← w + η · h · (x − w)</div>
+          <p class="pie" style="margin-top:0">h vale 1 en la ganadora y decrece con la distancia en la rejilla (radio σ).</p>
+          <div class="kpis">
+            <div class="kpi"><div class="t">Muestras</div><div class="v" id="sc-it">0</div></div>
+            <div class="kpi"><div class="t">Radio <span class="gr">σ</span></div><div class="v" id="sc-sig">—</div></div>
+            <div class="kpi"><div class="t">Tasa <span class="gr">η</span></div><div class="v" id="sc-eta">—</div></div>
+          </div>
+          <div class="titulo-vis" style="margin-top:.6rem">Colores con los que se entrena</div>
+          <div class="paleta" id="sc-pal"></div>
+        </div>
+      </div>
+      <ul style="margin-top:.8rem">
+        <li><strong>Aprendizaje competitivo:</strong> las neuronas compiten; gana la que más se parece a la entrada (la <em>Best Matching Unit</em>).</li>
+        <li>La ganadora y sus <strong>vecinas en la rejilla</strong> se acercan a la entrada. El radio de vecindad empieza grande (orden global) y se encoge (ajuste fino).</li>
+        <li>No hay retropropagación ni etiquetas: el mapa conserva la <strong>topología</strong> del espacio de entrada.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> un SOM proyecta datos de muchas dimensiones (aquí 3) sobre un mapa 2D en el que lo parecido queda cerca. Sirve para «ver» datos de decenas de dimensiones.</div>
+    </div>
+
+    <div class="card">
+      <h2>La malla que se estira sobre los datos</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Ahora cada neurona es un punto del plano. La malla empieza arrugada en el centro y se estira y se dobla hasta cubrir la forma de los datos.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Forma de los datos</span>
+          <div class="seg" id="sm-datos" role="group" aria-label="Forma de los datos">
+            <button type="button" aria-pressed="true" data-v="nube">Nube continua</button>
+            <button type="button" aria-pressed="false" data-v="anillo">Anillo</button>
+            <button type="button" aria-pressed="false" data-v="grupos">Grupos aislados</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="sm-vel">Muestras por fotograma</label><input id="sm-vel" type="range" min="1" max="40" step="1" value="8"><output id="sm-velo">8</output></div>
+        <div class="fila-ctl">
+          <button class="btn" id="sm-play" type="button">▶ Entrenar</button>
+          <button class="btn gris" id="sm-reset" type="button">Reiniciar</button>
+        </div>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Muestras</div><div class="v" id="sm-it">0</div></div>
+          <div class="kpi"><div class="t">Radio <span class="gr">σ</span></div><div class="v" id="sm-sig">—</div></div>
+        </div>
+      </div>
+      <canvas id="sm-cv" class="lienzo" aria-label="Malla de 12 por 12 neuronas que se adapta a una nube de puntos"></canvas>
+      <div class="leyenda"><span><i class="punto" style="background:#b8c2cc"></i>datos</span><span><i style="background:var(--s1)"></i>malla de neuronas (vecinas unidas)</span><span><i class="punto" style="background:var(--apl)"></i>ganadora (BMU) y vecindad</span><span><i class="punto" style="background:var(--ink)"></i>muestra actual</span></div>
+      <div class="clave"><strong>Idea clave:</strong> la malla revela la topología: si los datos forman un anillo, grupos aislados o una estructura continua. Las neuronas que quedan en zonas vacías (aristas largas) delatan los huecos entre grupos.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 · REDUCCIÓN DE DIMENSIONALIDAD -->
+  <section id="p-dim" class="panel">
+    <div class="card">
+      <h2>Lineal frente a no lineal: el rollo de papel</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Datos en 3D que en realidad viven sobre una hoja enrollada (una variedad, <em>manifold</em>). ¿Cómo los pasamos a 2D sin perder quién está al lado de quién?</p>
+      <div class="controles">
+        <div class="ctl"><label for="d-unroll">Desenrollar la hoja</label><input id="d-unroll" type="range" min="0" max="100" step="1" value="0"><output id="d-unrollo">0 %</output></div>
+        <button class="btn" id="d-play" type="button">▶ Desenrollar</button>
+        <div class="ctl"><span class="etq">Proyección a 2D</span>
+          <div class="seg" id="d-proy" role="group" aria-label="Método de proyección">
+            <button type="button" aria-pressed="true" data-v="pca">PCA (lineal)</button>
+            <button type="button" aria-pressed="false" data-v="nl">Desenrollado (no lineal)</button>
+          </div>
+        </div>
+      </div>
+      <div class="lado mitad">
+        <div>
+          <div class="titulo-vis">Datos en 3D · arrastra para girar</div>
+          <canvas id="d-3d" class="lienzo" aria-label="Rollo de puntos en tres dimensiones que se puede girar" style="cursor:grab"></canvas>
+        </div>
+        <div>
+          <div class="titulo-vis" id="d-tit2">Proyección PCA a 2D</div>
+          <canvas id="d-2d" class="lienzo" aria-label="Proyección de los datos a dos dimensiones"></canvas>
+        </div>
+      </div>
+      <p class="pie">Color = posición a lo largo de la hoja (de amarillo a azul). Una buena reducción mantiene el degradado ordenado.</p>
+      <ul>
+        <li><strong>PCA</strong> (cálculo real) busca el plano que mejor conserva la varianza y proyecta sobre él: aplasta el rollo y mezcla capas que estaban lejos sobre la hoja.</li>
+        <li>Un método <strong>no lineal</strong> (un autoencoder, por ejemplo) puede «desenrollar» la variedad curva. La animación usa la posición real de cada punto sobre la hoja, que es lo que un buen método no lineal intenta recuperar.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> reducir no es solo ocupar menos espacio: es destilar el significado. Cuando los datos viven en una variedad curva, hace falta una reducción no lineal, y ahí las redes neuronales superan a PCA.</div>
+    </div>
+
+    <div class="card">
+      <h2>La maldición de la dimensionalidad</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">300 puntos al azar en un hipercubo de d dimensiones. Al crecer d, el vecino más cercano y el más lejano acaban casi a la misma distancia.</p>
+      <div class="controles">
+        <div class="ctl"><label for="m-d">Dimensiones d</label><input id="m-d" type="range" min="0" max="10" step="1" value="1"><output id="m-do">2</output></div>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Más cercano / más lejano</div><div class="v" id="m-rat">—</div></div>
+        </div>
+      </div>
+      <div class="lado mitad">
+        <div>
+          <div class="titulo-vis">Distancias desde un punto a los otros 299</div>
+          <canvas id="m-hist" class="lienzo" aria-label="Histograma de distancias relativas para la dimensión elegida"></canvas>
+        </div>
+        <div>
+          <div class="titulo-vis">Cociente cercano / lejano según la dimensión</div>
+          <canvas id="m-curva" class="lienzo" aria-label="Cociente entre la distancia al vecino más cercano y al más lejano frente al número de dimensiones"></canvas>
+        </div>
+      </div>
+      <ul style="margin-top:.8rem">
+        <li>Las distancias se concentran en una franja estrecha: «cerca» y «lejos» dejan de significar algo.</li>
+        <li>Los datos quedan dispersos: hacen falta muchísimos más ejemplos para cubrir el espacio.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> en alta dimensión los datos se vuelven dispersos y el cálculo de distancias pierde sentido (lo sufren K-Means, kNN…). Reducir la dimensionalidad conservando lo esencial mitiga el problema.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 · CNN Y RNN -->
+  <section id="p-cnn" class="panel">
+    <div class="card">
+      <h2>Una CNN como compresor de imágenes</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Convolución y pooling reducen el tamaño espacial capa a capa mientras crece la profundidad: al final, la imagen cabe en un vector denso.</p>
+      <div class="controles">
+        <button class="btn" id="c-play" type="button">▶ Reproducir</button>
+        <div class="ctl"><span class="etq">Dígito de entrada</span>
+          <div class="seg" id="c-dig" role="group" aria-label="Dígito de entrada">
+            <button type="button" aria-pressed="true" data-v="7">7</button>
+            <button type="button" aria-pressed="false" data-v="3">3</button>
+            <button type="button" aria-pressed="false" data-v="0">0</button>
+          </div>
+        </div>
+      </div>
+      <div class="escena"><svg id="c-svg" aria-label="Volúmenes de una red convolucional: 28 por 28 por 1, 14 por 14 por 16, 7 por 7 por 32 y un vector"></svg></div>
+      <p class="pie">Los mapas de características salen de convolucionar de verdad el dígito con filtros de bordes hechos a mano (una CNN entrenada aprendería los suyos). Se muestra un canal de cada volumen.</p>
+      <ul>
+        <li><strong>Convolución</strong>: cada filtro recorre la imagen y responde a un patrón (bordes, esquinas…). 16 filtros → 16 canales.</li>
+        <li><strong>Pooling 2 × 2</strong> (o convolución con <em>stride</em>): se queda con el máximo de cada bloque y divide entre 2 el alto y el ancho.</li>
+        <li>Las capas finales, antes de clasificar, contienen un vector de características: una versión muy reducida y rica en significado de la imagen.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> aunque son famosas por clasificar, las CNN son potentes reductores de dimensionalidad para imágenes: menos tamaño espacial, más profundidad de características.</div>
+    </div>
+
+    <div class="card">
+      <h2>Una RNN resume una secuencia en un vector</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">La red lee palabra a palabra y actualiza su estado oculto. Sea cual sea la longitud de la frase, el resumen final tiene siempre el mismo tamaño.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Secuencia</span>
+          <div class="seg" id="n-frase" role="group" aria-label="Frase de entrada">
+            <button type="button" aria-pressed="true" data-v="0">Frase corta</button>
+            <button type="button" aria-pressed="false" data-v="1">Frase larga</button>
+          </div>
+        </div>
+        <button class="btn" id="n-play" type="button">▶ Leer</button>
+        <button class="btn gris" id="n-paso" type="button">Siguiente palabra</button>
+      </div>
+      <div class="escena"><svg id="n-svg" aria-label="Red recurrente desplegada en el tiempo leyendo una frase palabra a palabra"></svg></div>
+      <p class="pie">Pesos fijos al azar y vectores de palabra de juguete: la animación muestra el mecanismo, no un modelo entrenado. Cada casilla es un número del estado oculto (azul positivo, naranja negativo).</p>
+      <ul>
+        <li>En cada paso: <span class="mat">h<sub>t</sub> = tanh(W<sub>h</sub> h<sub>t−1</sub> + W<sub>x</sub> x<sub>t</sub> + b)</span>. El estado arrastra lo leído hasta ese momento.</li>
+        <li>El estado final es una representación de dimensión fija de toda la secuencia: así se convierten frases enteras en vectores (<em>embeddings</em>). Vale igual para series temporales o audio.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> secuencia de longitud arbitraria → vector de tamaño fijo. La RNN comprime el tiempo como la CNN comprime el espacio.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 · GENERATIVAS -->
+  <section id="p-gen" class="panel">
+    <div class="card">
+      <h2>GAN: un generador contra un discriminador</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">El generador fabrica datos falsos a partir de ruido; el discriminador aprende a distinguirlos de los reales. Compitiendo, el generador aprende la distribución de los datos.</p>
+      <div class="controles">
+        <button class="btn" id="g-play" type="button">▶ Entrenar</button>
+        <button class="btn gris" id="g-reset" type="button">Reiniciar</button>
+        <div class="ctl"><span class="etq">Hiperparámetros</span>
+          <div class="seg" id="g-cfg" role="group" aria-label="Hiperparámetros de la GAN">
+            <button type="button" aria-pressed="true" data-v="bien">Equilibrados</button>
+            <button type="button" aria-pressed="false" data-v="mal">Desequilibrados</button>
+          </div>
+        </div>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Iteración</div><div class="v" id="g-it">0</div></div>
+          <div class="kpi"><div class="t">Generador: media · desv.</div><div class="v" id="g-par">—</div></div>
+        </div>
+      </div>
+      <div class="escena"><svg id="g-svg" aria-label="Bucle de entrenamiento de una GAN: ruido, generador, discriminador y datos reales"></svg></div>
+      <div class="lado mitad" style="margin-top:1rem">
+        <div>
+          <div class="titulo-vis">Distribución real y generada</div>
+          <canvas id="g-dens" class="lienzo" aria-label="Densidad de los datos reales y de los generados"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>datos reales (media 1,5 · desv. 0,6)</span><span><i style="background:var(--s2)"></i>generados por G</span></div>
+        </div>
+        <div>
+          <div class="titulo-vis">Discriminador: D(x) = probabilidad de «real»</div>
+          <canvas id="g-disc" class="lienzo" aria-label="Probabilidad que asigna el discriminador a cada valor"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s3)"></i>D(x)</span><span><i style="background:var(--muted)"></i>0,5: ya no distingue</span></div>
+        </div>
+      </div>
+      <p class="pie">Simulación simplificada con cálculo real: el generador es G(z) = μ + σ·z y el discriminador una regresión logística sobre x y x². «Equilibrados»: 5 pasos de D por cada paso de G. «Desequilibrados»: 1 paso de D y otras tasas de aprendizaje.</p>
+      <ul>
+        <li>El discriminador sube D(x) donde hay datos reales y la baja donde caen los falsos.</li>
+        <li>El generador mueve sus muestras hacia donde D dice «real». En el equilibrio D(x) ≈ 0,5 en todas partes: ya no sabe distinguir.</li>
+        <li>Con hiperparámetros desequilibrados el generador pierde la diversidad: produce casi siempre el mismo valor (la versión en 1D del <strong>colapso de modo</strong>).</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> si la red puede generar una muestra realista de un grupo, es que ha «entendido» lo que define a ese grupo. Pero su entrenamiento es notoriamente inestable.</div>
+    </div>
+
+    <div class="card">
+      <h2>Redes probabilísticas: un punto frente a una distribución</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">En lugar de un punto fijo en el espacio reducido, cada dato se representa con una gaussiana: su ubicación y también la confianza que tenemos en ella.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Dato que se codifica</span>
+          <div class="seg" id="pb-dato" role="group" aria-label="Dato que se codifica">
+            <button type="button" aria-pressed="true" data-v="0">Limpio</button>
+            <button type="button" aria-pressed="false" data-v="1">Con ruido</button>
+            <button type="button" aria-pressed="false" data-v="2">Incompleto</button>
+          </div>
+        </div>
+      </div>
+      <div class="escena"><svg id="pb-svg" aria-label="Espacio latente con puntos frente a espacio latente con gaussianas"></svg></div>
+      <ul style="margin-top:.8rem">
+        <li>La red aprende una media μ y una desviación σ para cada dato: dónde está y cuánta incertidumbre hay.</li>
+        <li>Con datos ruidosos o incompletos la gaussiana se ensancha. Si el dato es ambiguo, se estira hacia los grupos posibles.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> una reducción consciente de la ambigüedad: más flexible y robusta cuando los datos son ruidosos o están incompletos.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 · CASOS DE USO -->
+  <section id="p-casos" class="panel">
+    <div class="card">
+      <h2>Detección de anomalías: el error de reconstrucción se dispara</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Un autoencoder aprende solo con señales normales de vibración de una máquina. Lo que no sabe comprimir, no lo sabe reconstruir: ahí está el fallo.</p>
+      <div class="controles">
+        <button class="btn" id="an-play" type="button">▶ Entrenar con datos normales</button>
+        <button class="btn gris" id="an-reset" type="button">Reiniciar</button>
+        <div class="ctl"><label for="an-umb">Umbral de error</label><input id="an-umb" type="range" min="-3.4" max="-0.6" step="0.05" value="-1.8"><output id="an-umbo">—</output></div>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Época</div><div class="v" id="an-ep">0</div></div>
+          <div class="kpi"><div class="t">Anomalías detectadas</div><div class="v" id="an-det">—</div></div>
+          <div class="kpi"><div class="t">Falsas alarmas</div><div class="v" id="an-fa">—</div></div>
+        </div>
+      </div>
+      <div class="lado mitad">
+        <div>
+          <div class="fila-ctl" style="margin-bottom:.5rem">
+            <div class="seg" id="an-tipo" role="group" aria-label="Tipo de señal">
+              <button type="button" aria-pressed="true" data-v="0">Normal</button>
+              <button type="button" aria-pressed="false" data-v="1">Impacto</button>
+              <button type="button" aria-pressed="false" data-v="2">Holgura</button>
+              <button type="button" aria-pressed="false" data-v="3">Sensor bloqueado</button>
+              <button type="button" aria-pressed="false" data-v="4">Ruido</button>
+            </div>
+            <button class="btn gris" id="an-otro" type="button">Otra señal</button>
+          </div>
+          <canvas id="an-sen" class="lienzo" aria-label="Señal de vibración y su reconstrucción por el autoencoder"></canvas>
+          <div class="leyenda"><span><i style="background:var(--ink2)"></i>señal</span><span><i style="background:var(--s1)"></i>reconstrucción</span><span><i style="background:rgba(235,104,52,.45);height:10px"></i>error</span></div>
+          <div class="estado" id="an-ver"></div>
+        </div>
+        <div>
+          <div class="titulo-vis">Error de reconstrucción de 160 señales de prueba</div>
+          <canvas id="an-hist" class="lienzo" aria-label="Histograma del error de reconstrucción de señales normales y anómalas con el umbral"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>120 normales</span><span><i style="background:var(--s2)"></i>40 anómalas</span><span><i style="background:var(--ink)"></i>umbral</span></div>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> entrenando solo con la normalidad no hace falta tener ejemplos de cada fallo (fraude bancario, avería mecánica…). Basta con fijar un umbral sobre el error de reconstrucción.</div>
+    </div>
+
+    <div class="card">
+      <h2>Eliminación de ruido (denoising)</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Entrada con ruido, objetivo limpio. La red aprende que el ruido no ayuda a reconstruir y lo descarta: actúa como un filtro inteligente.</p>
+      <div class="controles">
+        <button class="btn" id="dn-play" type="button">▶ Entrenar</button>
+        <button class="btn gris" id="dn-reset" type="button">Reiniciar</button>
+        <div class="ctl"><label for="dn-ruido">Nivel de ruido</label><input id="dn-ruido" type="range" min="0.1" max="0.6" step="0.05" value="0.35"><output id="dn-ruidoo">0,35</output></div>
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="t">Época</div><div class="v" id="dn-ep">0</div></div>
+          <div class="kpi"><div class="t">Error entrada</div><div class="v" id="dn-e1">—</div></div>
+          <div class="kpi"><div class="t">Error salida</div><div class="v" id="dn-e2">—</div></div>
+        </div>
+      </div>
+      <canvas id="dn-cv" class="lienzo" aria-label="Imágenes con ruido, salida de la red y originales limpios"></canvas>
+      <p class="pie">Errores medidos frente al original limpio (error cuadrático medio por píxel). Red 64 → 32 → 64.</p>
+    </div>
+
+    <div class="card">
+      <h2>Generar contenido: interpolar en el espacio latente</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Recorremos en línea recta el camino entre dos imágenes dentro del espacio latente del autoencoder de la pestaña 3 y decodificamos cada punto intermedio.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Desde</span>
+          <div class="seg" id="it-a" role="group" aria-label="Imagen de partida">
+            <button type="button" aria-pressed="true" data-v="0">Horizontal</button><button type="button" aria-pressed="false" data-v="1">Vertical</button><button type="button" aria-pressed="false" data-v="2">Diagonal</button><button type="button" aria-pressed="false" data-v="3">Cuadrado</button><button type="button" aria-pressed="false" data-v="4">Círculo</button>
+          </div>
+        </div>
+        <div class="ctl"><span class="etq">Hasta</span>
+          <div class="seg" id="it-b" role="group" aria-label="Imagen de llegada">
+            <button type="button" aria-pressed="false" data-v="0">Horizontal</button><button type="button" aria-pressed="false" data-v="1">Vertical</button><button type="button" aria-pressed="false" data-v="2">Diagonal</button><button type="button" aria-pressed="false" data-v="3">Cuadrado</button><button type="button" aria-pressed="true" data-v="4">Círculo</button>
+          </div>
+        </div>
+        <button class="btn" id="it-play" type="button">▶ Entrenar el autoencoder</button>
+      </div>
+      <div class="estado" id="it-estado"></div>
+      <div class="lado" style="grid-template-columns:minmax(220px,.8fr) minmax(0,2fr)">
+        <canvas id="it-lat" class="lienzo" aria-label="Camino recto entre dos puntos del espacio latente"></canvas>
+        <canvas id="it-cv" class="lienzo" aria-label="Imágenes intermedias decodificadas desde el espacio latente frente a mezclar píxeles"></canvas>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> mezclar píxeles solo superpone dos imágenes; moverse por el espacio latente produce formas nuevas y coherentes. Así se usan los espacios reducidos en recomendación y arte generativo: buscar puntos nuevos que combinan rasgos de los existentes.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 · DESAFÍOS -->
+  <section id="p-retos" class="panel">
+    <div class="card">
+      <h2>Desafíos y consideraciones críticas</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Cuatro límites que hay que tener presentes antes de confiar en un modelo no supervisado.</p>
+      <div class="retos">
+        <div class="box acento reto">
+          <h3>1 · Complejidad computacional</h3>
+          <svg id="x-coste" viewBox="0 0 440 180" role="img" aria-label="Curva de pérdida suave de una red supervisada frente a curvas oscilantes de una GAN"></svg>
+          <p>Arquitecturas profundas y grandes volúmenes de datos exigen muchos recursos y hardware especializado.</p>
+          <p>La convergencia de las GAN es notoriamente difícil e inestable: requiere ajuste fino.</p>
+        </div>
+        <div class="box acento reto">
+          <h3>2 · Interpretabilidad (caja negra)</h3>
+          <svg id="x-caja" viewBox="0 0 440 180" role="img" aria-label="Componentes de PCA con su varianza frente a dimensiones latentes sin significado conocido"></svg>
+          <p>Un componente de PCA tiene una lectura directa: cuánta varianza explica. Una dimensión latente no: ¿el número 3 es el brillo o la forma?</p>
+          <p>Difícil de explicar en sectores regulados.</p>
+        </div>
+        <div class="box acento reto">
+          <h3>3 · Sensibilidad a hiperparámetros</h3>
+          <svg id="x-colapso" viewBox="0 0 440 180" role="img" aria-label="Generador que cubre los ocho modos de los datos frente a generador colapsado en uno solo"></svg>
+          <p>La tasa de aprendizaje, el tamaño del cuello de botella o la pérdida cambian mucho el resultado.</p>
+          <p>Una mala configuración lleva al <strong>colapso de modo</strong>: la red ignora la diversidad de los datos.</p>
+        </div>
+        <div class="box acento reto">
+          <h3>4 · Generalización</h3>
+          <svg id="x-gen" viewBox="0 0 440 190" role="img" aria-label="Representación que pasa por todos los datos de entrenamiento pero se aleja de los datos nuevos"></svg>
+          <p>La representación puede encajar perfectamente con el entrenamiento y no captar la estructura de datos nuevos.</p>
+          <p>Remedios: <strong>regularización</strong> y <strong>transferencia de aprendizaje</strong>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>En resumen</h2>
+      <div class="escena"><svg id="x-resumen" aria-label="Tres familias: autoencoders para comprimir, SOM para proyectar y GAN para generar"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> compresión inteligente con autoencoders, proyección topológica con SOM y generación de datos con GAN: tres maneras de extraer conocimiento, estructura y valor de datos sin etiquetar.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/mlp.js"></script>
+<script src="assets/07_no_supervisado.js"></script>
+</body>
+</html>

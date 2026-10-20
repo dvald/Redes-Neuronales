@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 9 · II · Big Data: entrenamiento distribuido — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .escena svg { user-select: none; }
+  .dos-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 1rem; align-items: start; }
+  .tres-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .9rem; }
+  .tabla.compacta td, .tabla.compacta th { padding: .4rem .6rem; }
+  .controles.vel { gap: .5rem .9rem; }
+  .vel .ctl { min-width: 6.3rem; }
+  .vel input[type=range] { width: 6.3rem; }
+  .ctl .seg { align-self: flex-start; }
+  .vel .titulo-vel { width: 100%; font-size: .82rem; font-weight: 700; color: var(--ink2); margin-bottom: -.4rem; }
+  .kpi .v.peq { font-size: 1.15rem; }
+  .kpi .v.ok { color: var(--ok); }
+  .kpi .v.bad { color: var(--bad); }
+  .lista-check { list-style: none; margin-left: 0 !important; }
+  .lista-check li { padding-left: 1.7rem; position: relative; }
+  .lista-check li::before { content: "✓"; position: absolute; left: .25rem; top: 0; color: var(--acento); font-weight: 800; }
+  .preguntas { display: grid; gap: .55rem; }
+  .preguntas .fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1rem; padding: .5rem .8rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .preguntas .fila span { font-weight: 600; color: var(--ink); }
+  .recomendacion { border: 2px solid var(--acento); border-radius: 12px; padding: .9rem 1.1rem; background: var(--acento-l); margin: .8rem 0; }
+  .recomendacion h3 { margin: 0 0 .3rem; }
+  .recomendacion ul { margin-bottom: 0; }
+  .ideas li { margin-bottom: .4rem; }
+</style>
+</head>
+<body class="bloque-esc" data-pagina="09_distribuido.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 9 · II</span>Big Data: entrenamiento distribuido</h1>
+  <p>Cómo repartir el entrenamiento entre muchas GPU: dividir los datos o el modelo, sincronizar los gradientes y convivir con los dispositivos más lentos.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-concepto" aria-controls="p-concepto" aria-selected="true">1 · Concepto</button>
+  <button class="tab" role="tab" id="t-dm" aria-controls="p-dm" aria-selected="false">2 · Datos o modelo</button>
+  <button class="tab" role="tab" id="t-allreduce" aria-controls="p-allreduce" aria-selected="false">3 · All-Reduce</button>
+  <button class="tab" role="tab" id="t-straggler" aria-controls="p-straggler" aria-selected="false">4 · Straggler</button>
+  <button class="tab" role="tab" id="t-pipeline" aria-controls="p-pipeline" aria-selected="false">5 · Pipeline</button>
+  <button class="tab" role="tab" id="t-asinc" aria-controls="p-asinc" aria-selected="false">6 · SGD asíncrono</button>
+  <button class="tab" role="tab" id="t-downpour" aria-controls="p-downpour" aria-selected="false">7 · Downpour</button>
+  <button class="tab" role="tab" id="t-compara" aria-controls="p-compara" aria-selected="false">8 · Comparativa</button>
+  <button class="tab" role="tab" id="t-acum" aria-controls="p-acum" aria-selected="false">9 · Acumulación</button>
+  <button class="tab" role="tab" id="t-elegir" aria-controls="p-elegir" aria-selected="false">10 · Elegir</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 · CONCEPTO -->
+  <section id="p-concepto" class="panel">
+    <div class="card">
+      <h2>Distribuir, procesar, combinar y actualizar</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">El objetivo es reducir el tiempo de entrenamiento de modelos enormes: una sola GPU no basta, así que se escala en horizontal, añadiendo dispositivos.</p>
+      <div class="controles"><button class="btn" id="cc-play" type="button">⏸ Pausa</button><span class="pie" style="margin:0">Como repartir mil libros entre diez amigos: cada uno lee cien y luego se pone en común lo aprendido.</span></div>
+      <div class="escena"><svg id="cc-svg" aria-label="Ciclo del entrenamiento distribuido: los datos se reparten entre cuatro workers, cada uno calcula un gradiente parcial, el servidor de parámetros los combina y actualiza los pesos"></svg></div>
+      <ol class="pasos" id="cc-pasos">
+        <li><strong>Distribuir:</strong> repartir los datos (o partes del modelo) entre los nodos.</li>
+        <li><strong>Procesar:</strong> cada nodo calcula errores y gradientes parciales con su trozo.</li>
+        <li><strong>Combinar:</strong> se agregan (promedian o suman) los gradientes de todos los workers.</li>
+        <li><strong>Actualizar:</strong> se modifican los pesos globales de forma sincronizada.</li>
+      </ol>
+      <div class="tres-cols">
+        <div class="box acento"><h3>Worker</h3><p>Hace el trabajo pesado: procesa datos y calcula gradientes.</p></div>
+        <div class="box acento"><h3>Servidor de parámetros</h3><p>Nodo central (en algunos esquemas) que guarda y actualiza los pesos globales.</p></div>
+        <div class="box acento"><h3>Comunicación</h3><p>El intercambio constante de información. Suele ser el principal cuello de botella.</p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> un gradiente parcial solo ha visto un trozo de los datos; hay que combinarlo con los demás. Y todos los nodos deben trabajar con la misma versión de los pesos: si no, el entrenamiento se vuelve caótico.</div>
+    </div>
+    <div class="card">
+      <h2>Los retos: sincronización y comunicación</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Repartir el cálculo es fácil; coordinar a todos los nodos es lo difícil.</p>
+      <div class="escena"><svg id="cc-retos" aria-label="Cuatro retos: efecto straggler, bloqueos, ancho de banda y latencia"></svg></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 · DATOS O MODELO -->
+  <section id="p-dm" class="panel">
+    <div class="card">
+      <h2>Paralelismo de datos frente a paralelismo de modelo</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Las mismas 4 GPU y una red de 5 capas. A la izquierda, cada GPU tiene el modelo entero y un trozo de los datos; a la derecha, cada GPU tiene unas capas y los datos pasan de una a otra.</p>
+      <div class="controles"><button class="btn" id="dm-play" type="button">⏸ Pausa</button></div>
+      <div class="escena"><svg id="dm-svg" aria-label="Animación lado a lado: paralelismo de datos con cuatro copias del modelo trabajando a la vez, y paralelismo de modelo con las capas repartidas y una sola GPU trabajando en cada momento"></svg></div>
+      <div class="leyenda"><span><i style="background:var(--acento)"></i>hacia delante (activaciones)</span><span><i style="background:var(--s7)"></i>hacia atrás (gradientes)</span><span><i style="background:var(--s4)"></i>sincronizar gradientes (All-Reduce)</span></div>
+      <div class="clave"><strong>Idea clave:</strong> con datos, las 4 GPU calculan a la vez, pero cada una necesita el modelo entero en su memoria. Con modelo, cada GPU guarda solo una parte (caben modelos gigantes), pero la GPU 2 no puede empezar hasta que la GPU 1 termine. Son complementarias: los sistemas más avanzados combinan ambas.</div>
+    </div>
+    <div class="card">
+      <h2>Diferencias y cuándo usar cada una</h2>
+      <table class="tabla">
+        <thead><tr><th></th><th>Paralelismo de datos</th><th>Paralelismo de modelo</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Qué se divide</strong></td><td>El conjunto de datos (en lotes)</td><td>La arquitectura (por capas)</td></tr>
+          <tr><td><strong>El modelo</strong></td><td>Replicado en cada nodo</td><td>Fragmentado entre nodos</td></tr>
+          <tr><td><strong>Qué se comunica</strong></td><td>Gradientes y pesos</td><td>Activaciones (delante) y gradientes (atrás)</td></tr>
+          <tr><td><strong>Cuándo</strong></td><td>Al final de cada lote</td><td>Entre capas, en cada pasada</td></tr>
+        </tbody>
+      </table>
+      <div class="dos-cols" style="margin-top:.8rem">
+        <div class="box acento"><h3>Usa paralelismo de datos si…</h3>
+          <ul class="lista-check">
+            <li>El modelo cabe entero en la memoria de tu GPU.</li>
+            <li>Tienes una cantidad masiva de datos.</li>
+            <li>Buscas acelerar el entrenamiento: va muy bien con CNN e imágenes (datos independientes).</li>
+          </ul>
+          <p class="pie">✓ Rápido, escalable y sin tocar la red. ✗ Sincronizar gradientes consume ancho de banda; va al ritmo del nodo más lento; menos útil con RNN.</p>
+        </div>
+        <div class="box acento"><h3>Usa paralelismo de modelo si…</h3>
+          <ul class="lista-check">
+            <li>El modelo es gigante (p. ej. GPT-3 y otros LLM) y no cabe en una GPU.</li>
+            <li>La arquitectura tiene ramas complejas que pueden ir en paralelo.</li>
+          </ul>
+          <p class="pie">✓ Permite modelos que no caben en la VRAM de una tarjeta. ✗ Gran dependencia entre GPU y difícil de implementar bien. Si el modelo cabe en una GPU, solo añade comunicación.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 · ALL-REDUCE -->
+  <section id="p-allreduce" class="panel">
+    <div class="card">
+      <h2>All-Reduce en anillo: todos acaban con el mismo promedio</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Cada nodo tiene su vector de gradientes, partido en tantos trozos como nodos. En cada paso, todos pasan un trozo a su vecino a la vez. Tras 2(N − 1) pasos, todos tienen la suma completa.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Nodos</span>
+          <div class="seg" id="ar-n" role="group" aria-label="Número de nodos"><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="5" aria-pressed="false">5</button><button type="button" data-v="6" aria-pressed="true">6</button></div>
+        </div>
+        <button class="btn" id="ar-paso" type="button">Paso ▸</button>
+        <button class="btn" id="ar-play" type="button">▶ Reproducir</button>
+        <button class="btn gris" id="ar-reset" type="button">Reiniciar</button>
+        <button class="btn gris" id="ar-nuevos" type="button">Nuevos gradientes</button>
+      </div>
+      <div class="escena"><svg id="ar-svg" aria-label="Anillo de nodos; cada uno con su vector de gradientes en barras; los trozos viajan al vecino en las fases scatter-reduce y all-gather"></svg></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Fase</div><div class="v peq" id="ar-k1">—</div></div>
+        <div class="kpi"><div class="t">Enviado por cada nodo</div><div class="v peq" id="ar-k2">—</div></div>
+        <div class="kpi"><div class="t">Con un vector de 100 MB</div><div class="v peq" id="ar-k3">—</div></div>
+        <div class="kpi"><div class="t">Comprobación</div><div class="v peq" id="ar-k4">—</div></div>
+      </div>
+      <ul>
+        <li><strong>Scatter-reduce</strong> (N − 1 pasos): cada nodo envía un trozo y suma el que recibe. Al final, cada nodo tiene un trozo con la suma de todos (marcado con borde).</li>
+        <li><strong>All-gather</strong> (N − 1 pasos): los trozos completos dan la vuelta al anillo hasta que todos los nodos los tienen. Se divide entre N y queda el promedio.</li>
+        <li>Cada nodo envía en total 2(N − 1)/N veces su vector: menos de dos vectores, haya 4 nodos o 400. Por eso el anillo escala bien.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> el principal freno del paralelismo de datos es esta sincronización de gradientes (All-Reduce): mueve millones de números en cada lote. El anillo reparte ese tráfico por igual entre todos los nodos.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 · STRAGGLER -->
+  <section id="p-straggler" class="panel">
+    <div class="card">
+      <h2>El efecto straggler: todos esperan al más lento</h2>
+      <div class="meta"><span class="tag illus">Simulación</span></div>
+      <p class="lead">En SGD síncrono nadie actualiza los pesos hasta que todos han terminado su lote: el worker más lento marca el ritmo del grupo.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Modo</span>
+          <div class="seg" id="st-modo" role="group" aria-label="Modo de sincronización"><button type="button" data-v="sinc" aria-pressed="true">Síncrono</button><button type="button" data-v="asinc" aria-pressed="false">Asíncrono</button></div>
+        </div>
+        <div class="ctl"><span class="etq">Velocidades</span>
+          <div class="seg" id="st-pre" role="group" aria-label="Velocidades predefinidas"><button type="button" data-v="iguales" aria-pressed="false">Iguales</button><button type="button" data-v="lento" aria-pressed="true">Uno lento</button><button type="button" data-v="variados" aria-pressed="false">Variados</button></div>
+        </div>
+        <div class="ctl"><label for="st-var">Variabilidad entre lotes</label><input id="st-var" type="range" min="0" max="50" step="5" value="10"><output id="st-varo">10 %</output></div>
+        <button class="btn" id="st-play" type="button">▶ Reproducir</button>
+      </div>
+      <div class="controles vel" id="st-vel"><div class="titulo-vel">Velocidad relativa de cada worker</div></div>
+      <canvas id="st-cv" class="lienzo" aria-label="Cronograma de 8 workers: tiempo calculando, esperando al más lento y sincronizando"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>calcula su lote</span><span><i style="background:repeating-linear-gradient(45deg,#E57373 0 2px,#FFEBEE 2px 5px);height:10px;width:16px"></i>espera al más lento</span><span><i style="background:var(--s4)"></i>comunica gradientes</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Eficiencia (tiempo útil)</div><div class="v" id="st-k1">—</div></div>
+        <div class="kpi"><div class="t">Espera total (8 workers)</div><div class="v" id="st-k2">—</div></div>
+        <div class="kpi"><div class="t">Lotes procesados</div><div class="v" id="st-k3">—</div></div>
+        <div class="kpi"><div class="t">Actualizaciones de los pesos</div><div class="v" id="st-k4">—</div></div>
+      </div>
+      <p class="pie">Velocidades y tiempos supuestos (u.t. = unidades de tiempo). Ventana de 40 u.t.; comunicar los gradientes cuesta 0,6 u.t. por lote.</p>
+      <div class="clave"><strong>Idea clave:</strong> si tienes 100 GPU y una va un 10 % más lenta, las otras 99 esperan en cada iteración. El modo asíncrono elimina la espera, pero a cambio cada worker calcula con pesos que otros ya han cambiado (pestaña 6).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 · PIPELINE -->
+  <section id="p-pipeline" class="panel">
+    <div class="card">
+      <h2>Pipeline: micro-lotes para reducir las burbujas</h2>
+      <div class="meta"><span class="tag real">Cálculo real (aritmética del cronograma)</span></div>
+      <p class="lead">El modelo se parte en etapas, una por GPU (p. ej. GPU 0: capas 1-10; GPU 1: capas 11-20). Si el lote se trocea en micro-lotes, varias etapas trabajan a la vez, como en una cadena de montaje.</p>
+      <div class="controles">
+        <div class="ctl"><label for="pp-p">GPU (etapas)</label><input id="pp-p" type="range" min="2" max="8" step="1" value="4"><output id="pp-po">4</output></div>
+        <div class="ctl"><label for="pp-m">Micro-lotes</label><input id="pp-m" type="range" min="1" max="8" step="1" value="4"><output id="pp-mo">4</output></div>
+        <button class="btn" id="pp-play" type="button">▶ Reproducir</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Burbuja</div><div class="v" id="pp-k1">—</div></div>
+          <div class="kpi"><div class="t">Uso de las GPU</div><div class="v" id="pp-k2">—</div></div>
+        </div>
+      </div>
+      <canvas id="pp-cv" class="lienzo" aria-label="Cronograma de pipeline: GPU en filas y tiempo en horizontal, con los micro-lotes hacia delante y hacia atrás y las burbujas"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1);height:10px"></i>hacia delante (color = micro-lote)</span><span><i style="background:repeating-linear-gradient(45deg,var(--s1) 0 3px,#fff 3px 6px);height:10px;width:16px"></i>hacia atrás (dura el doble)</span><span><i style="background:repeating-linear-gradient(45deg,#B0BEC5 0 2px,#F3F5F7 2px 5px);height:10px;width:16px"></i>burbuja: GPU esperando</span></div>
+      <div class="formula" id="pp-form"></div>
+      <div class="dos-cols">
+        <div>
+          <h3>La burbuja se encoge con más micro-lotes</h3>
+          <canvas id="pp-graf" class="lienzo" aria-label="Fracción de burbuja frente al número de micro-lotes para el número de GPU elegido"></canvas>
+        </div>
+        <div>
+          <h3>Ventajas y desafíos</h3>
+          <div class="bien" style="margin-top:.3rem"><ul style="margin-bottom:0">
+            <li>Entrena modelos más grandes que la memoria de una GPU.</li>
+            <li>Más uso del hardware que el paralelismo de modelo puro.</li>
+            <li>Comunicación punto a punto, más barata que un All-Reduce global.</li>
+          </ul></div>
+          <div class="mal"><ul style="margin-bottom:0">
+            <li>Complejo: hay que equilibrar la carga entre etapas.</li>
+            <li>Guarda las activaciones en memoria hasta el paso atrás (stashing).</li>
+            <li>Las burbujas pesan más si el pipeline es muy profundo.</li>
+          </ul></div>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> con 1 micro-lote es paralelismo de modelo puro y la mayor parte del tiempo es burbuja. Frente a él, el pipeline mejora el uso concurrente del hardware: menos tiempos muertos.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 · SGD ASÍNCRONO -->
+  <section id="p-asinc" class="panel">
+    <div class="card">
+      <h2>Gradientes obsoletos: dar indicaciones con un mapa antiguo</h2>
+      <div class="meta"><span class="tag real">Descenso del gradiente real sobre una pérdida 2D</span></div>
+      <p class="lead">En SGD asíncrono, el gradiente se calcula con los pesos de hace τ actualizaciones y se aplica sobre los pesos actuales. Pulsa en el mapa para elegir el punto de partida.</p>
+      <div class="controles">
+        <div class="ctl"><label for="as-tau">Retraso τ (actualizaciones)</label><input id="as-tau" type="range" min="0" max="5" step="1" value="2"><output id="as-tauo">2</output></div>
+        <div class="ctl"><label for="as-lr">Tasa de aprendizaje η</label><input id="as-lr" type="range" min="0.02" max="0.3" step="0.01" value="0.12"><output id="as-lro">0,12</output></div>
+        <button class="btn" id="as-play" type="button">▶ Reproducir</button>
+        <button class="btn" id="as-paso" type="button">Paso ▸</button>
+        <button class="btn gris" id="as-reset" type="button">Reiniciar</button>
+      </div>
+      <div class="dos-cols">
+        <canvas id="as-cv" class="lienzo" aria-label="Curvas de nivel de la pérdida con la trayectoria síncrona y la asíncrona con gradientes obsoletos"></canvas>
+        <canvas id="as-graf" class="lienzo" aria-label="Pérdida frente al número de actualizaciones, en escala logarítmica, para el caso síncrono y el asíncrono"></canvas>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>síncrono (τ = 0)</span><span><i style="background:var(--s2)"></i>asíncrono con retraso τ</span><span><i style="background:var(--s3)"></i>gradiente correcto (en la posición actual)</span><span><i style="background:var(--s5)"></i>gradiente obsoleto (de hace τ pasos)</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Actualización</div><div class="v" id="as-k1">0</div></div>
+        <div class="kpi"><div class="t">Pérdida síncrono</div><div class="v" id="as-k2">—</div></div>
+        <div class="kpi"><div class="t">Pérdida asíncrono</div><div class="v" id="as-k3">—</div></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> el SGD asíncrono rompe la barrera de sincronización y aumenta el caudal, pero introduce gradientes obsoletos (staleness). Con retrasos grandes, el modelo oscila o diverge; bajar la tasa de aprendizaje lo estabiliza.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 · DOWNPOUR -->
+  <section id="p-downpour" class="panel">
+    <div class="card">
+      <h2>Downpour SGD: réplicas que no se esperan</h2>
+      <div class="meta"><span class="tag illus">Simulación</span></div>
+      <p class="lead">Propuesto por Google (Dean et al., 2012): un servidor de parámetros repartido en fragmentos y muchas réplicas del modelo que leen pesos (pull) y envían gradientes (push) a su ritmo.</p>
+      <div class="controles">
+        <button class="btn" id="dp-play" type="button">⏸ Pausa</button>
+        <button class="btn gris" id="dp-fallo" type="button">✗ Fallo de la réplica 3</button>
+        <button class="btn gris" id="dp-servidor" type="button">✗ Fallo del fragmento 2</button>
+      </div>
+      <div class="escena"><svg id="dp-svg" aria-label="Dos fragmentos del servidor de parámetros arriba y seis réplicas abajo que hacen pull de pesos, calculan y hacen push de gradientes de forma asíncrona"></svg></div>
+      <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>pull: pesos hacia la réplica</span><span><i class="punto" style="background:var(--s2)"></i>push: gradientes hacia el servidor</span><span><i style="background:#F0B400"></i>réplica trabajando con pesos viejos</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Actualizaciones aplicadas</div><div class="v" id="dp-k1">0</div></div>
+        <div class="kpi"><div class="t">Réplicas activas</div><div class="v" id="dp-k2">6 de 6</div></div>
+        <div class="kpi"><div class="t">Retraso medio de un push</div><div class="v" id="dp-k3">—</div></div>
+      </div>
+      <ol class="pasos" id="dp-pasos">
+        <li><strong>Pull:</strong> la réplica lee los pesos actuales de cada fragmento.</li>
+        <li><strong>Calcula</strong> el gradiente con su lote de datos.</li>
+        <li><strong>Push:</strong> envía el gradiente; el servidor lo aplica en cuanto llega, sin esperar a nadie.</li>
+      </ol>
+      <div class="clave"><strong>Idea clave:</strong> nadie espera a nadie y hay tolerancia a fallos: si una réplica cae, el entrenamiento sigue con las demás; si cae un servidor, se recupera de su copia de seguridad. El precio es que muchas réplicas calculan con pesos de varias versiones atrás.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 · COMPARATIVA -->
+  <section id="p-compara" class="panel">
+    <div class="card">
+      <h2>Síncrono frente a asíncrono</h2>
+      <table class="tabla">
+        <thead><tr><th>Característica</th><th>SGD síncrono</th><th>SGD asíncrono / Downpour</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Consistencia</strong></td><td>Alta: matemáticamente idéntico a SGD en una máquina</td><td>Baja: gradientes obsoletos (staleness)</td></tr>
+          <tr><td><strong>Velocidad</strong></td><td>Limitada por el worker más lento</td><td>Alta: sin esperas</td></tr>
+          <tr><td><strong>Uso del hardware</strong></td><td>Bajo: tiempos muertos al sincronizar</td><td>Alto: cálculo continuo</td></tr>
+          <tr><td><strong>Convergencia</strong></td><td>Estable</td><td>Ruidosa: hay que ajustar la tasa de aprendizaje</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Caudal frente a convergencia</h2>
+      <div class="meta"><span class="tag illus">Simulación: tiempos simulados</span><span class="tag real">Descenso del gradiente real sobre un problema de juguete</span></div>
+      <p class="lead">Los mismos workers entrenan la misma pérdida 2D con gradientes ruidosos. En síncrono se promedian los gradientes de todos y se espera al más lento; en asíncrono cada gradiente se aplica en cuanto llega.</p>
+      <div class="controles">
+        <div class="ctl"><label for="sa-n">Workers</label><input id="sa-n" type="range" min="2" max="16" step="1" value="6"><output id="sa-no">6</output></div>
+        <div class="ctl"><label for="sa-het">Diferencia de velocidad</label><input id="sa-het" type="range" min="0" max="100" step="10" value="50"><output id="sa-heto">50 %</output></div>
+        <div class="ctl"><label for="sa-lat">Latencia de la red</label><input id="sa-lat" type="range" min="0" max="2" step="0.1" value="0.5"><output id="sa-lato">0,5 u.t.</output></div>
+        <div class="ctl"><label for="sa-lr">Tasa de aprendizaje η</label><input id="sa-lr" type="range" min="0.01" max="0.12" step="0.01" value="0.05"><output id="sa-lro">0,05</output></div>
+        <button class="btn gris" id="sa-otra" type="button">↻ Otra simulación</button>
+      </div>
+      <div class="dos-cols">
+        <div><h3>Pérdida a lo largo del tiempo</h3><canvas id="sa-loss" class="lienzo" aria-label="Pérdida frente al tiempo simulado, en escala logarítmica, para SGD síncrono y asíncrono"></canvas></div>
+        <div><h3>Actualizaciones aplicadas (caudal)</h3><canvas id="sa-upd" class="lienzo" aria-label="Número de actualizaciones de los pesos frente al tiempo simulado para SGD síncrono y asíncrono"></canvas></div>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>SGD síncrono</span><span><i style="background:var(--s2)"></i>SGD asíncrono</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Uso del hardware · síncrono</div><div class="v peq" id="sa-k1">—</div></div>
+        <div class="kpi"><div class="t">Uso del hardware · asíncrono</div><div class="v peq" id="sa-k2">—</div></div>
+        <div class="kpi"><div class="t">Pérdida media al final · síncrono</div><div class="v peq" id="sa-k3">—</div></div>
+        <div class="kpi"><div class="t">Pérdida media al final · asíncrono</div><div class="v peq" id="sa-k4">—</div></div>
+      </div>
+      <p class="pie">Modelo de la simulación: cada worker tarda en su lote un tiempo que depende de su velocidad (con ±20 % de azar) y cada envío cuesta la latencia de la red. La pérdida es una función cuadrática 2D y cada gradiente lleva ruido, como en un mini-lote. Sube η para ver cómo el asíncrono se vuelve inestable antes que el síncrono.</p>
+      <div class="clave"><strong>Idea clave:</strong> el asíncrono aplica muchas más actualizaciones por unidad de tiempo, pero cada una es más ruidosa y llega con retraso. El síncrono avanza menos veces, pero cada paso es fiable.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9 · ACUMULACIÓN -->
+  <section id="p-acum" class="panel">
+    <div class="card">
+      <h2>Acumulación de gradientes: un lote grande en trozos</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Si el lote grande no cabe en la VRAM, se procesan varios micro-lotes, se suman sus gradientes y se hace una sola actualización. Lote efectivo = micro-lote × pasos de acumulación.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Cómo se procesa</span>
+          <div class="seg" id="ac-modo" role="group" aria-label="Modo"><button type="button" data-v="acum" aria-pressed="true">Acumulando micro-lotes</button><button type="button" data-v="directo" aria-pressed="false">Lote grande de golpe</button></div>
+        </div>
+        <div class="ctl"><span class="etq">Micro-lote</span>
+          <div class="seg" id="ac-mb" role="group" aria-label="Tamaño del micro-lote"><button type="button" data-v="32" aria-pressed="false">32</button><button type="button" data-v="64" aria-pressed="true">64</button><button type="button" data-v="128" aria-pressed="false">128</button></div>
+        </div>
+        <div class="ctl"><label for="ac-k">Pasos de acumulación</label><input id="ac-k" type="range" min="1" max="8" step="1" value="4"><output id="ac-ko">4</output></div>
+        <button class="btn" id="ac-play" type="button">▶ Reproducir</button>
+        <button class="btn" id="ac-paso" type="button">Paso ▸</button>
+        <button class="btn gris" id="ac-reset" type="button">Reiniciar</button>
+      </div>
+      <div class="escena"><svg id="ac-svg" aria-label="Memoria de la GPU, micro-lotes que se procesan uno a uno, gradientes que se suman en un acumulador y una única actualización de los pesos"></svg></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Lote efectivo</div><div class="v" id="ac-k1">—</div></div>
+        <div class="kpi"><div class="t">Ejemplos en memoria a la vez</div><div class="v" id="ac-k2">—</div></div>
+        <div class="kpi"><div class="t">Actualizaciones de los pesos</div><div class="v" id="ac-k3">0</div></div>
+        <div class="kpi"><div class="t">Diferencia con el lote completo</div><div class="v peq" id="ac-k4">—</div></div>
+      </div>
+      <p class="pie">Gradientes reales de una regresión lineal con 5 entradas y sesgo (6 parámetros) sobre datos sintéticos, con los pesos actuales fijos. Supuesto ilustrativo: en esta GPU caben 96 ejemplos a la vez.</p>
+      <div class="clave"><strong>Idea clave:</strong> la media de los gradientes de k micro-lotes iguales es exactamente el gradiente del lote completo. Se gana memoria a cambio de tiempo, y en entrenamiento distribuido se sincroniza una vez cada k micro-lotes: menos comunicación.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 10 · ELEGIR -->
+  <section id="p-elegir" class="panel">
+    <div class="card">
+      <h2>¿Qué estrategia elegir?</h2>
+      <p class="lead">No existe una «bala de plata»: la estrategia se adapta al modelo, a los datos y a la infraestructura. Marca lo que encaja con tu caso o elige un ejemplo.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Casos de ejemplo</span>
+          <div class="seg" id="el-caso" role="group" aria-label="Casos de ejemplo"><button type="button" data-v="cnn" aria-pressed="true">CNN de imágenes</button><button type="button" data-v="llm" aria-pressed="false">LLM gigante</button><button type="button" data-v="rnn" aria-pressed="false">RNN de series</button><button type="button" data-v="lenta" aria-pressed="false">Red de nodos lenta</button></div>
+        </div>
+      </div>
+      <div class="dos-cols">
+        <div class="preguntas" id="el-preg"></div>
+        <div class="escena"><svg id="el-svg" aria-label="Diagrama de decisión que se ilumina según las respuestas"></svg></div>
+      </div>
+      <div class="recomendacion" id="el-rec"></div>
+      <h3>Tres ideas para llevarse</h3>
+      <ul class="ideas">
+        <li>El principal freno del paralelismo de datos es la <strong>sincronización de gradientes</strong> (All-Reduce).</li>
+        <li>Lo que mejora el pipeline frente al paralelismo de modelo simple es el <strong>uso concurrente del hardware</strong>: menos tiempos muertos.</li>
+        <li>El riesgo de la asincronía son los <strong>gradientes obsoletos</strong> (staleness).</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> el obstáculo para escalar no es la capacidad de cálculo bruta, sino la coordinación. Sincronizar millones de parámetros entre cientos de GPU genera un tráfico que puede anular las ganancias: comunica solo lo estrictamente necesario.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, S = RN.svg;
+  const $ = function (id) { return document.getElementById(id); };
+  const AC = RN.acento(), ACL = "#FFE9D6", OCIO = "#E57373", AVISO = "#F0B400", AVISO_L = "#FFF8E1";
+
+  // ------------------------------------------------------------------ utilidades
+  function txt(p, x, y, s, o) {
+    const a = { x: x, y: y, "font-size": 14, fill: C.ink };
+    if (o) for (const k in o) a[k] = o[k];
+    a.text = s;
+    return S("text", a, p);
+  }
+  function rect(p, x, y, w, h, o) {
+    const a = { x: x, y: y, width: Math.max(0, w), height: Math.max(0, h), rx: 8 };
+    if (o) for (const k in o) a[k] = o[k];
+    return S("rect", a, p);
+  }
+  function vaciar(e) { while (e.firstChild) e.removeChild(e.firstChild); }
+  function caja(svg, vb) { svg.setAttribute("viewBox", vb); svg.setAttribute("role", "img"); }
+  function segmentado(id, fn) {
+    const bs = Array.from($(id).querySelectorAll("button"));
+    bs.forEach(function (b) {
+      b.addEventListener("click", function () {
+        bs.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        fn(b.dataset.v, b);
+      });
+    });
+    return function (v) { bs.forEach(function (x) { x.setAttribute("aria-pressed", x.dataset.v === v ? "true" : "false"); }); };
+  }
+  function rr(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function fuente(ctx, px, peso) { ctx.font = (peso || 400) + " " + px + "px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"; }
+  function num(x, d) { return Number.isFinite(x) ? x.toLocaleString("es-ES", { maximumFractionDigits: d === undefined ? 2 : d }) : "—"; }
+  function rayado(ctx, x, y, w, h) {
+    if (w <= 0.5) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = "#FFEBEE"; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = OCIO; ctx.lineWidth = 1.4;
+    for (let k = -h; k < w; k += 6) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function hueco(ctx, x, y, w, h) {
+    if (w <= 0.5) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = "#F3F5F7"; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "#B0BEC5"; ctx.lineWidth = 1.2;
+    for (let k = -h; k < w; k += 6) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
+    ctx.restore();
+  }
+  function rayas(ctx, x, y, w, h, col) {
+    if (w <= 0.5) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = RN.mezcla("#ffffff", col, 0.3); ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = col; ctx.lineWidth = 3;
+    for (let k = -h; k < w; k += 8) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
+    ctx.restore();
+  }
+  // Bucle que arranca solo (se congela si la pestaña está oculta); con movimiento reducido, un fotograma fijo.
+  function bucle(paso, el, btn, tFijo) {
+    if (RN.reducirMovimiento) { paso(0, tFijo || 1); if (btn) btn.textContent = "▶ Reproducir"; }
+    const a = RN.anima(function (dt, t) { paso(dt, t); }, el);
+    if (btn) RN.botonPlay(btn, a, ["▶ Reproducir", "⏸ Pausa"]);
+    if (!RN.reducirMovimiento) a.iniciar();
+    return a;
+  }
+  const flecha = function (svg, id, col) {
+    const d = S("defs", {}, svg);
+    d.innerHTML = '<marker id="' + id + '" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="' + col + '"/></marker>';
+  };
+
+  // ===================================================================== 1 · CONCEPTO
+  (function () {
+    const svg = $("cc-svg");
+    caja(svg, "0 0 1000 392");
+    const WX = [190, 392, 594, 796], WY = 218, WW = 184, WH = 158;
+    const COL = [C.s1, C.s3, C.s4, C.s5];
+    // enlaces de comunicación
+    WX.forEach(function (x) { S("line", { x1: 500, y1: 96, x2: x + WW / 2, y2: WY, stroke: "#DDE3E8", "stroke-width": 2 }, svg); });
+    // servidor
+    const srv = rect(svg, 330, 10, 340, 86, { rx: 12, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 });
+    txt(svg, 350, 38, "Servidor de parámetros", { "font-size": 16, "font-weight": 800 });
+    const ver = txt(svg, 350, 64, "", { "font-size": 14, fill: C.ink2 });
+    const regla = txt(svg, 350, 85, "", { "font-size": 13.5, fill: AC, "font-weight": 700 });
+    txt(svg, 612, 30, "ḡ", { "font-size": 15, "font-weight": 800, "text-anchor": "middle", fill: C.ink2 });
+    S("line", { x1: 578, y1: 64, x2: 650, y2: 64, stroke: C.axis }, svg);
+    const barS = [0, 1, 2, 3].map(function (c) { return rect(svg, 582 + c * 17, 64, 12, 0, { rx: 2, fill: C.s7 }); });
+    // datos
+    txt(svg, 80, 138, "Datos", { "font-size": 15, "font-weight": 800, "text-anchor": "middle" });
+    rect(svg, 20, 148, 120, 136, { rx: 10, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 });
+    COL.forEach(function (c, k) { rect(svg, 30, 158 + k * 30, 100, 24, { rx: 4, fill: RN.mezcla("#ffffff", c, 0.35), stroke: c }); txt(svg, 80, 175 + k * 30, "trozo " + (k + 1), { "font-size": 12.5, "text-anchor": "middle", "font-weight": 700 }); });
+    // workers
+    const W = WX.map(function (x, k) {
+      const r = rect(svg, x, WY, WW, WH, { rx: 12, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.5 });
+      txt(svg, x + 12, WY + 24, "Worker " + (k + 1), { "font-size": 15, "font-weight": 800 });
+      const chip = rect(svg, x + 132, WY + 11, 40, 18, { rx: 4, fill: RN.mezcla("#ffffff", COL[k], 0.35), stroke: COL[k], opacity: 0 });
+      const wv = txt(svg, x + 12, WY + 45, "", { "font-size": 12.5, fill: C.ink2 });
+      const capas = [3, 4, 2], nodos = [];
+      capas.forEach(function (n, l) {
+        const cx = x + 26 + l * 30;
+        for (let j = 0; j < n; j++) { const cy = WY + 92 + (j - (n - 1) / 2) * 18; nodos.push({ l: l, cx: cx, cy: cy }); }
+      });
+      nodos.forEach(function (a) { nodos.forEach(function (b) { if (b.l === a.l + 1) S("line", { x1: a.cx, y1: a.cy, x2: b.cx, y2: b.cy, stroke: "#E1E5EA", "stroke-width": 1 }, svg); }); });
+      nodos.forEach(function (n) { n.e = S("circle", { cx: n.cx, cy: n.cy, r: 6, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 }, svg); });
+      S("line", { x1: x + 104, y1: WY + 92, x2: x + 172, y2: WY + 92, stroke: C.axis }, svg);
+      const barras = [0, 1, 2, 3].map(function (c) { return rect(svg, x + 108 + c * 16, WY + 92, 11, 0, { rx: 2, fill: C.s7 }); });
+      txt(svg, x + 12, WY + 146, "gradiente parcial", { "font-size": 12.5, fill: C.ink2 });
+      return { r: r, chip: chip, wv: wv, nodos: nodos, barras: barras, x: x };
+    });
+    // piezas móviles
+    const vuelo = COL.map(function (c) { return rect(svg, 0, 0, 40, 18, { rx: 4, fill: RN.mezcla("#ffffff", c, 0.35), stroke: c, opacity: 0 }); });
+    const pesos = WX.map(function () { const g = S("g", { opacity: 0 }, svg); rect(g, -18, -10, 36, 20, { rx: 10, fill: C.ink }); txt(g, 0, 4.5, "W", { "font-size": 12.5, "font-weight": 800, fill: "#fff", "text-anchor": "middle" }); return g; });
+    const grads = WX.map(function () { const g = S("g", { opacity: 0 }, svg); const bs = [0, 1, 2, 3].map(function (c) { return rect(g, c * 9, 0, 7, 0, { rx: 1.5, fill: C.s7 }); }); return { g: g, bs: bs }; });
+    const lis = Array.from($("cc-pasos").children);
+    let ciclo = -1, G = null, ver0 = 3;
+    const FASE = 1.9, CICLO = 4 * FASE;
+    function nuevosGrad(k) { const r = RN.rng(31 + k * 7); return [0, 1, 2, 3].map(function () { return [0, 1, 2, 3].map(function () { return (r() * 2 - 1) * 0.9; }); }); }
+    const alto = function (v) { return Math.abs(v) * 30; };
+    function barra(e, x0, base, v, u) { const h = alto(v) * u; e.setAttribute("y", (v >= 0 ? base - h : base).toFixed(1)); e.setAttribute("height", h.toFixed(1)); e.setAttribute("fill", v >= 0 ? C.pos : C.neg); }
+    function paso(dt, t) {
+      const k = Math.floor(t / CICLO);
+      if (k !== ciclo) { ciclo = k; G = nuevosGrad(k); }
+      const tc = t - k * CICLO, f = Math.min(3, Math.floor(tc / FASE)), u = (tc - f * FASE) / FASE;
+      const v = ver0 + k + (f === 3 && u > 0.35 ? 1 : 0);
+      ver.textContent = "pesos globales W · versión " + v;
+      regla.textContent = f === 3 ? "W ← W − η · ḡ" : f === 2 ? "ḡ = promedio de los 4 gradientes" : "";
+      srv.setAttribute("stroke", f === 3 || (f === 2 && u > 0.5) ? AC : C.ink2); srv.setAttribute("stroke-width", f >= 2 ? 2.5 : 1.5);
+      lis.forEach(function (li, i) { li.classList.toggle("activo", i === f); });
+      const media = [0, 1, 2, 3].map(function (c) { return (G[0][c] + G[1][c] + G[2][c] + G[3][c]) / 4; });
+      W.forEach(function (w, i) {
+        const ui = RN.suave(Math.min(1, u / 0.8));
+        // fase 0: trozos de datos y pesos viajan
+        const dy0 = 158 + i * 30 + 12;
+        if (f === 0) {
+          vuelo[i].setAttribute("x", RN.lerp(30 + 30, w.x + 132, ui).toFixed(1)); vuelo[i].setAttribute("y", RN.lerp(dy0 - 9, WY + 11, ui).toFixed(1));
+          vuelo[i].setAttribute("opacity", u < 0.9 ? 1 : 0);
+          pesos[i].setAttribute("transform", "translate(" + RN.lerp(500, w.x + WW / 2, ui).toFixed(1) + "," + RN.lerp(96, WY - 2, ui).toFixed(1) + ")");
+          pesos[i].setAttribute("opacity", u < 0.92 ? 1 : 0);
+        } else { vuelo[i].setAttribute("opacity", 0); pesos[i].setAttribute("opacity", 0); }
+        w.chip.setAttribute("opacity", f === 0 ? (u > 0.85 ? 1 : 0) : 1);
+        w.wv.textContent = f === 0 && u < 0.85 ? "" : "con pesos versión " + (ver0 + k);
+        // fase 1: la red calcula y aparece el gradiente parcial
+        w.nodos.forEach(function (n) {
+          const act = f === 1 && (u * 4 > n.l && u * 4 < n.l + 1.6 || u * 4 > 4 - (n.l + 1) * 0.7 && u > 0.6);
+          n.e.setAttribute("fill", act ? AC : "#fff"); n.e.setAttribute("stroke", act ? AC : C.ink2);
+        });
+        w.r.setAttribute("stroke", f === 1 ? AC : "#CFD8DC"); w.r.setAttribute("stroke-width", f === 1 ? 2.5 : 1.5);
+        const hb = f === 1 ? RN.limita((u - 0.45) / 0.5, 0, 1) : f === 2 ? 1 - RN.limita(u / 0.3, 0, 1) : 0;
+        w.barras.forEach(function (e, c) { barra(e, 0, WY + 92, G[i][c], hb); });
+        // fase 2: los gradientes suben al servidor
+        if (f === 2) {
+          const uu = RN.suave(Math.min(1, u / 0.7));
+          const gx = RN.lerp(w.x + 108, 582, uu), gy = RN.lerp(WY + 92, 64, uu);
+          grads[i].g.setAttribute("transform", "translate(" + gx.toFixed(1) + "," + gy.toFixed(1) + ")");
+          grads[i].g.setAttribute("opacity", u < 0.72 ? 1 : 0);
+          grads[i].bs.forEach(function (e, c) { const vv = G[i][c], h = alto(vv) * 0.55; e.setAttribute("y", (vv >= 0 ? -h : 0).toFixed(1)); e.setAttribute("height", h.toFixed(1)); e.setAttribute("fill", vv >= 0 ? C.pos : C.neg); });
+        } else grads[i].g.setAttribute("opacity", 0);
+      });
+      const hs = f === 2 ? RN.limita((u - 0.65) / 0.3, 0, 1) : f === 3 ? 1 - RN.limita((u - 0.7) / 0.3, 0, 1) : 0;
+      barS.forEach(function (e, c) { const vv = media[c], h = alto(vv) * 0.8 * hs; e.setAttribute("y", (vv >= 0 ? 64 - h : 64).toFixed(1)); e.setAttribute("height", h.toFixed(1)); e.setAttribute("fill", vv >= 0 ? C.pos : C.neg); });
+    }
+    bucle(paso, svg, $("cc-play"), FASE * 1.6);
+
+    // --- retos
+    const sr = $("cc-retos");
+    caja(sr, "0 0 1000 200");
+    const R = [["SINCRONIZACIÓN", "Efecto straggler", "el más lento marca el ritmo"], ["SINCRONIZACIÓN", "Bloqueos", "esperando los pesos nuevos"],
+      ["COMUNICACIÓN", "Ancho de banda", "gradientes de millones de números"], ["COMUNICACIÓN", "Latencia", "el retraso entre nodos físicos"]];
+    const vivo = {};
+    R.forEach(function (r, k) {
+      const x = 10 + k * 247.5, w = 232;
+      rect(sr, x, 6, w, 188, { rx: 12, fill: "#fff", stroke: "#E4E7EB" });
+      txt(sr, x + 16, 28, r[0], { "font-size": 12, "font-weight": 800, fill: AC, "letter-spacing": "0.05em" });
+      txt(sr, x + 16, 152, r[1], { "font-size": 16.5, "font-weight": 800 });
+      txt(sr, x + 16, 174, r[2], { "font-size": 13, fill: C.ink2 });
+      const g = S("g", { transform: "translate(" + x + ",0)" }, sr);
+      if (k === 0) {
+        S("defs", {}, g).innerHTML = '<pattern id="cc-ray" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#FFEBEE"/><line x1="0" y1="0" x2="0" y2="6" stroke="' + OCIO + '" stroke-width="2"/></pattern>';
+        vivo.st = [0.55, 0.5, 0.62, 1].map(function (d, i) {
+          rect(g, 16, 42 + i * 21, 200, 13, { rx: 4, fill: "#EEF1F4" });
+          return { d: d, b: rect(g, 16, 42 + i * 21, 0, 13, { rx: 4, fill: i === 3 ? C.s2 : C.s1 }), e: rect(g, 16, 42 + i * 21, 0, 13, { rx: 0, fill: "url(#cc-ray)" }) };
+        });
+      }
+      if (k === 1) {
+        vivo.reloj = S("g", { transform: "translate(116,82)" }, g);
+        S("path", { d: "M-16,-30 h32 M-16,30 h32 M-13,-30 C-13,-6 13,6 13,30 M13,-30 C13,-6 -13,6 -13,30", fill: "none", stroke: C.ink2, "stroke-width": 2.5, "stroke-linecap": "round" }, vivo.reloj);
+        vivo.arenaA = S("path", { fill: AVISO }, vivo.reloj); vivo.arenaB = S("path", { fill: AVISO }, vivo.reloj);
+      }
+      if (k === 2) {
+        S("path", { d: "M16,64 h70 l30,12 h0 l30,-12 h70 v40 h-70 l-30,-12 l-30,12 h-70 z", fill: "#F5F7FA", stroke: C.ink2, "stroke-width": 1.5 }, g);
+        vivo.bw = [];
+        for (let i = 0; i < 10; i++) vivo.bw.push(rect(g, 0, 0, 10, 10, { rx: 2, fill: C.s7, opacity: 0 }));
+      }
+      if (k === 3) {
+        rect(g, 16, 70, 34, 34, { rx: 6, fill: RN.mezcla("#ffffff", C.s3, 0.2), stroke: C.s3, "stroke-width": 2 });
+        rect(g, 182, 70, 34, 34, { rx: 6, fill: RN.mezcla("#ffffff", C.s3, 0.2), stroke: C.s3, "stroke-width": 2 });
+        S("line", { x1: 52, y1: 87, x2: 180, y2: 87, stroke: "#CFD8DC", "stroke-width": 2, "stroke-dasharray": "5 5" }, g);
+        vivo.ping = S("circle", { r: 6, cy: 87, cx: 60, fill: C.s4 }, g);
+      }
+    });
+    bucle(function (dt, t) {
+      const u = Math.min(1, (t % 4.2) / 3.4);
+      vivo.st.forEach(function (s) {
+        s.b.setAttribute("width", (200 * Math.min(u, s.d)).toFixed(1));
+        s.e.setAttribute("x", (16 + 200 * s.d).toFixed(1)); s.e.setAttribute("width", (200 * Math.max(0, u - s.d)).toFixed(1));
+      });
+      const a = (t % 3) / 3;
+      vivo.arenaA.setAttribute("d", "M" + (-11 * (1 - a)) + "," + (-26 + 22 * a) + " L" + (11 * (1 - a)) + "," + (-26 + 22 * a) + " L0,-3 Z");
+      vivo.arenaB.setAttribute("d", "M-12,27 L12,27 L" + (12 * a * 0.4) + "," + (27 - 18 * a) + " L" + (-12 * a * 0.4) + "," + (27 - 18 * a) + " Z");
+      vivo.reloj.setAttribute("transform", "translate(116,82) rotate(" + (a > 0.92 ? (a - 0.92) / 0.08 * 180 : 0) + ")");
+      vivo.bw.forEach(function (r, i) {
+        const p = (t * 0.25 + i / 10) % 1, x = 16 + p * 200, carril = (i % 3) - 1;
+        const cuello = Math.max(0, 1 - Math.abs(x - 116) / 30), y = 84 + carril * 9 * (1 - cuello);
+        r.setAttribute("x", (x - 5).toFixed(1)); r.setAttribute("y", (y - 5).toFixed(1));
+        r.setAttribute("opacity", (p < 0.08 ? p / 0.08 : p > 0.92 ? (1 - p) / 0.08 : 1).toFixed(2));
+      });
+      const pp = (t % 3.2) / 3.2, ida = pp < 0.5, q = RN.suave(ida ? pp * 2 : (pp - 0.5) * 2);
+      vivo.ping.setAttribute("cx", (ida ? RN.lerp(60, 172, q) : RN.lerp(172, 60, q)).toFixed(1));
+    }, sr, null, 2.4);
+  })();
+
+  // ===================================================================== 2 · DATOS O MODELO
+  (function () {
+    const svg = $("dm-svg");
+    caja(svg, "0 0 1000 462");
+    const COL = [C.s1, C.s3, C.s4, C.s5];
+    const GY = function (k) { return 66 + k * 92; }, GH = 80;
+    const LX = function (l) { return 156 + l * 42; };          // capas a la izquierda
+    const RXl = function (l) { return 656 + l * 42; };         // capas a la derecha
+    const REP = [[0, 1], [2], [3], [4]];                       // capas de cada GPU en paralelismo de modelo
+    txt(svg, 20, 24, "Paralelismo de datos", { "font-size": 17, "font-weight": 800 });
+    txt(svg, 20, 45, "cada GPU: el modelo completo y un trozo de los datos", { "font-size": 13, fill: C.ink2 });
+    txt(svg, 520, 24, "Paralelismo de modelo", { "font-size": 17, "font-weight": 800 });
+    txt(svg, 520, 45, "cada GPU: algunas capas; los datos pasan de una a otra", { "font-size": 13, fill: C.ink2 });
+    S("line", { x1: 500, y1: 10, x2: 500, y2: 452, stroke: C.grid, "stroke-width": 1.5 }, svg);
+    // anillo de sincronización a la izquierda
+    const anillo = S("path", { d: "M16," + (GY(0) + GH / 2) + " V" + (GY(3) + GH / 2), stroke: "#E1E5EA", "stroke-width": 4, fill: "none", "stroke-linecap": "round" }, svg);
+    function gpu(x0, k, capas, lx, mem) {
+      const r = rect(svg, x0, GY(k), 452, GH, { rx: 12, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.5 });
+      txt(svg, x0 + 14, GY(k) + 26, "GPU " + k, { "font-size": 15, "font-weight": 800 });
+      const est = txt(svg, x0 + 14, GY(k) + 48, "", { "font-size": 12.5, fill: C.ink2 });
+      const nodos = [];
+      capas.forEach(function (l) {
+        for (let j = 0; j < 3; j++) nodos.push({ l: l, e: S("circle", { cx: lx(l), cy: GY(k) + GH / 2 + (j - 1) * 20, r: 7, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 }, svg) });
+      });
+      for (let a = 0; a < capas.length - 1; a++) for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++)
+        svg.insertBefore(S("line", { x1: lx(capas[a]), y1: GY(k) + GH / 2 + (i - 1) * 20, x2: lx(capas[a + 1]), y2: GY(k) + GH / 2 + (j - 1) * 20, stroke: "#E1E5EA" }), nodos[0].e);
+      txt(svg, x0 + 452 - 104, GY(k) + 30, "memoria", { "font-size": 12, fill: C.ink2 });
+      rect(svg, x0 + 452 - 104, GY(k) + 38, 90, 12, { rx: 6, fill: "#EEF1F4" });
+      rect(svg, x0 + 452 - 104, GY(k) + 38, 90 * mem, 12, { rx: 6, fill: "#90A4AE" });
+      txt(svg, x0 + 452 - 104, GY(k) + 67, "modelo: " + Math.round(mem * 100) + " %", { "font-size": 12.5, "font-weight": 700, fill: C.ink });
+      return { r: r, est: est, nodos: nodos };
+    }
+    const izq = [0, 1, 2, 3].map(function (k) {
+      const g = gpu(28, k, [0, 1, 2, 3, 4], LX, 1);
+      g.chip = rect(svg, 100, GY(k) + 13, 46, 17, { rx: 4, fill: RN.mezcla("#ffffff", COL[k], 0.4), stroke: COL[k] });
+      txt(svg, 123, GY(k) + 25.5, "datos " + (k + 1), { "font-size": 11.5, "font-weight": 700, "text-anchor": "middle" });
+      return g;
+    });
+    const der = [0, 1, 2, 3].map(function (k) { return gpu(528, k, REP[k], RXl, REP[k].length / 5); });
+    flecha(svg, "dm-fl", C.ink2);
+    const enlaces = [0, 1, 2].map(function (k) {
+      return S("line", { x1: 960, y1: GY(k) + GH + 1, x2: 960, y2: GY(k + 1) - 1, stroke: "#CFD8DC", "stroke-width": 3 }, svg);
+    });
+    const sync = [0, 1, 2, 3, 4, 5].map(function () { return S("circle", { r: 5, cx: 16, cy: 0, fill: C.s4, opacity: 0 }, svg); });
+    const estI = txt(svg, 250, 450, "", { "font-size": 14.5, "font-weight": 800, "text-anchor": "middle" });
+    const estD = txt(svg, 750, 450, "", { "font-size": 14.5, "font-weight": 800, "text-anchor": "middle" });
+    const CIC = 6;
+    function pinta(dt, t) {
+      const tc = t % CIC;
+      // izquierda
+      let faseI, uI;
+      if (tc < 2) { faseI = "del"; uI = tc / 2; } else if (tc < 4) { faseI = "atr"; uI = (tc - 2) / 2; } else if (tc < 5.4) { faseI = "sync"; uI = (tc - 4) / 1.4; } else { faseI = "act"; uI = (tc - 5.4) / 0.6; }
+      izq.forEach(function (g) {
+        const lAct = faseI === "del" ? Math.floor(uI * 5) : faseI === "atr" ? 4 - Math.floor(uI * 5) : -1;
+        const col = faseI === "del" ? AC : C.s7;
+        g.nodos.forEach(function (n) { const on = n.l === lAct; n.e.setAttribute("fill", on ? col : "#fff"); n.e.setAttribute("stroke", on ? col : C.ink2); });
+        const calc = faseI === "del" || faseI === "atr";
+        g.r.setAttribute("stroke", calc ? AC : faseI === "sync" ? C.s4 : "#CFD8DC"); g.r.setAttribute("stroke-width", calc || faseI === "sync" ? 2.5 : 1.5);
+        g.est.textContent = faseI === "del" ? "hacia delante" : faseI === "atr" ? "hacia atrás" : faseI === "sync" ? "sincroniza" : "actualiza";
+      });
+      anillo.setAttribute("stroke", faseI === "sync" ? C.s4 : "#E1E5EA");
+      sync.forEach(function (c, i) {
+        const p = (uI * 2 + i / 6) % 1, y0 = GY(0) + GH / 2, y1 = GY(3) + GH / 2;
+        c.setAttribute("cy", (y0 + (y1 - y0) * (i % 2 ? p : 1 - p)).toFixed(1));
+        c.setAttribute("opacity", faseI === "sync" ? 1 : 0);
+      });
+      estI.textContent = faseI === "sync" ? "Sincronizando gradientes (All-Reduce)" : faseI === "act" ? "Todas actualizan sus pesos" : "Calculando ahora: 4 de 4 GPU";
+      estI.setAttribute("fill", faseI === "sync" ? C.ink2 : C.ink);
+      // derecha
+      const atras = tc >= 3, uD = atras ? (tc - 3) / 3 : tc / 3;
+      const etapa = atras ? 3 - Math.min(3, Math.floor(uD * 4)) : Math.min(3, Math.floor(uD * 4));
+      const fr = uD * 4 - Math.floor(uD * 4);
+      der.forEach(function (g, k) {
+        const on = k === etapa, col = atras ? C.s7 : AC;
+        const caps = REP[k], lOn = on ? caps[Math.min(caps.length - 1, Math.floor((atras ? 1 - fr : fr) * caps.length))] : -1;
+        g.nodos.forEach(function (n) { const a = n.l === lOn; n.e.setAttribute("fill", a ? col : "#fff"); n.e.setAttribute("stroke", a ? col : C.ink2); });
+        g.r.setAttribute("stroke", on ? AC : "#CFD8DC"); g.r.setAttribute("stroke-width", on ? 2.5 : 1.5);
+        g.r.setAttribute("fill", on ? "#fff" : "#F7F8FA");
+        g.est.textContent = on ? (atras ? "hacia atrás" : "hacia delante") : "esperando";
+        g.est.setAttribute("fill", on ? C.ink2 : C.muted);
+      });
+      enlaces.forEach(function (e, k) {
+        const activo = !atras ? (etapa === k + 1 && fr < 0.25) : (etapa === k && fr < 0.25);
+        e.setAttribute("stroke", activo ? (atras ? C.s7 : AC) : "#CFD8DC");
+      });
+      estD.textContent = "Calculando ahora: 1 de 4 GPU";
+    }
+    bucle(pinta, svg, $("dm-play"), 1);
+  })();
+
+  // ===================================================================== 3 · ALL-REDUCE EN ANILLO
+  (function () {
+    const svg = $("ar-svg");
+    caja(svg, "0 0 1000 470");
+    const CX = 500, CY = 236, RX = 298, RY = 166, BW = 200, BH = 98;
+    let N = 6, V0, V, comp, paso = 0, tok = 0, semilla = 1, escala = 1, corrida = 0;
+    const gAnillo = S("g", {}, svg), gNodos = S("g", {}, svg), gPaq = S("g", {}, svg);
+    const centro1 = txt(svg, CX, CY - 6, "", { "font-size": 17, "font-weight": 800, "text-anchor": "middle" });
+    const centro2 = txt(svg, CX, CY + 18, "", { "font-size": 13.5, fill: C.ink2, "text-anchor": "middle" });
+    flecha(svg, "ar-fl", "#B0BEC5");
+    function ang(i) { return -Math.PI / 2 + 2 * Math.PI * i / N; }
+    function pto(a) { return [CX + RX * Math.cos(a), CY + RY * Math.sin(a)]; }
+    function total() { return 2 * (N - 1) + 1; }
+    function nuevos() {
+      const r = RN.rng(semilla * 97 + N * 13);
+      V0 = []; for (let i = 0; i < N; i++) { const f = []; for (let c = 0; c < N; c++) f.push(Math.round(r() * 14) - 5); V0.push(f); }
+      reinicia();
+    }
+    function reinicia() {
+      V = V0.map(function (f) { return f.slice(); });
+      comp = V0.map(function (f) { return f.map(function () { return false; }); });
+      paso = 0;
+      let mx = 1;
+      for (let c = 0; c < N; c++) { let s = 0; for (let i = 0; i < N; i++) s += V0[i][c]; mx = Math.max(mx, Math.abs(s)); }
+      V0.forEach(function (f) { f.forEach(function (v) { mx = Math.max(mx, Math.abs(v)); }); });
+      escala = 30 / mx;
+    }
+    function anillo() {
+      vaciar(gAnillo);
+      S("ellipse", { cx: CX, cy: CY, rx: RX, ry: RY, fill: "none", stroke: "#DDE3E8", "stroke-width": 3 }, gAnillo);
+      for (let i = 0; i < N; i++) {
+        const a = (ang(i) + ang(i + 1)) / 2, p = pto(a), q = pto(a + 0.02);
+        S("line", { x1: p[0], y1: p[1], x2: q[0], y2: q[1], stroke: "#B0BEC5", "stroke-width": 3, "marker-end": "url(#ar-fl)" }, gAnillo);
+      }
+    }
+    const fmtV = function (v) { return Number.isInteger(v) ? (v < 0 ? "−" + (-v) : String(v)) : num(v, 1).replace("-", "−"); };
+    function pintaNodos(resalta) {
+      vaciar(gNodos);
+      const bw = (BW - 20 - (N - 1) * 3) / N, fin = paso === total(), esc = fin ? escala * N : escala;
+      for (let i = 0; i < N; i++) {
+        const p = pto(ang(i)), x = p[0] - BW / 2, y = p[1] - BH / 2;
+        rect(gNodos, x, y, BW, BH, { rx: 12, fill: "#fff", stroke: "#B0BEC5", "stroke-width": 1.5 });
+        txt(gNodos, x + 12, y + 20, "GPU " + (i + 1), { "font-size": 14, "font-weight": 800 });
+        const base = y + 56;
+        S("line", { x1: x + 10, y1: base, x2: x + BW - 10, y2: base, stroke: C.axis }, gNodos);
+        for (let c = 0; c < N; c++) {
+          const v = V[i][c], h = Math.max(1.5, Math.abs(v) * esc), bx = x + 10 + c * (bw + 3);
+          const res = resalta && resalta[i] === c, borde = comp[i][c] && !fin;
+          rect(gNodos, bx, v >= 0 ? base - h : base, bw, h, { rx: 2, fill: RN.serie[c], stroke: borde ? C.ink : (res ? AC : "none"), "stroke-width": borde || res ? 2 : 0 });
+          txt(gNodos, bx + bw / 2, y + BH - 8, fmtV(v), { "font-size": 12, "font-weight": borde ? 800 : 500, "text-anchor": "middle", fill: C.ink });
+        }
+      }
+    }
+    function envios(s) {
+      const L = [];
+      if (s < N - 1) for (let i = 0; i < N; i++) { const c = ((i - s) % N + N) % N; L.push({ de: i, a: (i + 1) % N, c: c, v: V[i][c], suma: true }); }
+      else if (s < 2 * (N - 1)) { const s2 = s - (N - 1); for (let i = 0; i < N; i++) { const c = ((i + 1 - s2) % N + N) % N; L.push({ de: i, a: (i + 1) % N, c: c, v: V[i][c], suma: false }); } }
+      return L;
+    }
+    function estado() {
+      const T = total();
+      let f1, f2;
+      if (paso === 0) { f1 = "Cada GPU con sus gradientes"; f2 = "vector partido en " + N + " trozos (un color por trozo)"; }
+      else if (paso < N) { f1 = "Scatter-reduce · paso " + paso + " de " + (N - 1); f2 = "cada GPU envía un trozo y suma el que recibe"; }
+      else if (paso < T) { f1 = "All-gather · paso " + (paso - N + 1) + " de " + (N - 1); f2 = "los trozos completos dan la vuelta"; }
+      else { f1 = "✓ Todas tienen el mismo promedio"; f2 = "suma ÷ " + N + " en cada GPU"; }
+      centro1.textContent = f1; centro2.textContent = f2;
+      centro1.setAttribute("fill", paso === T ? C.ok : C.ink);
+      const env = Math.min(paso, 2 * (N - 1));
+      $("ar-k1").textContent = paso === 0 ? "inicio" : paso < N ? "scatter-reduce" : paso < T ? "all-gather" : "promedio ✓";
+      $("ar-k2").textContent = env + "/" + N + " del vector" + (env > N ? " = " + num(env / N, 2) : "");
+      $("ar-k3").textContent = num(env / N * 100, 1) + " MB enviados";
+      if (paso === T) {
+        const media = []; for (let c = 0; c < N; c++) { let s = 0; for (let i = 0; i < N; i++) s += V0[i][c]; media.push(s / N); }
+        const ok = V.every(function (f) { return f.every(function (v, c) { return Math.abs(v - media[c]) < 1e-12; }); });
+        $("ar-k4").textContent = ok ? "✓ idéntico en las " + N : "✗ distinto";
+        $("ar-k4").className = "v peq " + (ok ? "ok" : "bad");
+      } else { $("ar-k4").textContent = "—"; $("ar-k4").className = "v peq"; }
+    }
+    async function unPaso() {
+      const T = total();
+      if (paso >= T) return;
+      const mi = ++tok;
+      if (paso === T - 1) {
+        V = V.map(function (f) { return f.map(function (v) { return v / N; }); });
+        paso++; pintaNodos(); estado(); return;
+      }
+      const L = envios(paso);
+      vaciar(gPaq);
+      const pq = L.map(function (e) {
+        const g = S("g", {}, gPaq);
+        rect(g, -19, -12, 38, 24, { rx: 6, fill: RN.serie[e.c], stroke: "#fff", "stroke-width": 2 });
+        txt(g, 0, 5, fmtV(e.v), { "font-size": 13, "font-weight": 800, fill: "#fff", "text-anchor": "middle" });
+        return { g: g, a0: ang(e.de) + 0.3, a1: ang(e.de + 1) - 0.3 };
+      });
+      const res = {}; L.forEach(function (e) { res[e.de] = e.c; });
+      pintaNodos(res);
+      await RN.tween(RN.reducirMovimiento ? 0 : 900, function (u) {
+        pq.forEach(function (p) { const q = pto(RN.lerp(p.a0, p.a1, u)); p.g.setAttribute("transform", "translate(" + q[0].toFixed(1) + "," + q[1].toFixed(1) + ")"); });
+      });
+      if (mi !== tok) return;
+      vaciar(gPaq);
+      L.forEach(function (e) { if (e.suma) V[e.a][e.c] += e.v; else { V[e.a][e.c] = e.v; comp[e.a][e.c] = true; } });
+      if (paso === N - 2) for (let j = 0; j < N; j++) comp[j][(j + 1) % N] = true;
+      paso++;
+      const rec = {}; L.forEach(function (e) { rec[e.a] = e.c; });
+      pintaNodos(rec); estado();
+    }
+    function rehacer() { tok++; corrida++; vaciar(gPaq); anillo(); pintaNodos(); estado(); }
+    $("ar-paso").addEventListener("click", function () { corrida++; unPaso(); });
+    $("ar-play").addEventListener("click", async function () {
+      const mi = ++corrida;
+      if (paso >= total()) { reinicia(); rehacer(); corrida = mi; }
+      while (mi === corrida && paso < total()) {
+        await unPaso();
+        if (mi !== corrida) return;
+        await RN.espera(RN.reducirMovimiento ? 0 : 300);
+      }
+    });
+    $("ar-reset").addEventListener("click", function () { reinicia(); rehacer(); });
+    $("ar-nuevos").addEventListener("click", function () { semilla++; nuevos(); rehacer(); });
+    segmentado("ar-n", function (v) { N = +v; nuevos(); rehacer(); });
+    nuevos(); rehacer();
+  })();
+
+  // ===================================================================== 4 · EFECTO STRAGGLER
+  (function () {
+    const cv = $("st-cv");
+    const PRE = { iguales: [1, 1, 1, 1, 1, 1, 1, 1], lento: [1, 1, 1, 1, 1, 1, 1, 0.5], variados: [1.2, 1, 0.9, 1.1, 0.8, 1, 1.3, 0.6] };
+    let vel = PRE.lento.slice(), modo = "sinc", varr = 0.1, tPlay = Infinity, sim = null;
+    const T = 40, COM = 0.6, BASE = 3, RH = 30;
+    const cont = $("st-vel"), sl = [];
+    let marcaPre = null;
+    for (let i = 0; i < 8; i++) {
+      const d = RN.el("div", { class: "ctl" }, cont), id = "st-v" + i;
+      RN.el("label", { for: id }, d, "Worker " + (i + 1));
+      const inp = RN.el("input", { id: id, type: "range", min: "0.3", max: "1.5", step: "0.1", value: String(vel[i]) }, d);
+      const out = RN.el("output", { id: id + "o" }, d, "× " + RN.fmt(vel[i], 1));
+      inp.addEventListener("input", function () { vel[i] = +inp.value; out.textContent = "× " + RN.fmt(vel[i], 1); if (marcaPre) marcaPre(""); recalcula(); });
+      sl.push({ inp: inp, out: out });
+    }
+    function simula() {
+      const r = RN.rng(7), filas = vel.map(function () { return []; });
+      let lotes = 0, act = 0, util = 0, espera = 0;
+      const dur = function (v) { return BASE / v * (1 + varr * (2 * r() - 1)); };
+      if (modo === "sinc") {
+        let t = 0;
+        while (t < T) {
+          const d = vel.map(dur), m = Math.max.apply(null, d);
+          d.forEach(function (di, i) {
+            filas[i].push({ a: t, b: t + di, tipo: "calc" });
+            if (m - di > 1e-6) filas[i].push({ a: t + di, b: t + m, tipo: "esp" });
+            filas[i].push({ a: t + m, b: t + m + COM, tipo: "com" });
+          });
+          t += m + COM;
+          if (t <= T) { lotes += 8; act++; }
+        }
+      } else {
+        vel.forEach(function (v, i) {
+          let t = 0;
+          while (t < T) { const di = dur(v); filas[i].push({ a: t, b: t + di, tipo: "calc" }); filas[i].push({ a: t + di, b: t + di + COM, tipo: "com" }); t += di + COM; if (t <= T) { lotes++; act++; } }
+        });
+      }
+      filas.forEach(function (f) { f.forEach(function (s) { const o = Math.max(0, Math.min(s.b, T) - Math.min(s.a, T)); if (s.tipo === "calc") util += o; if (s.tipo === "esp") espera += o; }); });
+      return { filas: filas, lotes: lotes, act: act, efic: util / (8 * T), espera: espera };
+    }
+    function recalcula() {
+      sim = simula();
+      $("st-k1").textContent = num(sim.efic * 100, 0) + " %";
+      $("st-k2").textContent = num(sim.espera, 0) + " u.t.";
+      $("st-k3").textContent = RN.fmtN(sim.lotes);
+      $("st-k4").textContent = RN.fmtN(sim.act);
+      if (!anim.activo) tPlay = Infinity;
+      dibuja();
+    }
+    function dibuja() {
+      const h = 8 * RH + 58, Lz = RN.lienzo(cv, h), ctx = Lz.ctx, w = Lz.w;
+      ctx.fillStyle = C.surface; ctx.fillRect(0, 0, w, h);
+      const x0 = 132, x1 = w - 16, sx = function (t) { return x0 + t / T * (x1 - x0); }, y0 = 12, tp = Math.min(tPlay, T);
+      for (let i = 0; i < 8; i++) {
+        const y = y0 + i * RH;
+        ctx.fillStyle = i % 2 ? "#F4F6F8" : "#fff"; ctx.fillRect(x0, y, x1 - x0, RH);
+        fuente(ctx, 13, 600); ctx.fillStyle = C.ink; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        ctx.fillText("Worker " + (i + 1), x0 - 52, y + RH / 2);
+        fuente(ctx, 13); ctx.fillStyle = vel[i] < 0.8 ? C.bad : C.ink2; ctx.fillText("× " + RN.fmt(vel[i], 1), x0 - 10, y + RH / 2);
+        sim.filas[i].forEach(function (s) {
+          if (s.a >= tp) return;
+          const a = sx(s.a), b = sx(Math.min(s.b, tp));
+          if (s.tipo === "esp") { rayado(ctx, a, y + 5, b - a, RH - 10); return; }
+          rr(ctx, a + 0.5, y + 5, Math.max(1, b - a - 1), RH - 10, 4);
+          ctx.fillStyle = s.tipo === "calc" ? C.s1 : C.s4; ctx.fill();
+        });
+      }
+      if (modo === "sinc") {
+        ctx.save(); ctx.setLineDash([3, 4]); ctx.strokeStyle = C.ink2; ctx.lineWidth = 1;
+        sim.filas[0].forEach(function (s) { if (s.tipo === "com" && s.b <= tp) { const X = sx(s.b); ctx.beginPath(); ctx.moveTo(X, y0 - 4); ctx.lineTo(X, y0 + 8 * RH + 2); ctx.stroke(); } });
+        ctx.restore();
+      }
+      const ya = y0 + 8 * RH + 6;
+      ctx.strokeStyle = C.axis; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, ya); ctx.lineTo(x1, ya); ctx.stroke();
+      fuente(ctx, 12); ctx.fillStyle = C.muted; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      for (let t = 0; t <= T; t += 5) { const X = sx(t); ctx.beginPath(); ctx.moveTo(X, ya); ctx.lineTo(X, ya + 4); ctx.stroke(); ctx.fillText(String(t), X, ya + 6); }
+      fuente(ctx, 12.5, 600); ctx.fillStyle = C.ink2; ctx.textAlign = "right"; ctx.fillText("tiempo (u.t.)", x0 - 10, ya + 6);
+      if (modo === "sinc") { fuente(ctx, 12.5); ctx.textAlign = "left"; ctx.fillStyle = C.ink2; ctx.fillText("┆ = actualización de los pesos (todos a la vez)", x0, ya + 24); }
+      else { fuente(ctx, 12.5); ctx.textAlign = "left"; ctx.fillStyle = C.ink2; ctx.fillText("cada bloque amarillo = un push de gradientes que se aplica en cuanto llega", x0, ya + 24); }
+      if (tPlay < T) { const X = sx(tp); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X, y0 - 4); ctx.lineTo(X, ya); ctx.stroke(); }
+    }
+    const anim = RN.anima(function (dt) {
+      tPlay = Math.min(T, (tPlay === Infinity ? 0 : tPlay) + dt * T / 8);
+      dibuja();
+      if (tPlay >= T) { tPlay = Infinity; dibuja(); return false; }
+    }, cv);
+    const btn = $("st-play");
+    btn.addEventListener("click", function () { if (!anim.activo) tPlay = 0; });
+    RN.botonPlay(btn, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    segmentado("st-modo", function (v) { modo = v; recalcula(); });
+    marcaPre = segmentado("st-pre", function (v) {
+      vel = PRE[v].slice();
+      sl.forEach(function (s, i) { s.inp.value = vel[i]; s.out.textContent = "× " + RN.fmt(vel[i], 1); });
+      recalcula();
+    });
+    $("st-var").addEventListener("input", function (e) { varr = +e.target.value / 100; $("st-varo").textContent = e.target.value + " %"; recalcula(); });
+    RN.alCambiarTam(cv, function () { if (sim) dibuja(); });
+    recalcula();
+  })();
+
+  // ===================================================================== 5 · PIPELINE
+  (function () {
+    const cv = $("pp-cv");
+    let p = 4, m = 4, tPlay = Infinity, plan = null, geo = null;
+    function hazPlan() {
+      const B = [], f = 1 / m, TF = (m + p - 1) * f;
+      for (let s = 0; s < p; s++) for (let j = 0; j < m; j++) B.push({ s: s, j: j, a: (s + j) * f, b: (s + j + 1) * f, del: true });
+      for (let s = 0; s < p; s++) for (let k = 0; k < m; k++) { const a = TF + 2 * f * ((p - 1 - s) + k); B.push({ s: s, j: m - 1 - k, a: a, b: a + 2 * f, del: false }); }
+      return { B: B, T: 3 * (m + p - 1) / m };
+    }
+    function kpis() {
+      const bur = (p - 1) / (m + p - 1);
+      $("pp-k1").textContent = num(bur * 100, 1) + " %";
+      $("pp-k2").textContent = num((1 - bur) * 100, 1) + " %";
+      $("pp-form").innerHTML = "burbuja = (p − 1) / (m + p − 1) = " + (p - 1) + " / " + (m + p - 1) + " = <b>" + num(bur * 100, 1) + " %</b>" +
+        '<span class="com">tiempo del lote = 3(m + p − 1)/m = ' + num(plan.T, 2) + " (sin burbujas sería 3)</span>";
+    }
+    function dibuja() {
+      const RH = RN.limita(Math.round(250 / p), 30, 46), h = p * RH + 70;
+      const Lz = RN.lienzo(cv, h), ctx = Lz.ctx, w = Lz.w;
+      ctx.fillStyle = C.surface; ctx.fillRect(0, 0, w, h);
+      const x0 = 70, x1 = w - 16, TM = 3 * p, sx = function (t) { return x0 + t / TM * (x1 - x0); }, y0 = 12, tp = Math.min(tPlay, plan.T);
+      geo = { x0: x0, x1: x1, y0: y0, RH: RH, sx: sx };
+      for (let s = 0; s < p; s++) {
+        const y = y0 + s * RH;
+        ctx.fillStyle = s % 2 ? "#F4F6F8" : "#fff"; ctx.fillRect(x0, y, sx(plan.T) - x0, RH);
+        fuente(ctx, 13, 700); ctx.fillStyle = C.ink; ctx.textAlign = "right"; ctx.textBaseline = "middle"; ctx.fillText("GPU " + s, x0 - 10, y + RH / 2);
+        // burbujas: huecos en [0, T]
+        const mios = plan.B.filter(function (b) { return b.s === s; }).sort(function (a, b) { return a.a - b.a; });
+        let prev = 0;
+        mios.concat([{ a: plan.T, b: plan.T }]).forEach(function (b) {
+          const a = Math.min(b.a, tp);
+          if (a > prev + 1e-9) { const xa = sx(prev), xb = sx(a); hueco(ctx, xa + 0.5, y + 4, xb - xa - 1, RH - 8); }
+          prev = Math.max(prev, Math.min(b.b, tp));
+        });
+        mios.forEach(function (b) {
+          if (b.a >= tp) return;
+          const xa = sx(b.a), xb = sx(Math.min(b.b, tp)), col = RN.serie[b.j % 8];
+          if (b.del) { rr(ctx, xa + 0.5, y + 4, Math.max(1, xb - xa - 1), RH - 8, 4); ctx.fillStyle = col; ctx.fill(); }
+          else { rayas(ctx, xa + 0.5, y + 4, Math.max(1, xb - xa - 1), RH - 8, col); ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.strokeRect(xa + 1, y + 4.5, Math.max(1, xb - xa - 2), RH - 9); }
+          if (xb - xa > 18) { fuente(ctx, 12, 800); ctx.textAlign = "center"; ctx.fillStyle = b.del ? (b.j === 3 ? C.ink : "#fff") : C.ink; ctx.fillText(String(b.j + 1), (xa + xb) / 2, y + RH / 2 + 0.5); }
+        });
+      }
+      const ya = y0 + p * RH + 6;
+      ctx.strokeStyle = C.axis; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, ya); ctx.lineTo(x1, ya); ctx.stroke();
+      fuente(ctx, 12); ctx.fillStyle = C.muted; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      const pasoT = TM > 12 ? 3 : 1;
+      for (let t = 0; t <= TM + 1e-9; t += pasoT) { const X = sx(t); ctx.beginPath(); ctx.moveTo(X, ya); ctx.lineTo(X, ya + 4); ctx.stroke(); ctx.fillText(String(t), X, ya + 6); }
+      fuente(ctx, 12.5, 600); ctx.fillStyle = C.ink2; ctx.textAlign = "left";
+      ctx.fillText("tiempo (1 = paso hacia delante del lote completo en una etapa)", x0, ya + 24);
+      const XT = sx(plan.T);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(XT, y0 - 4); ctx.lineTo(XT, ya); ctx.stroke();
+      fuente(ctx, 12.5, 700); ctx.fillStyle = C.ink; ctx.textAlign = XT > x1 - 100 ? "right" : "left"; ctx.textBaseline = "middle";
+      if (XT < x1 - 4) ctx.fillText(" fin del lote: " + num(plan.T, 2), XT + (XT > x1 - 100 ? -6 : 4), y0 + p * RH / 2);
+      if (tPlay < plan.T) { const X = sx(tp); ctx.strokeStyle = AC; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X, y0 - 4); ctx.lineTo(X, ya); ctx.stroke(); }
+    }
+    const graf = RN.grafica($("pp-graf"), {
+      alto: 260, margen: { l: 52 },
+      x: { min: 1, max: 16, titulo: "micro-lotes m", fmtTip: function (v) { return RN.fmtN(v); } },
+      y: { min: 0, max: 100, titulo: "burbuja (%)", fmtTip: function (v) { return num(v, 1) + " %"; } }
+    });
+    function pintaGraf() {
+      const pts = []; for (let k = 1; k <= 16; k++) pts.push([k, (p - 1) / (k + p - 1) * 100]);
+      graf.dibujar([{ nombre: p + " GPU", color: C.s2, puntos: pts }, { tipo: "puntos", color: C.ink, radio: 6, puntos: [[m, (p - 1) / (m + p - 1) * 100]] }]);
+    }
+    function todo() { plan = hazPlan(); kpis(); if (!anim.activo) tPlay = Infinity; dibuja(); pintaGraf(); }
+    const anim = RN.anima(function (dt) {
+      tPlay = Math.min(plan.T, (tPlay === Infinity ? 0 : tPlay) + dt * plan.T / 6);
+      dibuja();
+      if (tPlay >= plan.T) { tPlay = Infinity; dibuja(); return false; }
+    }, cv);
+    const btn = $("pp-play");
+    btn.addEventListener("click", function () { if (!anim.activo) tPlay = 0; });
+    RN.botonPlay(btn, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    $("pp-p").addEventListener("input", function (e) { p = +e.target.value; $("pp-po").textContent = p; todo(); });
+    $("pp-m").addEventListener("input", function (e) { m = +e.target.value; $("pp-mo").textContent = m; todo(); });
+    cv.addEventListener("mousemove", function (ev) {
+      if (!geo) return;
+      const r = cv.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
+      const s = Math.floor((py - geo.y0) / geo.RH);
+      const b = s >= 0 && s < p ? plan.B.find(function (q) { return q.s === s && px >= geo.sx(q.a) && px <= geo.sx(q.b); }) : null;
+      if (b) RN.tip.mostrar("<b>GPU " + b.s + "</b> · micro-lote " + (b.j + 1) + "<br>" + (b.del ? "hacia delante: pasa las activaciones" : "hacia atrás: pasa los gradientes"), ev.clientX, ev.clientY);
+      else if (s >= 0 && s < p && px > geo.x0 && px < geo.sx(plan.T)) RN.tip.mostrar("<b>GPU " + s + "</b>: burbuja, esperando datos", ev.clientX, ev.clientY);
+      else RN.tip.ocultar();
+    });
+    cv.addEventListener("mouseleave", function () { RN.tip.ocultar(); });
+    RN.alCambiarTam(cv, function () { if (plan) dibuja(); });
+    todo();
+  })();
+
+  // ===================================================================== 6 · SGD ASÍNCRONO Y GRADIENTES OBSOLETOS
+  const PERD = (function () {
+    const A = 0.5, B = 4, PHI = 25 * Math.PI / 180, cs = Math.cos(PHI), sn = Math.sin(PHI);
+    return {
+      A: A, B: B, PHI: PHI,
+      L: function (w) { const u = cs * w[0] + sn * w[1], v = -sn * w[0] + cs * w[1]; return 0.5 * (A * u * u + B * v * v); },
+      g: function (w) { const u = cs * w[0] + sn * w[1], v = -sn * w[0] + cs * w[1], gu = A * u, gv = B * v; return [cs * gu - sn * gv, sn * gu + cs * gv]; }
+    };
+  })();
+  (function () {
+    const cv = $("as-cv");
+    let tau = 2, lr = 0.12, w0 = [-2.5, 1.2], Sx, Qx, paso = 0, diverge = false;
+    const MAXP = 60;
+    function reinicia() { Sx = [w0.slice()]; Qx = [w0.slice()]; paso = 0; diverge = false; }
+    function avanza() {
+      if (paso >= MAXP || diverge) return false;
+      const s = Sx[paso], q = Qx[paso], gs = PERD.g(s), gq = PERD.g(Qx[Math.max(0, paso - tau)]);
+      Sx.push([s[0] - lr * gs[0], s[1] - lr * gs[1]]);
+      Qx.push([q[0] - lr * gq[0], q[1] - lr * gq[1]]);
+      paso++;
+      if (!(PERD.L(Qx[paso]) < 1e4)) diverge = true;
+      return true;
+    }
+    let geo = null;
+    function dibuja() {
+      const Lz = RN.lienzo(cv, function (w) { return Math.round(w * 2 / 3); }), ctx = Lz.ctx, w = Lz.w, h = Lz.h;
+      const k = w / 6, sx = function (x) { return w / 2 + x * k; }, sy = function (y) { return h / 2 - y * k; };
+      geo = { k: k, w: w, h: h };
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
+      const niveles = []; for (let i = 9; i >= 0; i--) niveles.push(0.03 * Math.pow(2, i));
+      niveles.forEach(function (c, i) {
+        ctx.beginPath(); ctx.ellipse(sx(0), sy(0), Math.sqrt(2 * c / PERD.A) * k, Math.sqrt(2 * c / PERD.B) * k, -PERD.PHI, 0, 2 * Math.PI);
+        ctx.fillStyle = RN.mezcla("#ffffff", "#C9DCF2", (i + 1) / niveles.length); ctx.fill();
+        ctx.strokeStyle = "#A9BFD8"; ctx.lineWidth = 1; ctx.stroke();
+      });
+      ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(sx(0), sy(0), 3.5, 0, 7); ctx.fill();
+      fuente(ctx, 12.5, 600); ctx.fillStyle = C.ink2; ctx.textAlign = "left"; ctx.textBaseline = "top";
+      ctx.fillText("mínimo", sx(0) + 6, sy(0) + 4);
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
+      function camino(P, col) {
+        ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.beginPath();
+        P.forEach(function (q, i) { const X = RN.limita(sx(q[0]), -2000, 4000), Y = RN.limita(sy(q[1]), -2000, 4000); if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); });
+        ctx.stroke();
+        P.forEach(function (q, i) { if (i === P.length - 1) return; ctx.beginPath(); ctx.arc(sx(q[0]), sy(q[1]), 2.6, 0, 7); ctx.fillStyle = col; ctx.fill(); });
+        const u = P[P.length - 1];
+        ctx.beginPath(); ctx.arc(sx(u[0]), sy(u[1]), 6.5, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+      }
+      camino(Sx, C.s1);
+      camino(Qx, C.s2);
+      if (tau > 0 && paso > 0 && !diverge) {
+        const q = Qx[paso], v = Qx[Math.max(0, paso - tau)];
+        ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = C.s5; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(sx(v[0]), sy(v[1])); ctx.lineTo(sx(q[0]), sy(q[1])); ctx.stroke(); ctx.restore();
+        ctx.beginPath(); ctx.arc(sx(v[0]), sy(v[1]), 6, 0, 7); ctx.strokeStyle = C.s5; ctx.lineWidth = 2.5; ctx.stroke();
+        const flechaG = function (gv, col) {
+          const n = Math.hypot(gv[0], gv[1]) || 1, L = 58, dx = -gv[0] / n, dy = -gv[1] / n;
+          const X0 = sx(q[0]), Y0 = sy(q[1]), X1 = X0 + dx * L, Y1 = Y0 - dy * L, a = Math.atan2(Y1 - Y0, X1 - X0);
+          ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(X0, Y0); ctx.lineTo(X1, Y1); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(X1 + 9 * Math.cos(a), Y1 + 9 * Math.sin(a)); ctx.lineTo(X1 + 9 * Math.cos(a + 2.4), Y1 + 9 * Math.sin(a + 2.4)); ctx.lineTo(X1 + 9 * Math.cos(a - 2.4), Y1 + 9 * Math.sin(a - 2.4)); ctx.closePath(); ctx.fill();
+        };
+        flechaG(PERD.g(q), C.s3);
+        flechaG(PERD.g(v), C.s5);
+      }
+      ctx.restore();
+      if (diverge) { fuente(ctx, 16, 800); ctx.fillStyle = C.bad; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("✗ El asíncrono diverge: baja η o el retraso", w / 2, 10); }
+    }
+    const graf = RN.grafica($("as-graf"), {
+      alto: function (w) { return Math.round(w * 2 / 3); }, margen: { l: 58 },
+      x: { min: 0, max: MAXP, titulo: "actualización", fmtTip: function (v) { return RN.fmtN(v); } },
+      y: { min: 1e-4, max: 1e3, log: true, titulo: "pérdida (escala log.)", fmt: function (v) { return v >= 1 ? RN.fmtN(v) : String(v).replace(".", ","); }, fmtTip: function (v) { return num(v, 4); } }
+    });
+    function pintaGraf() {
+      graf.dibujar([
+        { nombre: "síncrono", color: C.s1, puntos: Sx.map(function (q, i) { return [i, PERD.L(q)]; }) },
+        { nombre: "asíncrono", color: C.s2, puntos: Qx.map(function (q, i) { return [i, Math.min(1e6, PERD.L(q))]; }) }
+      ]);
+      $("as-k1").textContent = paso;
+      $("as-k2").textContent = num(PERD.L(Sx[paso]), 4);
+      $("as-k3").textContent = diverge ? "diverge" : num(PERD.L(Qx[paso]), 4);
+      $("as-k3").className = "v" + (diverge ? " bad" : "");
+    }
+    function todo() { dibuja(); pintaGraf(); }
+    let acum = 0;
+    const anim = RN.anima(function (dt) {
+      acum += dt;
+      if (acum < 0.14) return;
+      acum = 0;
+      const sigue = avanza(); todo();
+      if (!sigue || paso >= MAXP || diverge) return false;
+    }, cv);
+    const btn = $("as-play");
+    btn.addEventListener("click", function () { if (!anim.activo && (paso >= MAXP || diverge)) reinicia(); });
+    RN.botonPlay(btn, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    $("as-paso").addEventListener("click", function () { anim.parar(); avanza(); todo(); });
+    $("as-reset").addEventListener("click", function () { anim.parar(); reinicia(); todo(); });
+    $("as-tau").addEventListener("input", function (e) { tau = +e.target.value; $("as-tauo").textContent = tau; anim.parar(); reinicia(); precalienta(); todo(); });
+    $("as-lr").addEventListener("input", function (e) { lr = +e.target.value; $("as-lro").textContent = RN.fmt(lr, 2); anim.parar(); reinicia(); precalienta(); todo(); });
+    cv.addEventListener("click", function (ev) {
+      if (!geo) return;
+      const r = cv.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
+      w0 = [(px - geo.w / 2) / geo.k, (geo.h / 2 - py) / geo.k];
+      anim.parar(); reinicia(); todo();
+    });
+    cv.style.cursor = "crosshair";
+    function precalienta() { for (let i = 0; i < 9; i++) avanza(); }
+    RN.alCambiarTam(cv, dibuja);
+    reinicia(); precalienta(); todo();
+  })();
+
+  // ===================================================================== 7 · DOWNPOUR SGD
+  (function () {
+    const svg = $("dp-svg");
+    caja(svg, "0 0 1000 366");
+    const SH = [{ x: 190, n: "fragmento 1", c: "pesos de las capas 1-2" }, { x: 530, n: "fragmento 2", c: "pesos de las capas 3-4" }];
+    const RW = 150, RY = 252, RHh = 104;
+    const RX = [0, 1, 2, 3, 4, 5].map(function (k) { return 16 + k * 164; });
+    const VEL = [1.5, 2.1, 1.2, 2.7, 1.8, 3.3];
+    const rng = RN.rng(21);
+    // enlaces
+    RX.forEach(function (x) { SH.forEach(function (s) { S("line", { x1: x + RW / 2, y1: RY, x2: s.x + 140, y2: 112, stroke: "#E4E7EB", "stroke-width": 1.5 }, svg); }); });
+    const shards = SH.map(function (s) {
+      const r = rect(svg, s.x, 14, 280, 98, { rx: 12, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 });
+      txt(svg, s.x + 16, 40, "Servidor · " + s.n, { "font-size": 15.5, "font-weight": 800 });
+      txt(svg, s.x + 16, 61, s.c, { "font-size": 13, fill: C.ink2 });
+      const v = txt(svg, s.x + 264, 44, "v 0", { "font-size": 22, "font-weight": 800, "text-anchor": "end" });
+      const e = txt(svg, s.x + 16, 84, "", { "font-size": 13, "font-weight": 700 });
+      const e2 = txt(svg, s.x + 16, 102, "", { "font-size": 13, "font-weight": 700, fill: C.bad });
+      return { r: r, v: v, e: e, e2: e2, ver: 0, cola: 0, caido: 0, msg: 0 };
+    });
+    const reps = RX.map(function (x, k) {
+      const r = rect(svg, x, RY, RW, RHh, { rx: 12, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.5 });
+      txt(svg, x + 12, RY + 22, "Réplica " + (k + 1), { "font-size": 14.5, "font-weight": 800 });
+      const est = txt(svg, x + 12, RY + 42, "", { "font-size": 13, fill: C.ink2 });
+      rect(svg, x + 12, RY + 52, RW - 24, 9, { rx: 4.5, fill: "#EEF1F4" });
+      const pb = rect(svg, x + 12, RY + 52, 0, 9, { rx: 4.5, fill: C.s3 });
+      const pv = txt(svg, x + 12, RY + 80, "", { "font-size": 13, fill: C.ink2 });
+      const av = txt(svg, x + 12, RY + 97, "", { "font-size": 12.5, "font-weight": 700, fill: "#7A5A00" });
+      const pq = [0, 1].map(function () { return S("circle", { r: 6, fill: C.s1, stroke: "#fff", "stroke-width": 1.5, opacity: 0 }, svg); });
+      return { x: x, r: r, est: est, pb: pb, pv: pv, av: av, pq: pq, fase: "pull", t: rng() * 1.2, dur: 0.6, ver: 0, vel: VEL[k], caida: false };
+    });
+    let aplicadas = 0, retrasos = [];
+    function nuevaFase(rp, f) {
+      rp.fase = f; rp.t = 0;
+      if (f === "pull") { rp.dur = 0.6; rp.ver = shards[0].ver; }
+      else if (f === "calc") rp.dur = rp.vel * (0.8 + 0.4 * rng());
+      else rp.dur = 0.6;
+    }
+    reps.forEach(function (rp) { rp.ver = 0; });
+    function llega(rp) {
+      shards.forEach(function (s, i) {
+        if (s.caido > 0) { s.cola++; return; }
+        s.ver++;
+        if (i === 0) { aplicadas++; retrasos.push(s.ver - 1 - rp.ver); if (retrasos.length > 30) retrasos.shift(); }
+      });
+    }
+    function paso(dt) {
+      shards.forEach(function (s) {
+        if (s.caido > 0) { s.caido -= dt; if (s.caido <= 0) { s.ver += s.cola; s.cola = 0; s.msg = 2.2; } }
+        else if (s.msg > 0) s.msg -= dt;
+      });
+      reps.forEach(function (rp) {
+        if (rp.caida) return;
+        rp.t += dt;
+        if (rp.t >= rp.dur) {
+          if (rp.fase === "pull") nuevaFase(rp, "calc");
+          else if (rp.fase === "calc") nuevaFase(rp, "push");
+          else { llega(rp); nuevaFase(rp, "pull"); }
+        }
+      });
+      pinta();
+    }
+    function pinta() {
+      shards.forEach(function (s) {
+        s.v.textContent = "v " + s.ver;
+        s.r.setAttribute("stroke", s.caido > 0 ? C.bad : C.ink2); s.r.setAttribute("stroke-width", s.caido > 0 ? 2.5 : 1.5);
+        s.r.setAttribute("fill", s.caido > 0 ? "#FFEBEE" : "#fff");
+        s.e.textContent = s.caido > 0 ? "✗ caído: restaurando la copia" : s.msg > 0 ? "✓ recuperado de la copia de seguridad" : "";
+        s.e2.textContent = s.caido > 0 ? "de seguridad (" + s.cola + " push en espera)" : "";
+        s.e.setAttribute("fill", s.caido > 0 ? C.bad : C.ok);
+      });
+      let activas = 0;
+      reps.forEach(function (rp) {
+        const u = RN.limita(rp.t / rp.dur, 0, 1);
+        if (rp.caida) {
+          rp.r.setAttribute("fill", "#ECEFF1"); rp.r.setAttribute("stroke", "#B0BEC5");
+          rp.est.textContent = "✗ caída"; rp.est.setAttribute("fill", C.bad);
+          rp.pb.setAttribute("width", 0); rp.pv.textContent = "el resto sigue"; rp.av.textContent = "";
+          rp.pq.forEach(function (c) { c.setAttribute("opacity", 0); });
+          return;
+        }
+        activas++;
+        const atraso = shards[0].ver - rp.ver, viejo = rp.fase !== "pull" && atraso >= 3;
+        rp.r.setAttribute("fill", viejo ? AVISO_L : "#fff"); rp.r.setAttribute("stroke", viejo ? AVISO : rp.fase === "calc" ? C.s3 : "#CFD8DC");
+        rp.r.setAttribute("stroke-width", viejo || rp.fase === "calc" ? 2.2 : 1.5);
+        rp.est.setAttribute("fill", C.ink2);
+        rp.est.textContent = rp.fase === "pull" ? "1 · pull de pesos" : rp.fase === "calc" ? "2 · calculando" : "3 · push";
+        rp.pb.setAttribute("width", ((RW - 24) * (rp.fase === "calc" ? u : rp.fase === "push" ? 1 : 0)).toFixed(1));
+        rp.pv.textContent = rp.fase === "pull" ? "leyendo v " + shards[0].ver : "usa pesos v " + rp.ver;
+        rp.av.textContent = viejo ? "⚠ " + atraso + " versiones atrás" : "";
+        rp.pq.forEach(function (c, i) {
+          const s = SH[i], sxp = s.x + 140, syp = 112, rxp = rp.x + RW / 2, ryp = RY;
+          if (rp.fase === "pull" || rp.fase === "push") {
+            const uu = RN.suave(u), dePull = rp.fase === "pull";
+            const x = dePull ? RN.lerp(sxp, rxp, uu) : RN.lerp(rxp, sxp, uu), y = dePull ? RN.lerp(syp, ryp, uu) : RN.lerp(ryp, syp, uu);
+            c.setAttribute("cx", x.toFixed(1)); c.setAttribute("cy", y.toFixed(1));
+            c.setAttribute("fill", dePull ? C.s1 : C.s2); c.setAttribute("opacity", 1);
+          } else c.setAttribute("opacity", 0);
+        });
+      });
+      $("dp-k1").textContent = RN.fmtN(aplicadas);
+      $("dp-k2").textContent = activas + " de 6";
+      $("dp-k3").textContent = retrasos.length ? num(retrasos.reduce(function (a, b) { return a + b; }, 0) / retrasos.length, 1) + " versiones" : "—";
+    }
+    if (RN.reducirMovimiento) for (let i = 0; i < 300; i++) paso(0.03);
+    else for (let i = 0; i < 120; i++) paso(0.03);
+    bucle(paso, svg, $("dp-play"), 0);
+    const bF = $("dp-fallo");
+    bF.addEventListener("click", function () {
+      const rp = reps[2];
+      rp.caida = !rp.caida;
+      if (!rp.caida) nuevaFase(rp, "pull");
+      bF.textContent = rp.caida ? "↺ Recuperar la réplica 3" : "✗ Fallo de la réplica 3";
+      pinta();
+    });
+    $("dp-servidor").addEventListener("click", function () { const s = shards[1]; if (s.caido <= 0) { s.caido = 2.6; s.msg = 0; } pinta(); });
+    pinta();
+  })();
+
+  // ===================================================================== 8 · SÍNCRONO FRENTE A ASÍNCRONO
+  (function () {
+    let N = 6, het = 0.5, lat = 0.5, lr = 0.05, sem = 3;
+    const TMAX = 60, SIG = 1, W0 = [-2.5, 1.2];
+    function simula() {
+      const r = RN.rng(sem * 31 + 7), d = [];
+      for (let i = 0; i < N; i++) d.push(1 + het * 2 * r());
+      const jit = function (x) { return x * (1 + 0.2 * (2 * r() - 1)); };
+      // síncrono
+      let w = W0.slice(), t = 0, nS = 0, busyS = 0;
+      const lossS = [[0, PERD.L(w)]], updS = [[0, 0]];
+      while (true) {
+        const ds = d.map(jit), m = Math.max.apply(null, ds);
+        if (t + m + lat > TMAX) { busyS += ds.reduce(function (a, b) { return a + Math.min(b, Math.max(0, TMAX - t)); }, 0); break; }
+        const g = PERD.g(w); let gx = 0, gy = 0;
+        for (let i = 0; i < N; i++) { gx += g[0] + SIG * RN.normal(r); gy += g[1] + SIG * RN.normal(r); }
+        w = [w[0] - lr * gx / N, w[1] - lr * gy / N];
+        t += m + lat; nS++; busyS += ds.reduce(function (a, b) { return a + b; }, 0);
+        lossS.push([t, Math.min(1e6, PERD.L(w))]); updS.push([t, nS]);
+      }
+      updS.push([TMAX, nS]);
+      // asíncrono (por eventos)
+      let wa = W0.slice(), nA = 0, busyA = 0, divA = false;
+      const lossA = [[0, PERD.L(wa)]], updA = [[0, 0]];
+      const ws = d.map(function (di) { const c = jit(di); return { d: di, c: c, llega: lat + c, usa: W0.slice() }; });
+      while (true) {
+        let k = 0; for (let i = 1; i < N; i++) if (ws[i].llega < ws[k].llega) k = i;
+        const e = ws[k];
+        if (e.llega > TMAX) break;
+        const g = PERD.g(e.usa);
+        wa = [wa[0] - lr * (g[0] + SIG * RN.normal(r)), wa[1] - lr * (g[1] + SIG * RN.normal(r))];
+        nA++; busyA += e.c;
+        const L = PERD.L(wa);
+        if (!(L < 1e6)) { divA = true; lossA.push([e.llega, 1e6]); break; }
+        lossA.push([e.llega, L]); updA.push([e.llega, nA]);
+        e.usa = wa.slice(); e.c = jit(e.d); e.llega = e.llega + lat + e.c;
+      }
+      updA.push([divA ? lossA[lossA.length - 1][0] : TMAX, nA]);
+      return { lossS: lossS, updS: updS, lossA: lossA, updA: updA, nS: nS, nA: nA, usoS: busyS / (N * TMAX), usoA: Math.min(1, busyA / (N * TMAX)), divA: divA };
+    }
+    const gL = RN.grafica($("sa-loss"), {
+      alto: 300, margen: { l: 58 },
+      x: { min: 0, max: TMAX, titulo: "tiempo simulado (u.t.)", fmtTip: function (v) { return num(v, 1) + " u.t."; } },
+      y: { min: 1e-3, max: 100, log: true, titulo: "pérdida (escala log.)", fmt: function (v) { return v >= 1 ? RN.fmtN(v) : String(v).replace(".", ","); }, fmtTip: function (v) { return num(v, 4); } }
+    });
+    const gU = RN.grafica($("sa-upd"), {
+      alto: 300, margen: { l: 58 },
+      x: { min: 0, max: TMAX, titulo: "tiempo simulado (u.t.)", fmtTip: function (v) { return num(v, 1) + " u.t."; } },
+      y: { min: 0, max: 100, titulo: "actualizaciones aplicadas", fmtTip: function (v) { return RN.fmtN(v); } }
+    });
+    function todo() {
+      const s = simula();
+      gL.dibujar([{ nombre: "síncrono", color: C.s1, puntos: s.lossS }, { nombre: "asíncrono", color: C.s2, puntos: s.lossA, ancho: 1.6 }]);
+      gU.op.y.max = Math.max(10, Math.ceil(Math.max(s.nA, s.nS) * 1.1 / 10) * 10);
+      gU.dibujar([{ nombre: "síncrono", color: C.s1, puntos: s.updS }, { nombre: "asíncrono", color: C.s2, puntos: s.updA }]);
+      $("sa-k1").textContent = num(s.usoS * 100, 0) + " %";
+      $("sa-k2").textContent = num(s.usoA * 100, 0) + " %";
+      const media = function (P) { const q = P.filter(function (p) { return p[0] >= TMAX - 10; }); return q.length ? q.reduce(function (a, p) { return a + p[1]; }, 0) / q.length : P[P.length - 1][1]; };
+      $("sa-k3").textContent = num(media(s.lossS), 3);
+      $("sa-k4").textContent = s.divA ? "diverge" : num(media(s.lossA), 3);
+      $("sa-k4").className = "v peq" + (s.divA ? " bad" : "");
+    }
+    function ctl(id, fn, fmt) { $(id).addEventListener("input", function (e) { const v = +e.target.value; fn(v); $(id + "o").textContent = fmt(v); todo(); }); }
+    ctl("sa-n", function (v) { N = v; }, String);
+    ctl("sa-het", function (v) { het = v / 100; }, function (v) { return v + " %"; });
+    ctl("sa-lat", function (v) { lat = v; }, function (v) { return RN.fmt(v, 1) + " u.t."; });
+    ctl("sa-lr", function (v) { lr = v; }, function (v) { return RN.fmt(v, 2); });
+    $("sa-otra").addEventListener("click", function () { sem++; todo(); });
+    todo();
+  })();
+
+  // ===================================================================== 9 · ACUMULACIÓN DE GRADIENTES
+  (function () {
+    const svg = $("ac-svg");
+    caja(svg, "0 0 1000 400");
+    const CAP = 96, NP = 6, ETQ = ["w₁", "w₂", "w₃", "w₄", "w₅", "b"];
+    // datos sintéticos y pesos actuales (fijos)
+    const r = RN.rng(12), X = [], Y = [];
+    const WV = [1.5, -2, 0.7, 0, 1.2], BV = 0.5, WC = [0.2, -0.5, 0.1, 0.4, 0.3], BC = 0;
+    for (let i = 0; i < 1024; i++) {
+      const x = [0, 1, 2, 3, 4].map(function () { return RN.normal(r); });
+      X.push(x); Y.push(x.reduce(function (s, v, j) { return s + v * WV[j]; }, BV) + 0.3 * RN.normal(r));
+    }
+    function grad(a, b) {
+      const g = [0, 0, 0, 0, 0, 0], n = b - a;
+      for (let i = a; i < b; i++) {
+        const e = X[i].reduce(function (s, v, j) { return s + v * WC[j]; }, BC) - Y[i];
+        for (let j = 0; j < 5; j++) g[j] += 2 * e * X[i][j] / n;
+        g[5] += 2 * e / n;
+      }
+      return g;
+    }
+    let modo = "acum", mb = 64, k = 4, s = 0, tok = 0, corrida = 0, acc, gs, gFull;
+    function prepara() {
+      gs = []; for (let i = 0; i < k; i++) gs.push(grad(i * mb, (i + 1) * mb));
+      gFull = grad(0, mb * k);
+      acc = [0, 0, 0, 0, 0, 0];
+      for (let i = 0; i < s && i < k; i++) acc = acc.map(function (v, j) { return v + gs[i][j]; });
+    }
+    function total() { return modo === "acum" ? k + 1 : 1; }
+    const sup = function (n) { const m = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" }; return String(n).split("").map(function (c) { return m[c] || c; }).join(""); };
+    function fmtDif(d) { if (d === 0) return "0 (idénticos)"; const e = Math.floor(Math.log10(d)), m = d / Math.pow(10, e); return num(m, 1) + " · 10" + sup(e); }
+    const fv = function (v) { return num(v, 3).replace("-", "−"); };
+    function barras(x0, base, vals, esc, fantasma) {
+      const bw = 30, gap = 15;
+      S("line", { x1: x0 - 6, y1: base, x2: x0 + NP * (bw + gap) - gap + 6, y2: base, stroke: C.axis }, svg);
+      vals.forEach(function (v, j) {
+        const x = x0 + j * (bw + gap), h = Math.min(84, Math.abs(v) * esc);
+        if (fantasma) { const hf = Math.min(84, Math.abs(fantasma[j]) * esc); rect(svg, x - 4, fantasma[j] >= 0 ? base - hf : base, bw + 8, hf, { rx: 3, fill: "none", stroke: C.ink, "stroke-width": 2, "stroke-dasharray": "4 3" }); }
+        rect(svg, x, v >= 0 ? base - h : base, bw, Math.max(1, h), { rx: 3, fill: v >= 0 ? C.pos : C.neg });
+        txt(svg, x + bw / 2, base + 104, ETQ[j], { "font-size": 13.5, "font-weight": 700, "text-anchor": "middle", fill: C.ink2 });
+        txt(svg, x + bw / 2, v >= 0 ? base + 17 : base - 7, fv(v), { "font-size": 12, "text-anchor": "middle", fill: C.ink });
+      });
+    }
+    function pinta(enCurso) {
+      vaciar(svg);
+      // memoria
+      const enMem = modo === "acum" ? (s < k || enCurso !== undefined ? mb : 0) : (s >= 1 || enCurso !== undefined ? mb * k : 0);
+      const escM = Math.max(160, mb * k * 1.08, enMem * 1.08), yB = 340, hM = 270, yM = function (v) { return yB - v / escM * hM; };
+      txt(svg, 80, 30, "VRAM", { "font-size": 15, "font-weight": 800, "text-anchor": "middle" });
+      rect(svg, 50, yB - hM, 60, hM, { rx: 6, fill: "#EEF1F4", stroke: "#B0BEC5" });
+      const lleno = Math.min(enMem, CAP), sobra = Math.max(0, enMem - CAP);
+      if (lleno > 0) rect(svg, 52, yM(lleno), 56, yB - yM(lleno), { rx: 4, fill: C.s3 });
+      if (sobra > 0) {
+        S("defs", {}, svg).innerHTML = '<pattern id="ac-ray" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="#FFEBEE"/><line x1="0" y1="0" x2="0" y2="7" stroke="#C62828" stroke-width="2.5"/></pattern>';
+        rect(svg, 46, yM(enMem), 68, yM(CAP) - yM(enMem), { rx: 4, fill: "url(#ac-ray)", stroke: C.bad, "stroke-width": 2 });
+      }
+      S("line", { x1: 40, y1: yM(CAP), x2: 120, y2: yM(CAP), stroke: C.ink, "stroke-width": 2.5 }, svg);
+      txt(svg, 126, yM(CAP) + 5, "caben " + CAP, { "font-size": 13, "font-weight": 700 });
+      txt(svg, 80, yB + 22, enMem ? enMem + " ejemplos" : "vacía", { "font-size": 13.5, "text-anchor": "middle", fill: C.ink2 });
+      // micro-lotes
+      const n = modo === "acum" ? k : 1, ancho = 560, gapB = 8, wB = Math.min(84, (ancho - (n - 1) * gapB) / n), x0 = 210;
+      txt(svg, x0, 30, modo === "acum" ? "Micro-lotes de " + mb + " ejemplos" : "Un lote de " + mb * k + " ejemplos de golpe", { "font-size": 15, "font-weight": 800 });
+      for (let i = 0; i < n; i++) {
+        const hecho = modo === "acum" ? i < s : s >= 1, act = enCurso === i, oom = modo === "directo" && hecho && mb * k > CAP;
+        const wb = modo === "acum" ? wB : 180;
+        rect(svg, x0 + i * (wb + gapB), 44, wb, 40, { rx: 8, fill: act ? AC : oom ? "#FFEBEE" : hecho ? RN.mezcla("#ffffff", C.s3, 0.3) : "#F5F7FA", stroke: act ? AC : oom ? C.bad : hecho ? C.s3 : "#B0BEC5", "stroke-width": 1.5 });
+        txt(svg, x0 + i * (wb + gapB) + wb / 2, 69, modo === "acum" ? String(i + 1) : mb * k + " ejemplos", { "font-size": 14, "font-weight": 800, "text-anchor": "middle", fill: act ? "#fff" : C.ink });
+      }
+      // gradientes: a la izquierda el de ahora, a la derecha el acumulador
+      const cero = [0, 0, 0, 0, 0, 0], mxS = Math.max.apply(null, gs.reduce(function (a, g) { return a.concat(g.map(Math.abs)); }, []).concat(gs.reduce(function (a, g) { return a.map(function (v, j) { return v + g[j]; }); }, cero).map(Math.abs)));
+      const escS = 84 / Math.max(1e-9, mxS), escMed = 84 / Math.max(1e-9, Math.max.apply(null, gFull.map(Math.abs)));
+      const XI = 225, XD = 640, BASE = 236;
+      let tI, vI, eI, tD = "", vD = null, eD = escS, fD = null, nota = "", signo = "";
+      if (modo === "directo") {
+        if (s === 0 && enCurso === undefined) { tI = "Gradiente del lote"; vI = cero; eI = escMed; nota = "Pulsa «Paso» para cargar el lote entero en la GPU."; }
+        else if (mb * k > CAP) { tI = "✗ CUDA out of memory"; vI = null; eI = escMed; nota = "✗ El lote de " + mb * k + " no cabe (caben " + CAP + "): ni gradiente ni actualización."; }
+        else { tI = "Gradiente del lote completo"; vI = gFull; eI = escMed; nota = "✓ Cabe: una pasada, un gradiente y una actualización."; }
+        tD = "Sin acumulador: todo de una vez";
+      } else if (s < k) {
+        const i = enCurso !== undefined ? enCurso : s - 1, nAc = enCurso !== undefined ? enCurso + 1 : s;
+        if (i < 0) { tI = "Gradiente del micro-lote"; vI = cero; tD = "Acumulador vacío"; vD = cero; nota = "Cada micro-lote calcula su gradiente y lo suma al acumulador, sin tocar los pesos."; }
+        else { tI = "Gradiente del micro-lote " + (i + 1); vI = gs[i]; tD = "Acumulador: suma de " + nAc; vD = acc; signo = "+"; nota = "Micro-lote " + (i + 1) + " de " + k + ": su gradiente se suma al acumulador. Aún no se actualizan los pesos."; }
+        eI = escS;
+      } else {
+        tI = "Referencia: el lote completo de golpe"; vI = gFull; eI = escMed;
+        tD = "Acumulador ÷ " + k + " (contorno: lote completo)"; vD = acc.map(function (v) { return v / k; }); eD = escMed; fD = gFull; signo = "=";
+        nota = s > k ? "✓ Una sola actualización con la media: el mismo resultado que el lote de " + mb * k + "." : "Tras " + k + " micro-lotes se divide entre " + k + ": coincide con el gradiente del lote completo.";
+      }
+      txt(svg, XI - 15, 132, tI, { "font-size": 15, "font-weight": 800, fill: /out of memory/.test(tI) ? C.bad : C.ink });
+      if (vI) barras(XI, BASE, vI, eI, null);
+      txt(svg, XD - 15, 132, tD, { "font-size": 15, "font-weight": 800, fill: vD ? C.ink : C.muted });
+      if (vD) barras(XD, BASE, vD, eD, fD);
+      if (signo) txt(svg, 600, BASE + 9, signo === "+" ? "→ +" : "=", { "font-size": 22, "font-weight": 800, "text-anchor": "middle", fill: AC });
+      txt(svg, 210, 388, nota, { "font-size": 14, fill: /✗/.test(nota) ? C.bad : /✓/.test(nota) ? C.ok : C.ink2, "font-weight": 600 });
+      // actualizaciones
+      const upd = modo === "acum" ? (s > k ? 1 : 0) : (s >= 1 && mb * k <= CAP ? 1 : 0);
+      rect(svg, 830, 22, 150, 68, { rx: 12, fill: upd ? RN.mezcla("#ffffff", C.ok, 0.1) : "#F5F7FA", stroke: upd ? C.ok : "#B0BEC5", "stroke-width": 1.5 });
+      txt(svg, 905, 44, "actualizaciones", { "font-size": 13, fill: C.ink2, "text-anchor": "middle" });
+      txt(svg, 905, 78, String(upd), { "font-size": 28, "font-weight": 800, "text-anchor": "middle", fill: upd ? C.ok : C.ink });
+      // KPIs
+      $("ac-k1").textContent = RN.fmtN(mb * k);
+      $("ac-k2").textContent = modo === "acum" ? RN.fmtN(mb) : RN.fmtN(mb * k);
+      $("ac-k2").className = "v " + ((modo === "acum" ? mb : mb * k) > CAP ? "bad" : "");
+      $("ac-k3").textContent = String(upd);
+      if (modo === "acum" && s >= k) {
+        let d = 0; acc.forEach(function (v, j) { d = Math.max(d, Math.abs(v / k - gFull[j])); });
+        $("ac-k4").textContent = fmtDif(d);
+      } else $("ac-k4").textContent = "—";
+    }
+    async function unPaso() {
+      if (s >= total()) { s = 0; prepara(); pinta(); return; }
+      const mi = ++tok;
+      if (modo === "acum" && s < k) {
+        if (mb > CAP) { pinta(); return; }
+        pinta(s);
+        await RN.espera(RN.reducirMovimiento ? 0 : 450); if (mi !== tok) return;
+        acc = acc.map(function (v, j) { return v + gs[s][j]; });
+        pinta(s);
+        await RN.espera(RN.reducirMovimiento ? 0 : 350); if (mi !== tok) return;
+      }
+      s++; pinta();
+    }
+    function reinicia() { tok++; corrida++; s = 0; prepara(); pinta(); }
+    $("ac-paso").addEventListener("click", function () { corrida++; unPaso(); });
+    $("ac-play").addEventListener("click", async function () {
+      const mi = ++corrida;
+      if (s >= total()) { s = 0; prepara(); pinta(); }
+      while (mi === corrida && s < total()) {
+        if (modo === "acum" && mb > CAP) { pinta(); return; }
+        await unPaso(); if (mi !== corrida) return;
+        await RN.espera(RN.reducirMovimiento ? 0 : 250);
+      }
+    });
+    $("ac-reset").addEventListener("click", reinicia);
+    segmentado("ac-modo", function (v) { modo = v; reinicia(); });
+    segmentado("ac-mb", function (v) { mb = +v; reinicia(); });
+    $("ac-k").addEventListener("input", function (e) { k = +e.target.value; $("ac-ko").textContent = k; reinicia(); });
+    s = 2; prepara(); pinta();
+  })();
+
+  // ===================================================================== 10 · ¿QUÉ ESTRATEGIA ELEGIR?
+  (function () {
+    const P = [
+      { id: "cabe", t: "¿El modelo cabe en la memoria de una GPU?" },
+      { id: "lenta", t: "¿La red es lenta o inestable al sincronizar?" },
+      { id: "sec", t: "¿Los datos son muy secuenciales (RNN)?" },
+      { id: "ramas", t: "¿La arquitectura tiene ramas independientes?" }
+    ];
+    const CASOS = {
+      cnn: { cabe: true, lenta: false, sec: false, ramas: false },
+      llm: { cabe: false, lenta: false, sec: false, ramas: false },
+      rnn: { cabe: true, lenta: false, sec: true, ramas: false },
+      lenta: { cabe: true, lenta: true, sec: false, ramas: false }
+    };
+    let R = Object.assign({}, CASOS.cnn);
+    const cont = $("el-preg"), segs = {};
+    P.forEach(function (q) {
+      const f = RN.el("div", { class: "fila" }, cont);
+      RN.el("span", null, f, q.t);
+      const sg = RN.el("div", { class: "seg", role: "group", "aria-label": q.t }, f);
+      [["si", "Sí"], ["no", "No"]].forEach(function (o) {
+        const b = RN.el("button", { type: "button", "data-v": o[0], "aria-pressed": "false" }, sg, o[1]);
+        b.addEventListener("click", function () { R[q.id] = o[0] === "si"; marcaCaso(""); pinta(); });
+      });
+      segs[q.id] = sg;
+    });
+    const marcaCaso = segmentado("el-caso", function (v) { R = Object.assign({}, CASOS[v]); pinta(); });
+    const svg = $("el-svg");
+    caja(svg, "0 0 520 400");
+    flecha(svg, "el-fl", C.ink2);
+    function pinta() {
+      P.forEach(function (q) { Array.from(segs[q.id].children).forEach(function (b) { b.setAttribute("aria-pressed", (b.dataset.v === "si") === R[q.id] ? "true" : "false"); }); });
+      vaciar(svg); flecha(svg, "el-fl", C.ink2);
+      // pregunta principal
+      S("path", { d: "M260,8 L392,52 L260,96 L128,52 Z", fill: "#fff", stroke: C.ink, "stroke-width": 2 }, svg);
+      txt(svg, 260, 48, "¿Cabe en", { "font-size": 14.5, "font-weight": 800, "text-anchor": "middle" });
+      txt(svg, 260, 66, "una GPU?", { "font-size": 14.5, "font-weight": 800, "text-anchor": "middle" });
+      const ramaSi = R.cabe;
+      [[true, 14, "Paralelismo de datos", "más simple y escalable"], [false, 270, "Modelo o pipeline", "repartir las capas"]].forEach(function (b) {
+        const on = b[0] === ramaSi, x = b[1];
+        S("path", { d: b[0] ? "M150,59 Q120,80 120,116" : "M370,59 Q400,80 400,116", fill: "none", stroke: on ? AC : "#CFD8DC", "stroke-width": on ? 3 : 2, "marker-end": "url(#el-fl)" }, svg);
+        txt(svg, b[0] ? 104 : 416, 86, b[0] ? "Sí" : "No", { "font-size": 14, "font-weight": 800, "text-anchor": "middle", fill: on ? AC : C.muted });
+        rect(svg, x, 120, 236, 62, { rx: 12, fill: on ? ACL : "#F5F7FA", stroke: on ? AC : "#CFD8DC", "stroke-width": on ? 2.5 : 1.5, opacity: on ? 1 : 0.6 });
+        txt(svg, x + 118, 146, b[2], { "font-size": 15, "font-weight": 800, "text-anchor": "middle", fill: on ? C.ink : C.muted });
+        txt(svg, x + 118, 167, b[3], { "font-size": 13, "text-anchor": "middle", fill: on ? C.ink2 : C.muted });
+      });
+      // modificadores
+      const M = [["lenta", "¿Lenta o inestable?", "SGD asíncrono o acumulación", "de gradientes"], ["sec", "¿Datos secuenciales?", "El paralelismo de datos puro", "puede ser ineficiente"], ["ramas", "¿Ramas independientes?", "El paralelismo de modelo", "aprovecha las ramas"]];
+      M.forEach(function (m, i) {
+        const y = 206 + i * 66, on = R[m[0]];
+        txt(svg, 14, y + 26, m[1], { "font-size": 13.5, "font-weight": 700, fill: on ? C.ink : C.muted });
+        txt(svg, 14, y + 45, on ? "Sí" : "No", { "font-size": 13.5, "font-weight": 800, fill: on ? AC : C.muted });
+        S("line", { x1: 184, y1: y + 30, x2: 214, y2: y + 30, stroke: on ? AC : "#CFD8DC", "stroke-width": on ? 3 : 2, "marker-end": "url(#el-fl)" }, svg);
+        rect(svg, 218, y + 4, 290, 54, { rx: 10, fill: on ? ACL : "#F5F7FA", stroke: on ? AC : "#E4E7EB", "stroke-width": on ? 2.5 : 1, opacity: on ? 1 : 0.55 });
+        txt(svg, 234, y + 27, m[2], { "font-size": 13.5, "font-weight": 700, fill: on ? C.ink : C.muted });
+        txt(svg, 234, y + 46, m[3], { "font-size": 13.5, "font-weight": 700, fill: on ? C.ink : C.muted });
+      });
+      // recomendación
+      const lista = [];
+      let titulo;
+      if (R.cabe) { titulo = "Paralelismo de datos"; lista.push("El modelo cabe en una GPU: replica el modelo y reparte los lotes; es lo más simple y escalable."); }
+      else { titulo = "Paralelismo de modelo o pipeline"; lista.push("El modelo no cabe en una GPU: reparte sus capas; con micro-lotes (pipeline) se reducen las burbujas."); }
+      if (R.lenta) { titulo += " + acumulación de gradientes o SGD asíncrono"; lista.push("La sincronización frena o desestabiliza: acumula gradientes para comunicar menos, o prueba SGD asíncrono ajustando la tasa de aprendizaje."); }
+      if (R.sec) lista.push(R.cabe ? "Ojo: con datos muy secuenciales (RNN), el paralelismo de datos puro puede ser ineficiente." : "Con datos muy secuenciales (RNN), las dependencias en el tiempo limitan el paralelismo.");
+      if (R.ramas) lista.push("Las ramas independientes de la arquitectura pueden ir en GPU distintas a la vez: el paralelismo de modelo las aprovecha.");
+      $("el-rec").innerHTML = "<h3>Recomendación: " + titulo + "</h3><ul>" + lista.map(function (l) { return "<li>" + l + "</li>"; }).join("") + "</ul>";
+    }
+    pinta();
+  })();
+})();
+</script>
+</body>
+</html>

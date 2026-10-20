@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratorio II · Transformers, RAG y MCP — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .ctl.ancha { flex: 1 1 22rem; }
+  .ctl.ancha input { width: 100%; }
+  .arriba { align-self: start; }
+  .celda-v { display: inline-block; width: 15px; height: 15px; border-radius: 3px; margin-right: 2px; vertical-align: -2px; border: 1px solid rgba(0,0,0,.07); }
+  .tabla.compacta td, .tabla.compacta th { padding: .26rem .5rem; }
+  .tabla.compacta td { vertical-align: middle; }
+  .tabla.compacta th { text-transform: none; letter-spacing: 0; font-size: .86rem; }
+  .barra-in { display: inline-block; height: 10px; border-radius: 3px; background: var(--esc); vertical-align: middle; margin-right: .35rem; }
+  .vec { font-family: var(--mono); font-size: .9rem; color: var(--ink); white-space: nowrap; }
+  .caja-paso { border: 1px solid var(--line); border-radius: 10px; padding: .85rem 1rem; background: #fff; transition: box-shadow .25s, border-color .25s; }
+  .caja-paso.foco { border-color: var(--esc); box-shadow: 0 0 0 3px rgba(230,81,0,.18); }
+  .caja-paso > h3 { margin-top: 0; }
+  pre.code.envuelve { white-space: pre-wrap; word-break: break-word; }
+  pre.code.alto { max-height: 26rem; overflow: auto; }
+  .terminos { display: flex; flex-wrap: wrap; gap: .45rem; margin: .3rem 0 .5rem; }
+  .termino { display: inline-flex; align-items: center; gap: .4rem; background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: .15rem .55rem; font-size: .9rem; }
+  .termino b { font-family: var(--mono); font-weight: 700; }
+  .termino.fuera { color: var(--muted); text-decoration: line-through; }
+  .fila-t { display: grid; grid-template-columns: 7.5rem 1fr 3.4rem; gap: .5rem; align-items: center; font-size: .9rem; margin: .18rem 0; }
+  .fila-t .b { height: 10px; border-radius: 3px; }
+  .fila-t .n { font-family: var(--mono); text-align: right; }
+  mark.solape { background: #FFE0B2; border-radius: 3px; padding: 0 .1em; }
+  .texto-trozo { font-size: .95rem; line-height: 1.6; background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: .6rem .8rem; }
+  .vecinos { list-style: none; margin: .4rem 0 0 0 !important; }
+  .vecinos li { display: flex; gap: .6rem; align-items: baseline; padding: .25rem 0; border-bottom: 1px solid var(--line); }
+  .vecinos .n { font-family: var(--mono); font-weight: 700; min-width: 3.2rem; }
+  .punto { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex: none; }
+  .lectura p { margin-bottom: .45rem; }
+  .lectura .vec { font-size: .95rem; }
+  .modelo { display: flex; gap: .8rem; align-items: center; }
+  svg .clic { cursor: pointer; }
+  svg .asa { cursor: grab; }
+  .opciones h3 { margin-top: .2rem; }
+</style>
+</head>
+<body class="bloque-esc" data-pagina="lab_llm.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">LABORATORIO · II</span>Transformers, RAG y MCP</h1>
+  <p>Cómo lee un Transformer, cómo se le da memoria externa con RAG y cómo se conecta con herramientas mediante MCP, incluso sin salir de tu propia red.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del laboratorio">
+  <button class="tab" role="tab" id="t-rec" aria-controls="p-rec" aria-selected="true">1 · Recurrencia</button>
+  <button class="tab" role="tab" id="t-att" aria-controls="p-att" aria-selected="false">2 · Autoatención</button>
+  <button class="tab" role="tab" id="t-mh" aria-controls="p-mh" aria-selected="false">3 · Cabezas y posición</button>
+  <button class="tab" role="tab" id="t-par" aria-controls="p-par" aria-selected="false">4 · Paralelismo</button>
+  <button class="tab" role="tab" id="t-rag" aria-controls="p-rag" aria-selected="false">5 · RAG</button>
+  <button class="tab" role="tab" id="t-ing" aria-controls="p-ing" aria-selected="false">6 · Ingesta</button>
+  <button class="tab" role="tab" id="t-con" aria-controls="p-con" aria-selected="false">7 · Consulta</button>
+  <button class="tab" role="tab" id="t-emb" aria-controls="p-emb" aria-selected="false">8 · Embeddings</button>
+  <button class="tab" role="tab" id="t-mcp" aria-controls="p-mcp" aria-selected="false">9 · MCP</button>
+  <button class="tab" role="tab" id="t-loc" aria-controls="p-loc" aria-selected="false">10 · Nodos en local</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 -->
+  <section id="p-rec" class="panel">
+    <div class="card">
+      <h2>De la recurrencia a la atención</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Las redes recurrentes (RNN, LSTM) leían la frase palabra a palabra; el Transformer de «Attention Is All You Need» (Google, 2017) la mira entera de una vez.</p>
+      <div class="controles">
+        <button class="btn" id="rec-play">▶ Reproducir</button>
+        <span class="pie">Esquema: en la RNN suponemos que cada paso conserva el 70 % de la huella del estado anterior.</span>
+      </div>
+      <div class="escena"><svg id="rec-svg" viewBox="0 0 1000 410" role="img" aria-label="Una RNN procesa la frase palabra a palabra mientras un Transformer conecta todas las palabras a la vez"></svg></div>
+      <div class="leyenda">
+        <span><i class="punto" style="background:var(--s1)"></i>ser vivo</span>
+        <span><i class="punto" style="background:var(--s3)"></i>objeto o lugar</span>
+        <span><i class="punto" style="background:var(--s7)"></i>acción o cualidad</span>
+        <span><i class="punto" style="background:var(--muted)"></i>palabra funcional</span>
+        <span><i style="background:#E65100"></i>atención de «cansado» (pestaña 2)</span>
+      </div>
+      <div class="grid2">
+        <div class="box"><h3>Con recurrencia</h3><ul>
+          <li>Cada estado h depende del anterior: no se puede calcular h₁₀ sin h₉, así que el entrenamiento no se paraleliza.</li>
+          <li>Lo del principio se diluye: en h₁₀ solo queda un <b id="rec-huella">—</b> de «gato», y es justo la palabra que explica «cansado».</li>
+        </ul></div>
+        <div class="box"><h3>Solo atención</h3><ul>
+          <li>Cada palabra consulta directamente a todas las demás, estén cerca o lejos: «cansado» llega a «gato» en un salto.</li>
+          <li>Todas las posiciones se calculan a la vez: un paso por capa, sea la frase corta o larga.</li>
+        </ul></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> el Transformer elimina la recurrencia. La distancia entre dos palabras deja de importar y el cálculo se puede repartir entre miles de núcleos de GPU.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 -->
+  <section id="p-att" class="panel">
+    <div class="card">
+      <h2>Autoatención paso a paso</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">Vectores de juguete, no de un modelo entrenado</span></div>
+      <p class="lead">Cada palabra compara su consulta q con la clave k de todas las demás; la softmax convierte esas puntuaciones en porcentajes de atención.</p>
+      <div class="formula">Atención(Q, K, V) = softmax(Q·Kᵀ / √d) · V <span class="com">aquí d = 4, así que √d = 2</span></div>
+      <div class="controles">
+        <div class="ctl ancha"><label for="att-frase">Frase (hasta 12 palabras)</label><input id="att-frase" class="frase" type="text" maxlength="100" value="el gato se sentó en la alfombra porque estaba cansado"></div>
+        <div class="ctl"><span class="etq">Ejemplos</span><div class="seg" id="att-ej" role="group" aria-label="Frases de ejemplo"></div></div>
+        <button class="btn" id="att-play">▶ Recorrer las palabras</button>
+      </div>
+      <div class="escena"><svg id="att-arcos" viewBox="0 0 1000 240" role="img" aria-label="Arcos de atención desde la palabra elegida hacia todas las palabras de la frase"></svg></div>
+      <div class="leyenda">
+        <span><i class="punto" style="background:var(--s1)"></i>ser vivo</span>
+        <span><i class="punto" style="background:var(--s3)"></i>objeto o lugar</span>
+        <span><i class="punto" style="background:var(--s7)"></i>acción o cualidad</span>
+        <span><i class="punto" style="background:var(--muted)"></i>palabra funcional</span>
+        <span>Pasa el ratón por una palabra de arriba para ver a cuáles atiende.</span>
+      </div>
+      <div class="grid2">
+        <div class="escena arriba"><svg id="att-calor" viewBox="0 0 520 530" role="img" aria-label="Mapa de calor de los pesos de atención: filas, la palabra que mira; columnas, a quién mira"></svg></div>
+        <div id="att-cuenta"></div>
+      </div>
+      <ul>
+        <li>Cada palabra se convierte en tres vectores: <b>q</b> (qué busca), <b>k</b> (cómo se anuncia) y <b>v</b> (qué aporta si la eligen): q = x·W<sub>Q</sub>, k = x·W<sub>K</sub>, v = x·W<sub>V</sub>.</li>
+        <li>La puntuación de i con j es q<sub>i</sub>·k<sub>j</sub>/√d; la softmax de cada fila la convierte en pesos que suman 1. La salida es la media de los v ponderada por esos pesos.</li>
+        <li>Aquí cada embedding tiene 4 rasgos asignados a mano (los colores) y W<sub>Q</sub>, W<sub>K</sub> y W<sub>V</sub> están elegidas para que el ejemplo se lea. En el Transformer original son vectores de 512 dimensiones, 8 cabezas de 64, y todo se aprende.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> la atención es una media ponderada en la que cada palabra decide cuánto escuchar a cada una de las demás, y esa decisión se calcula, no se programa.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section id="p-mh" class="panel">
+    <div class="card">
+      <h2>Varias cabezas: varias formas de mirar la misma frase</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">La atención multi-cabeza repite la operación varias veces en paralelo; cada cabeza aprende a fijarse en una relación distinta.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Frase</span><div class="seg" id="mh-ej" role="group" aria-label="Frase de ejemplo"></div></div>
+        <span class="pie">Pulsa una palabra de la columna izquierda de cualquier cabeza.</span>
+      </div>
+      <div class="escena"><svg id="mh-svg" viewBox="0 0 1000 364" role="img" aria-label="Cuatro cabezas de atención con patrones distintos para la misma palabra"></svg></div>
+      <div class="escena" style="margin-top:.6rem"><svg id="mh-cat" viewBox="0 0 1000 116" role="img" aria-label="Las salidas de las cabezas se concatenan y se proyectan"></svg></div>
+      <p class="pie">Patrones típicos dibujados a mano para la explicación (la cabeza «quién hace qué» reutiliza el cálculo de la pestaña 2). En un modelo real los patrones salen del entrenamiento y no siempre tienen un nombre tan claro.</p>
+      <div class="clave"><strong>Idea clave:</strong> como varios expertos leyendo a la vez: una cabeza puede seguir la gramática, otra el significado, y sus resultados se juntan.</div>
+    </div>
+
+    <div class="card">
+      <h2>Codificación posicional: dónde está cada palabra</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Como el Transformer lee todo a la vez, se suma a cada embedding un vector que depende solo de su posición: ondas de distinta frecuencia.</p>
+      <div class="formula">PE(pos, 2i) = sin(pos / 10000<sup>2i/d</sup>) &nbsp;&nbsp; PE(pos, 2i+1) = cos(pos / 10000<sup>2i/d</sup>) <span class="com">d = 64 dimensiones, posiciones 0-49</span></div>
+      <div class="controles">
+        <div class="ctl"><label for="pe-pos">Posición marcada</label><input id="pe-pos" type="range" min="0" max="49" step="1" value="10"><output id="pe-poso">10</output></div>
+      </div>
+      <div class="grid2">
+        <div><canvas id="pe-heat" class="lienzo" aria-label="Mapa de calor de la codificación posicional: posición frente a dimensión"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>+1</span><span><i style="background:#d5d8dc"></i>0</span><span><i style="background:var(--s2)"></i>−1</span></div></div>
+        <div><canvas id="pe-graf" class="lienzo" aria-label="Valor de cuatro dimensiones de la codificación posicional según la posición"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>dimensión 0</span><span><i style="background:var(--s2)"></i>dimensión 4</span><span><i style="background:var(--s3)"></i>dimensión 8</span><span><i style="background:var(--s4)"></i>dimensión 16</span></div></div>
+      </div>
+      <p>Cada fila del mapa es la «huella» de una posición: las primeras dimensiones oscilan deprisa y las últimas despacio, así que no hay dos filas iguales y las posiciones cercanas se parecen.</p>
+    </div>
+
+    <div class="card">
+      <h2>Bloques residuales: un atajo para la información</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Cada subcapa suma su resultado a la entrada en lugar de sustituirla; así la señal atraviesa decenas de bloques sin perderse.</p>
+      <div class="controles"><button class="btn" id="res-play">▶ Enviar una señal</button></div>
+      <div class="escena"><svg id="res-svg" viewBox="0 0 1000 290" role="img" aria-label="Bloque del Transformer con atención, red feed-forward, sumas residuales y normalización"></svg></div>
+      <div class="formula">salida = Norm(x + Subcapa(x))</div>
+      <div class="clave"><strong>Idea clave:</strong> la posición le dice al modelo el orden y los residuales le permiten ser muy profundo; las dos piezas hacen posible escalar a modelos masivos.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 -->
+  <section id="p-par" class="panel">
+    <div class="card">
+      <h2>Paralelismo: n pasos frente a uno</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Una RNN no puede empezar la palabra 5 hasta terminar la 4; el Transformer procesa toda la secuencia en el mismo paso.</p>
+      <div class="controles">
+        <div class="ctl"><label for="par-n">Longitud de la secuencia (palabras)</label><input id="par-n" type="range" min="4" max="32" step="1" value="12"><output id="par-no">12</output></div>
+        <button class="btn" id="par-play">▶ Reproducir</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Pasos RNN</div><div class="v" id="par-k1">12</div></div>
+          <div class="kpi"><div class="t">Pasos Transformer</div><div class="v">1</div></div>
+          <div class="kpi"><div class="t">Comparaciones q·k</div><div class="v" id="par-k2">144</div></div>
+        </div>
+      </div>
+      <div class="escena"><svg id="par-svg" viewBox="0 0 1000 300" role="img" aria-label="Cronograma: la RNN procesa las palabras en serie y el Transformer todas a la vez"></svg></div>
+      <ul>
+        <li>El paso del Transformer hace más cuentas (n × n comparaciones entre palabras), pero todas son independientes: justo lo que una GPU hace bien.</li>
+        <li>Con el cálculo en paralelo se pudo usar la GPU a pleno rendimiento, entrenar con conjuntos de datos gigantescos (prácticamente todo internet) y escalar a cientos de miles de millones de parámetros.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> el Transformer no ganó por hacer menos cuentas, sino por hacerlas todas a la vez.</div>
+    </div>
+    <div class="card">
+      <h2>El legado de «Attention Is All You Need»</h2>
+      <p class="lead">«El Transformer fue propuesto originalmente para traducción automática, pero su arquitectura generalizó tan bien que se convirtió en el motor de todos los LLM modernos».</p>
+      <div class="escena"><svg id="par-hist" viewBox="0 0 1000 170" role="img" aria-label="Línea del tiempo del Transformer de 2017 a hoy"></svg></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 -->
+  <section id="p-rag" class="panel">
+    <div class="card">
+      <h2>RAG = LLM + memoria externa</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Antes de responder, el modelo consulta una biblioteca de documentos actualizados y específicos, y responde apoyándose en lo que encuentra.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Modo</span><div class="seg" id="rag-modo" role="group" aria-label="Modo">
+          <button type="button" data-m="solo" aria-pressed="false">Solo el LLM</button><button type="button" data-m="rag" aria-pressed="true">LLM + RAG</button></div></div>
+        <button class="btn" id="rag-play">▶ Hacer la pregunta</button>
+      </div>
+      <div class="escena"><svg id="rag-svg" viewBox="0 0 1000 350" role="img" aria-label="Flujo de una pregunta con y sin recuperación de documentos"></svg></div>
+      <ul>
+        <li><b>Solo el LLM</b>: responde con lo que aprendió en el entrenamiento; si no lo sabe o está desactualizado, puede inventar (alucinar) sin dar fuente.</li>
+        <li><b>Con RAG</b>: un recuperador busca los fragmentos más parecidos a la pregunta y se los pasa como contexto; la respuesta puede citar de dónde sale.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Memoria paramétrica frente a no paramétrica</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <div class="controles">
+        <button class="btn" id="rag-add">+ Añadir un documento nuevo</button>
+        <button class="btn gris" id="rag-reset">Reiniciar</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Documentos en el índice</div><div class="v" id="rag-ndoc">6</div></div>
+          <div class="kpi"><div class="t">Pesos del modelo cambiados</div><div class="v">0</div></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="box"><h3>Paramétrica: dentro de los pesos</h3>
+          <div class="escena"><svg id="rag-pesos" viewBox="0 0 480 190" role="img" aria-label="Pesos del modelo, congelados"></svg></div>
+          <p class="pie">Lo que el modelo aprendió al entrenar queda «congelado» en sus pesos. Para añadir conocimiento hay que volver a entrenar.</p></div>
+        <div class="box"><h3>No paramétrica: el índice externo</h3>
+          <div class="escena"><svg id="rag-estante" viewBox="0 0 480 190" role="img" aria-label="Estantería de documentos del índice de recuperación"></svg></div>
+          <p class="pie">El índice de recuperación es flexible y actualizable: añadir un documento no obliga a reentrenar nada.</p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> RAG reduce las alucinaciones y permite al modelo saber cosas que no estaban en su entrenamiento, sin tocar sus pesos.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 -->
+  <section id="p-ing" class="panel">
+    <div class="card">
+      <h2>Ingesta: de documentos a un índice vectorial</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">TF-IDF en lugar de embeddings reales</span></div>
+      <p class="lead">Se parten los documentos en trozos que se solapan, cada trozo se convierte en un vector y se guarda con sus metadatos.</p>
+      <div class="controles">
+        <div class="ctl"><label for="ing-tam">Tamaño del trozo (palabras)</label><input id="ing-tam" type="range" min="20" max="120" step="5" value="40"><output id="ing-tamo">40</output></div>
+        <div class="ctl"><label for="ing-sol">Solape</label><input id="ing-sol" type="range" min="0" max="50" step="5" value="25"><output id="ing-solo">25 %</output></div>
+        <button class="btn" id="ing-play">▶ Ingerir</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Trozos</div><div class="v" id="ing-k1">—</div></div>
+          <div class="kpi"><div class="t">Palabras indexadas</div><div class="v" id="ing-k2">—</div></div>
+          <div class="kpi"><div class="t">Dimensión del vector</div><div class="v" id="ing-k3">—</div></div>
+        </div>
+      </div>
+      <div class="escena"><svg id="ing-svg" viewBox="0 0 1000 400" role="img" aria-label="Seis documentos troceados con solape y sus vectores guardados en un índice"></svg></div>
+      <p class="pie">Pasa el ratón por un trozo (las barras de encima y de debajo de cada documento) para ver qué se guarda. Los documentos son resúmenes breves de temas de la asignatura escritos para esta demostración.</p>
+      <div class="grid2" id="ing-det"></div>
+      <ul>
+        <li>En producción el tamaño se cuenta en tokens (lo habitual, 300-800) y no en palabras; aquí usamos palabras para que se vea.</li>
+        <li>El solape evita que una idea quede partida justo en el corte, a cambio de guardar algunas palabras dos veces.</li>
+        <li>El vector aquí es TF-IDF (cuenta de palabras ponderada por lo raras que son) normalizado; un modelo de embeddings real daría vectores densos de cientos de dimensiones que captan el significado.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> la ingesta se hace una vez, sin conexión: fuentes → troceado → embeddings → índice. No guardes solo el vector: guarda también de dónde sale.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 -->
+  <section id="p-con" class="panel">
+    <div class="card">
+      <h2>Consulta: de la pregunta al prompt</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">TF-IDF en lugar de embeddings reales</span></div>
+      <p class="lead">La pregunta se lleva al mismo espacio vectorial, se buscan los trozos más parecidos por coseno, se reordenan y se arma el prompt.</p>
+      <div class="controles">
+        <div class="ctl ancha"><label for="con-q">Pregunta</label><input id="con-q" class="pregunta" type="text" maxlength="140" value="¿Por qué la GPU se queda esperando a los datos?"></div>
+        <div class="ctl"><label for="con-ej">Ejemplos</label><select id="con-ej"></select></div>
+        <div class="ctl"><label for="con-k">K (trozos en el prompt)</label><input id="con-k" type="range" min="1" max="5" step="1" value="3"><output id="con-ko">3</output></div>
+        <button class="btn" id="con-play">▶ Recorrer los pasos</button>
+      </div>
+      <div class="escena"><svg id="con-pasos" viewBox="0 0 1000 64" role="img" aria-label="Los cuatro pasos de la consulta"></svg></div>
+      <div class="grid2" style="margin-top:1rem">
+        <div class="caja-paso" id="con-b1"><h3>1 · La pregunta como vector</h3><div id="con-terms"></div>
+          <h3 style="margin-top:.8rem">2 · Coseno con cada trozo del índice</h3>
+          <div class="escena"><svg id="con-bars" viewBox="0 0 520 380" role="img" aria-label="Similitud coseno de la pregunta con los trozos más parecidos"></svg></div></div>
+        <div class="caja-paso" id="con-b3"><h3>3 · Reordenación</h3>
+          <div class="escena"><svg id="con-rr" viewBox="0 0 520 300" role="img" aria-label="Candidatos ordenados por coseno y tras reordenar"></svg></div>
+          <p class="pie">Reordenación simplificada: 0,6 × coseno + 0,4 × fracción de palabras de la pregunta que aparecen en el trozo. En producción se usa un modelo que lee pregunta y trozo juntos (un cross-encoder).</p></div>
+      </div>
+      <div class="caja-paso" id="con-b4" style="margin-top:1rem"><h3>4 · Prompt final</h3><pre class="code envuelve alto" id="con-prompt"></pre></div>
+      <p class="pie">El índice es el de la pestaña 6: si cambias allí el tamaño o el solape, cambian estos trozos.</p>
+      <div class="clave"><strong>Idea clave:</strong> el LLM no busca nada: recibe un prompt que ya trae el contexto. La calidad de la respuesta depende de lo bien que se recupere.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 -->
+  <section id="p-emb" class="panel">
+    <div class="card">
+      <h2>Normalizar: el producto escalar se convierte en coseno</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">La similitud coseno mide el ángulo entre dos vectores; si ambos miden 1, basta con su producto escalar.</p>
+      <div class="controles">
+        <label class="inline"><input type="checkbox" id="emb-norm" checked> <code>normalize_embeddings=True</code></label>
+        <div class="ctl"><span class="etq">Ejemplos</span><div class="seg" id="emb-pre" role="group" aria-label="Ejemplos de vectores">
+          <button type="button" data-a="30" data-b="55" aria-pressed="true">Parecidos</button><button type="button" data-a="20" data-b="110" aria-pressed="false">Sin relación</button><button type="button" data-a="25" data-b="205" aria-pressed="false">Opuestos</button></div></div>
+        <span class="pie">Arrastra las puntas de a y b.</span>
+      </div>
+      <div class="grid2">
+        <div class="escena"><svg id="emb-circ" viewBox="0 0 440 400" role="img" aria-label="Dos vectores sobre el círculo unidad y el ángulo entre ellos"></svg></div>
+        <div class="lectura" id="emb-lect"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Mapa de frases: las parecidas quedan cerca</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">TF-IDF + PCA, no embeddings neuronales</span></div>
+      <p class="lead">Dieciocho frases de tres temas convertidas en vectores y proyectadas a 2D con PCA; escribe una frase y mira a qué vecinas se acerca.</p>
+      <div class="controles">
+        <div class="ctl ancha"><label for="emb-q">Tu frase</label><input id="emb-q" class="pregunta" type="text" maxlength="120" value="¿cuánta memoria necesita la GPU para un lote grande?"></div>
+      </div>
+      <div class="grid2">
+        <div><canvas id="emb-mapa" class="lienzo" aria-label="Mapa en dos dimensiones de las frases"></canvas>
+          <div class="leyenda" id="emb-ley"></div></div>
+        <div><h3>Vecinas más cercanas (coseno en todas las dimensiones)</h3><ul class="vecinos" id="emb-vec"></ul>
+          <p class="pie" id="emb-var"></p>
+          <p class="pie">TF-IDF solo acerca frases que comparten palabras. Un modelo de embeddings real también acercaría sinónimos («coche» y «automóvil») que no comparten ninguna.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Embeddings con Hugging Face: código mínimo</h2>
+      <p class="lead">La biblioteca sentence-transformers carga un modelo de embeddings y convierte textos en vectores normalizados en pocas líneas.</p>
+      <pre class="code"><span class="com"># pip install -U sentence-transformers</span>
+<span class="kw">from</span> sentence_transformers <span class="kw">import</span> <span class="fn">SentenceTransformer</span>
+
+<span class="com"># Cargar modelo (MiniLM o mpnet)</span>
+model = <span class="fn">SentenceTransformer</span>(<span class="str">"sentence-transformers/all-mpnet-base-v2"</span>)
+
+texts = [<span class="str">"Un chunk de tu documento..."</span>, <span class="str">"Otro chunk..."</span>]
+<span class="com"># Generar embeddings normalizados</span>
+<span class="hl">emb = model.<span class="fn">encode</span>(texts, normalize_embeddings=<span class="kw">True</span>)</span>
+
+query = <span class="str">"¿Cómo autentica el sistema X?"</span>
+<span class="hl">q_emb = model.<span class="fn">encode</span>([query], normalize_embeddings=<span class="kw">True</span>)</span>
+<span class="com"># (añadido) como están normalizados, coseno = producto escalar</span>
+scores = emb @ q_emb.T</pre>
+      <div class="grid2" style="margin-top:.6rem">
+        <div class="grid2" style="grid-template-columns:1fr 1fr;gap:.7rem;align-items:start">
+            <div class="box acento"><h3>Rápido y ligero</h3><p><code>all-MiniLM-L6-v2</code></p><p class="pie">Ideal para prototipos y baja latencia. Vectores de 384 dimensiones.</p></div>
+            <div class="box acento"><h3>Alta calidad</h3><p><code>all-mpnet-base-v2</code></p><p class="pie">Mejor en pruebas de similitud semántica. Vectores de 768 dimensiones.</p></div>
+        </div>
+        <div>
+          <h3 style="margin-top:0">No guardes solo el vector</h3>
+          <pre class="code envuelve" id="emb-meta"></pre>
+          <p class="pie">Con doc_id, source, page y offset se puede citar la fuente exacta en la respuesta.</p>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> normaliza al codificar y guarda los metadatos junto al vector; así buscar es multiplicar y responder es poder citar.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9 -->
+  <section id="p-mcp" class="panel">
+    <div class="card">
+      <h2>MCP: el LLM usa herramientas a través de un protocolo</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Model Context Protocol es un estándar abierto cliente-servidor: tu aplicación (el host) descubre qué ofrece un servidor y el LLM decide cuándo usarlo.</p>
+      <div class="controles">
+        <button class="btn gris" id="mcp-ant">◀ Anterior</button>
+        <button class="btn gris" id="mcp-sig">Siguiente ▶</button>
+        <button class="btn" id="mcp-play">▶ Reproducir los 4 pasos</button>
+      </div>
+      <div class="escena"><svg id="mcp-svg" viewBox="0 0 1000 400" role="img" aria-label="Host con LLM y cliente MCP intercambiando mensajes con un servidor MCP"></svg></div>
+      <div class="grid2" style="margin-top:.8rem">
+        <div>
+          <ol class="pasos" id="mcp-pasos">
+            <li><b>Descubrir</b>: el cliente consulta qué ofrece el servidor (antes se saludan con <code>initialize</code>).</li>
+            <li><b>Decidir</b>: el LLM decide invocar una tool según su política.</li>
+            <li><b>Ejecutar</b>: el servidor ejecuta y devuelve un JSON estructurado.</li>
+            <li><b>Insertar</b>: el resultado se inyecta en el contexto para continuar.</li>
+          </ol>
+          <p class="pie">Ejemplo inventado: una base de datos de pedidos de una empresa.</p>
+        </div>
+        <pre class="code alto envuelve" id="mcp-json"></pre>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Qué transporta el protocolo</h2>
+      <div class="grid3">
+        <div class="box acento"><h3>Tools · acciones</h3><p>Funciones ejecutables que el modelo puede decidir invocar.</p><p class="pie">Las controla el modelo · <code>tools/list</code>, <code>tools/call</code><br>Ej.: <code>consultar_sql</code>, ejecutar un script.</p></div>
+        <div class="box acento"><h3>Resources · datos</h3><p>Datos pasivos: ficheros o información que se pueden leer directamente.</p><p class="pie">Los elige la aplicación · <code>resources/list</code>, <code>resources/read</code><br>Ej.: <code>file:///proyecto/README.md</code></p></div>
+        <div class="box acento"><h3>Prompts · plantillas</h3><p>Plantillas y contextos reutilizables para estandarizar interacciones.</p><p class="pie">Los elige el usuario · <code>prompts/list</code>, <code>prompts/get</code><br>Ej.: <code>informe_diario</code></p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> MCP hace con las herramientas lo que un enchufe estándar con los aparatos: cualquier host que hable el protocolo puede usar cualquier servidor.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 10 -->
+  <section id="p-loc" class="panel">
+    <div class="card">
+      <h2>Nodos en local: LLM + RAG + MCP en tu propia infraestructura</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Cuatro piezas dentro de tu red: inferencia, embeddings, índice y un nodo MCP que hace de brazo ejecutor. La petición no sale nunca a internet.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Nodo de inferencia</span><div class="seg" id="loc-inf" role="group" aria-label="Nodo de inferencia">
+          <button type="button" data-v="0" aria-pressed="true">Ollama</button><button type="button" data-v="1" aria-pressed="false">llama.cpp</button><button type="button" data-v="2" aria-pressed="false">vLLM</button></div></div>
+        <div class="ctl"><span class="etq">Nodo de indexación</span><div class="seg" id="loc-idx" role="group" aria-label="Nodo de indexación">
+          <button type="button" data-v="0" aria-pressed="true">SQLite</button><button type="button" data-v="1" aria-pressed="false">FAISS</button><button type="button" data-v="2" aria-pressed="false">Chroma</button></div></div>
+        <button class="btn" id="loc-play">▶ Seguir una petición</button>
+      </div>
+      <div class="escena"><svg id="loc-svg" viewBox="0 0 1000 420" role="img" aria-label="Arquitectura local con aplicación, nodo de embeddings, índice, inferencia y nodo MCP"></svg></div>
+      <div class="grid2" style="margin-top:.8rem">
+        <ol class="pasos" id="loc-pasos">
+          <li>La aplicación envía la pregunta al nodo de embeddings, que la convierte en vector.</li>
+          <li>El nodo de indexación devuelve los K trozos más parecidos con sus metadatos.</li>
+          <li>La aplicación arma el prompt (contexto + pregunta) y lo envía al nodo de inferencia.</li>
+          <li>El LLM pide una tool al nodo MCP: una consulta SQL a la base de datos interna.</li>
+          <li>El nodo MCP la ejecuta dentro de la red y devuelve un JSON.</li>
+          <li>El LLM responde citando las fuentes. Nada ha salido de la red.</li>
+        </ol>
+        <div class="opciones" id="loc-op"></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> con un nodo de inferencia, uno de embeddings, un índice y un servidor MCP, todo el ciclo pregunta → contexto → herramienta → respuesta se queda dentro de tu red.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, AC = "#E65100", INK = C.ink, INK2 = C.ink2, MUT = C.muted;
+  const $ = (id) => document.getElementById(id);
+  const fmt = RN.fmt;
+  const MONO = "ui-monospace, Menlo, Consolas, monospace";
+
+  // ================================================================ utilidades de dibujo
+  function el(tag, a, p) { return RN.svg(tag, a, p); }
+  function tx(p, x, y, s, a) { const e = RN.svg("text", Object.assign({ x: x, y: y, "font-size": 14, fill: INK }, a || {}), p); e.textContent = s; return e; }
+  function rc(p, x, y, w, h, a) { return RN.svg("rect", Object.assign({ x: x, y: y, width: Math.max(0, w), height: Math.max(0, h), rx: 9 }, a || {}), p); }
+  function caja(p, x, y, w, h, col, a) { return rc(p, x, y, w, h, Object.assign({ fill: RN.rgba(col, 0.13), stroke: col, "stroke-width": 1.8 }, a || {})); }
+  function vaciar(s) { while (s.firstChild) s.removeChild(s.firstChild); }
+  function anchoTxt(s, fs) { return String(s).length * (fs || 14) * 0.56; }
+  function marcadores(svg, pref) {
+    const d = el("defs", {}, svg);
+    [["n", INK2], ["a", AC], ["g", "#AEB7C0"], ["s1", C.s1], ["s2", C.s2]].forEach(function (k) {
+      const m = el("marker", { id: "mk-" + pref + "-" + k[0], viewBox: "0 0 10 10", refX: 8.5, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" }, d);
+      el("path", { d: "M0,0 L10,5 L0,10 z", fill: k[1] }, m);
+    });
+  }
+  function colorTipo(t) { return t === "a" ? AC : t === "g" ? "#AEB7C0" : t === "s1" ? C.s1 : t === "s2" ? C.s2 : INK2; }
+  function flecha(p, x1, y1, x2, y2, pref, t, a) {
+    return el("line", Object.assign({ x1: x1, y1: y1, x2: x2, y2: y2, stroke: colorTipo(t), "stroke-width": 1.8, "marker-end": "url(#mk-" + pref + "-" + (t || "n") + ")" }, a || {}), p);
+  }
+  function linea(p, pts, pref, t, a) {
+    return el("polyline", Object.assign({ points: pts.map(function (q) { return q.join(","); }).join(" "), fill: "none", stroke: colorTipo(t), "stroke-width": 1.8, "stroke-linejoin": "round", "marker-end": "url(#mk-" + pref + "-" + (t || "n") + ")" }, a || {}), p);
+  }
+  function lineas(p, x, y, ls, a, dy) { ls.forEach(function (l, k) { tx(p, x, y + k * (dy || 18), l, a); }); }
+  function chip(p, cx, cy, w, op) {
+    op = op || {};
+    const fs = op.fs || 14, h = op.h || 28, an = Math.max(34, anchoTxt(w, fs) + 16);
+    const g = el("g", { opacity: op.apagada ? 0.32 : 1 }, p);
+    rc(g, cx - an / 2, cy - h / 2, an, h, { rx: 8, fill: op.color ? RN.rgba(op.color, op.activo ? 0.3 : 0.14) : "#fff", stroke: op.activo ? AC : (op.color || "#9AA5B1"), "stroke-width": op.activo ? 3 : 1.5 });
+    tx(g, cx, cy + 5, w, { "text-anchor": "middle", "font-size": fs, "font-weight": op.activo ? 800 : 600 });
+    return g;
+  }
+  function reparte(n, a, b) { const out = []; for (let i = 0; i < n; i++) out.push(n === 1 ? (a + b) / 2 : a + i * (b - a) / (n - 1)); return out; }
+  // paquete que recorre una polilínea; devuelve una promesa
+  function viaje(svg, pts, op) {
+    op = op || {};
+    const g = el("g", {}, svg), col = op.color || AC;
+    let forma;
+    if (op.etiqueta) {
+      const w = anchoTxt(op.etiqueta, 13) + 18;
+      forma = el("g", {}, g);
+      rc(forma, -w / 2, -12, w, 24, { rx: 12, fill: col, stroke: "#fff", "stroke-width": 1.5 });
+      tx(forma, 0, 4.5, op.etiqueta, { "font-size": 13, "font-weight": 700, fill: "#fff", "text-anchor": "middle", "font-family": op.mono ? MONO : null });
+    } else forma = el("circle", { r: op.r || 7, fill: col, stroke: "#fff", "stroke-width": 2 }, g);
+    const L = [0];
+    for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const tot = L[L.length - 1] || 1;
+    function pon(t) {
+      const d = t * tot; let i = 1;
+      while (i < L.length - 1 && L[i] < d) i++;
+      const u = (d - L[i - 1]) / ((L[i] - L[i - 1]) || 1);
+      forma.setAttribute("transform", "translate(" + RN.lerp(pts[i - 1][0], pts[i][0], u).toFixed(1) + "," + RN.lerp(pts[i - 1][1], pts[i][1], u).toFixed(1) + ")");
+    }
+    pon(0);
+    return RN.tween(op.ms || 700, pon).then(function () { if (!op.queda) g.remove(); return g; });
+  }
+  function segmentado(cont, fn) {
+    const bs = Array.from(cont.querySelectorAll("button"));
+    bs.forEach(function (b) { b.addEventListener("click", function () { bs.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); fn(b); }); });
+  }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function jsonHtml(o) {
+    const s = esc(typeof o === "string" ? o : JSON.stringify(o, null, 2));
+    return s.replace(/("(?:[^"\\]|\\.)*")(\s*:)?|\b(-?\d+(?:\.\d+)?)\b|\b(true|false|null)\b/g, function (m, str, dos, num, lit) {
+      if (str) return dos ? '<span class="kw">' + str + "</span>" + dos : '<span class="str">' + str + "</span>";
+      return '<span class="num">' + (num || lit) + "</span>";
+    });
+  }
+  const SUB = "₀₁₂₃₄₅₆₇₈₉";
+  function sub(n) { return String(n).split("").map(function (c) { return SUB[+c]; }).join(""); }
+  const suma = (v) => v.reduce((a, b) => a + b, 0);
+  const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+
+  // ================================================================ modelo de atención de juguete
+  const FRASES = ["el gato se sentó en la alfombra porque estaba cansado", "la niña leyó el libro en el parque", "el perro comió y luego durmió en el sofá"];
+  const CLASES = [
+    { nombre: "ser vivo", color: C.s1 }, { nombre: "objeto o lugar", color: C.s3 },
+    { nombre: "acción o cualidad", color: C.s7 }, { nombre: "palabra funcional", color: MUT }
+  ];
+  const LEX = new Map();
+  [["gato gata perro perra niña niño profesor profesora alumna alumno pájaro madre padre ella él chica chico vaca", 0],
+   ["alfombra mesa casa sofá libro coche calle parque jardín ventana pelota comida cama puerta tren playa", 1],
+   ["sentó durmió comió corre corrió salta saltó leyó lee está estaba es era cansado cansada contento contenta rojo roja grande pequeño pequeña rápido rápida dormido dormida viejo vieja nuevo nueva cayó vio miró juega jugó", 2],
+   ["el la los las un una unos unas se en y de del al que porque con por para sobre muy no lo le su sus a pero luego mientras", 3]
+  ].forEach(function (f) { f[0].split(" ").forEach(function (w) { LEX.set(w, f[1]); }); });
+  function clase(w) {
+    if (LEX.has(w)) return LEX.get(w);
+    if (w.length <= 3) return 3;
+    if (/(ó|aba|ía|ar|er|ir|ado|ada|ido|ida|oso|osa)$/.test(w)) return 2;
+    return 1;
+  }
+  function tokens(f) { return f.toLowerCase().replace(/[¿?¡!.,;:«»"“”()]/g, " ").split(/\s+/).filter(Boolean).slice(0, 12); }
+  function hashStr(s) { let h = 5381; for (const ch of s) h = ((h << 5) + h + ch.codePointAt(0)) >>> 0; return h; }
+  const D = 4;
+  // compatibilidad entre rasgos (fila: quién pregunta; columna: a quién)
+  const M_COMP = [[0.8, 0.4, 2.4, 0], [0.6, 0.8, 1.8, 0.6], [3.0, 1.4, 0.6, 0], [1.6, 1.8, 0.4, 0.2]];
+  function ortogonal(semilla) {
+    const r = RN.rng(semilla), A = [];
+    for (let i = 0; i < D; i++) {
+      let v = []; for (let j = 0; j < D; j++) v.push(RN.normal(r));
+      A.forEach(function (u) { const p = dot(v, u); v = v.map(function (x, k) { return x - p * u[k]; }); });
+      const n = Math.sqrt(dot(v, v)); A.push(v.map(function (x) { return x / n; }));
+    }
+    return A;
+  }
+  function matMul(A, B) { return A.map(function (f) { return B[0].map(function (_, j) { let s = 0; for (let k = 0; k < B.length; k++) s += f[k] * B[k][j]; return s; }); }); }
+  function vecMat(x, W) { return W[0].map(function (_, j) { let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * W[i][j]; return s; }); }
+  const WK = ortogonal(7);                                     // filas ortonormales: WK·WKᵀ = I
+  const WQ = matMul(M_COMP.map(function (f) { return f.map(function (v) { return 2 * v; }); }), WK); // q·k = 2·xᵢ M xⱼ
+  const WV = (function () { const r = RN.rng(11), W = []; for (let i = 0; i < D; i++) { const f = []; for (let j = 0; j < D; j++) f.push(+(RN.normal(r) * 0.7).toFixed(2)); W.push(f); } return W; })();
+  function embed(w) { const c = clase(w), r = RN.rng(hashStr(w)); const e = []; for (let k = 0; k < D; k++) e.push((k === c ? 1 : 0) + (r() * 2 - 1) * 0.18); return e; }
+  function softmaxFila(f) { const m = Math.max.apply(null, f); const e = f.map(function (v) { return Math.exp(v - m); }); const s = suma(e); return e.map(function (v) { return v / s; }); }
+  function atencion(pal) {
+    const E = pal.map(embed), Q = E.map(function (e) { return vecMat(e, WQ); }), K = E.map(function (e) { return vecMat(e, WK); }), V = E.map(function (e) { return vecMat(e, WV); });
+    const S = Q.map(function (q) { return K.map(function (k) { return dot(q, k) / Math.sqrt(D); }); });
+    const A = S.map(softmaxFila);
+    const Z = A.map(function (a) { return [0, 1, 2, 3].map(function (c) { let s = 0; a.forEach(function (al, j) { s += al * V[j][c]; }); return s; }); });
+    return { E: E, Q: Q, K: K, V: V, S: S, A: A, Z: Z };
+  }
+
+  // ================================================================ 1 · Recurrencia frente a atención
+  (function () {
+    const svg = $("rec-svg");
+    const pal = tokens(FRASES[0]), n = pal.length, mod = atencion(pal);
+    const xs = reparte(n, 72, 928), LAMBDA = 0.7, foco = n - 1;
+    let tR = n, tT = 1;
+    const huella = Math.pow(LAMBDA, n - 2) / suma(pal.map(function (_, k) { return Math.pow(LAMBDA, k); }));
+    $("rec-huella").textContent = fmt(huella * 100, 1) + " %";
+    function dibuja() {
+      vaciar(svg); marcadores(svg, "rec");
+      const pasoR = Math.min(n, Math.floor(tR + 1e-9));
+      tx(svg, 18, 26, "RNN / LSTM · lee una palabra detrás de otra", { "font-weight": 700, "font-size": 15.5 });
+      tx(svg, 982, 26, "paso " + pasoR + " de " + n, { "text-anchor": "end", fill: INK2, "font-weight": 700 });
+      pal.forEach(function (w, i) {
+        const leida = i < pasoR, activo = leida && i === pasoR - 1 && tR < n;
+        chip(svg, xs[i], 54, w, { color: CLASES[clase(w)].color, activo: activo, apagada: !leida });
+        const cx = xs[i] - 37, cy = 96;
+        if (leida) {
+          flecha(svg, xs[i], 70, xs[i], cy - 3, "rec", activo ? "a" : "g");
+          if (i > 0) flecha(svg, xs[i - 1] + 37, cy + 26, cx - 2, cy + 26, "rec", "n");
+          rc(svg, cx, cy, 74, 54, { fill: "#fff", stroke: activo ? AC : "#9AA5B1", "stroke-width": activo ? 3 : 1.5 });
+          tx(svg, xs[i], cy + 20, "h" + sub(i + 1), { "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: INK2 });
+          const pesos = []; for (let j = 0; j <= i; j++) pesos.push(Math.pow(LAMBDA, i - j));
+          const tot = suma(pesos); let x = cx + 7;
+          pesos.forEach(function (v, j) { const w2 = 60 * v / tot; rc(svg, x, cy + 31, w2, 13, { rx: 0, fill: CLASES[clase(pal[j])].color, stroke: "#fff", "stroke-width": 0.6 }); x += w2; });
+        } else rc(svg, cx, cy, 74, 54, { fill: "none", stroke: "#D5D8DC", "stroke-dasharray": "4 4" });
+      });
+      if (pasoR >= 2) {
+        const hu = Math.pow(LAMBDA, pasoR - 2) / suma(pal.slice(0, pasoR).map(function (_, k) { return Math.pow(LAMBDA, k); }));
+        tx(svg, 18, 180, "Huella de «gato» en h" + sub(pasoR) + ": " + fmt(hu * 100, 1) + " % (la barra de cada estado muestra qué palabras recuerda)", { "font-size": 13.5, fill: INK2 });
+      }
+      el("line", { x1: 18, y1: 196, x2: 982, y2: 196, stroke: "#E4E7EB", "stroke-width": 1.5 }, svg);
+      tx(svg, 18, 222, "Transformer · mira toda la frase a la vez", { "font-weight": 700, "font-size": 15.5 });
+      tx(svg, 982, 222, tT >= 1 ? "1 paso ✓" : "1 paso", { "text-anchor": "end", fill: INK2, "font-weight": 700 });
+      const yT = 360, base = yT - 15;
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+        const d = xs[j] - xs[i], p = 14 + 0.13 * d;
+        el("path", { d: "M" + xs[i] + "," + base + " Q" + (xs[i] + xs[j]) / 2 + "," + (base - 2 * p) + " " + xs[j] + "," + base, fill: "none", stroke: "#E4E7EB", "stroke-width": 1, opacity: Math.min(1, tT) }, svg);
+      }
+      const A = mod.A[foco], amax = Math.max.apply(null, A.filter(function (_, j) { return j !== foco; }));
+      A.forEach(function (a, j) {
+        if (j === foco) return;
+        const d = Math.abs(xs[foco] - xs[j]), p = 14 + 0.13 * d, k = a * Math.min(1, tT);
+        el("path", { d: "M" + xs[foco] + "," + base + " Q" + (xs[foco] + xs[j]) / 2 + "," + (base - 2 * p) + " " + xs[j] + "," + base, fill: "none", stroke: AC, "stroke-width": (1 + 13 * k).toFixed(2), "stroke-opacity": (0.3 + 0.65 * a / amax) * Math.min(1, tT), "stroke-linecap": "round" }, svg);
+        if (a === amax && tT >= 1) tx(svg, (xs[foco] + xs[j]) / 2, base - p + 26, fmt(a * 100, 0) + " %", { "text-anchor": "middle", "font-weight": 800, "font-size": 15, stroke: "#fff", "stroke-width": 4, "paint-order": "stroke" });
+      });
+      pal.forEach(function (w, i) { chip(svg, xs[i], yT, w, { color: CLASES[clase(w)].color, activo: tT < 1 || i === foco }); });
+      tx(svg, 18, 400, "Cada palabra conecta con todas (gris); en naranja, cuánto atiende «cansado» a cada una según la pestaña 2.", { "font-size": 13.5, fill: INK2 });
+    }
+    const anim = RN.anima(function (dt) {
+      dt = Math.max(0, dt);
+      tT = Math.min(1, tT + dt * 2.5);
+      tR += dt * 1.6;
+      if (tR >= n) { tR = n; tT = 1; dibuja(); return false; }
+      dibuja();
+    }, svg);
+    const btn = $("rec-play");
+    btn.addEventListener("click", function () { if (!anim.activo && tR >= n) { tR = 0; tT = 0; if (RN.reducirMovimiento) { tR = n; tT = 1; } } });
+    RN.botonPlay(btn, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    dibuja();
+  })();
+
+  // ================================================================ 2 · Autoatención
+  (function () {
+    const inp = $("att-frase"), svgA = $("att-arcos"), svgH = $("att-calor"), cuenta = $("att-cuenta");
+    let pal = [], mod = null, sel = 0, gen = 0;
+    const ej = $("att-ej");
+    FRASES.forEach(function (f, k) { RN.el("button", { type: "button", "aria-pressed": k === 0 ? "true" : "false" }, ej, f.split(" ").slice(0, 2).join(" ") + "…").dataset.f = f; });
+    segmentado(ej, function (b) { inp.value = b.dataset.f; recalcula(); });
+    function defecto(p) { for (let i = p.length - 1; i >= 0; i--) if (clase(p[i]) === 2) return i; return p.length - 1; }
+    function recalcula() { pal = tokens(inp.value); mod = pal.length ? atencion(pal) : null; sel = pal.length ? defecto(pal) : 0; pinta(false); }
+    function elegir(i, animar) { if (i === sel && !animar) return; sel = i; pinta(true); }
+    function pinta(animar) {
+      pintaCalor(); pintaCuenta();
+      if (animar && !RN.reducirMovimiento) { const g = ++gen; RN.tween(380, function (t) { if (g === gen) pintaArcos(t); }); }
+      else { gen++; pintaArcos(1); }
+    }
+    function pintaArcos(pr) {
+      vaciar(svgA);
+      const n = pal.length;
+      if (!n) { tx(svgA, 500, 125, "Escribe una frase para ver su atención", { "text-anchor": "middle", fill: INK2, "font-size": 16 }); return; }
+      const fs = n > 10 ? 13 : 14, xs = reparte(n, n > 10 ? 135 : 150, 942);
+      lineas(svgA, 10, 40, ["consulta", "(q)"], { "font-size": 13, fill: INK2, "font-weight": 700 }, 16);
+      lineas(svgA, 10, 188, ["clave", "(k)"], { "font-size": 13, fill: INK2, "font-weight": 700 }, 16);
+      const A = mod.A[sel], amax = Math.max.apply(null, A);
+      A.forEach(function (a, j) {
+        el("path", { d: "M" + xs[sel] + ",60 C" + xs[sel] + ",120 " + xs[j] + ",116 " + xs[j] + ",176", fill: "none", stroke: AC, "stroke-width": (0.6 + 16 * a * pr).toFixed(2), "stroke-opacity": (0.15 + 0.8 * a / amax * pr).toFixed(2), "stroke-linecap": "round" }, svgA);
+      });
+      pal.forEach(function (w, i) {
+        const g = chip(svgA, xs[i], 44, w, { color: CLASES[clase(w)].color, activo: i === sel, fs: fs });
+        g.setAttribute("class", "clic");
+        g.addEventListener("mouseenter", function () { elegir(i); });
+        g.addEventListener("click", function () { elegir(i, true); });
+      });
+      pal.forEach(function (w, j) {
+        chip(svgA, xs[j], 192, w, { color: CLASES[clase(w)].color, fs: fs });
+        if (A[j] >= 0.045) tx(svgA, xs[j], 230, fmt(A[j] * 100, 0) + " %", { "text-anchor": "middle", "font-size": 14, "font-weight": A[j] === amax ? 800 : 600, fill: A[j] === amax ? INK : INK2, opacity: Math.max(0.2, pr) });
+      });
+    }
+    function pintaCalor() {
+      vaciar(svgH);
+      const n = pal.length;
+      if (!n) return;
+      const L = 112, T = 112, cs = Math.min(40, 400 / n);
+      tx(svgH, 10, 24, "fila: la palabra que mira", { "font-size": 13, fill: INK2 });
+      tx(svgH, 10, 42, "columna: a quién mira", { "font-size": 13, fill: INK2 });
+      pal.forEach(function (w, j) {
+        const x = L + j * cs + cs / 2, y = T - 8;
+        tx(svgH, x, y, w, { "font-size": 13, fill: INK2, transform: "rotate(-50 " + x + " " + y + ")" });
+      });
+      pal.forEach(function (w, i) {
+        const t = tx(svgH, L - 8, T + i * cs + cs / 2 + 5, w, { "text-anchor": "end", "font-size": 13.5, "font-weight": i === sel ? 800 : 500, fill: i === sel ? INK : INK2 });
+        t.setAttribute("class", "clic");
+        t.addEventListener("click", function () { elegir(i, true); });
+        mod.A[i].forEach(function (a, j) {
+          const r = rc(svgH, L + j * cs, T + i * cs, cs - 1.5, cs - 1.5, { rx: 3, fill: RN.colorSeq(a) });
+          r.addEventListener("mousemove", function (ev) { RN.tip.mostrar("«" + esc(pal[i]) + "» atiende a «" + esc(pal[j]) + "»: <b>" + fmt(a * 100, 1) + " %</b>", ev.clientX, ev.clientY); });
+          r.addEventListener("mouseleave", function () { RN.tip.ocultar(); });
+          r.addEventListener("click", function () { elegir(i, true); });
+          if (cs >= 34) tx(svgH, L + j * cs + cs / 2 - 0.75, T + i * cs + cs / 2 + 4.5, fmt(a, 2), { "text-anchor": "middle", "font-size": 12, fill: a > 0.42 ? "#fff" : INK, "pointer-events": "none" });
+        });
+      });
+      rc(svgH, L - 2, T + sel * cs - 2, n * cs + 2.5, cs + 2.5, { rx: 5, fill: "none", stroke: AC, "stroke-width": 3, "pointer-events": "none" });
+    }
+    function celdas(v, mx) { return '<span title="' + v.map(function (x) { return fmt(x, 2); }).join(" ; ") + '">' + v.map(function (x) { return '<span class="celda-v" style="background:' + RN.colorPeso(x, mx) + '"></span>'; }).join("") + "</span>"; }
+    function vec(v) { return '<span class="vec">[' + v.map(function (x) { return fmt(x, 2); }).join("; ") + "]</span>"; }
+    function pintaCuenta() {
+      const n = pal.length;
+      if (!n) { cuenta.innerHTML = ""; return; }
+      const i = sel, q = mod.Q[i], A = mod.A[i], Sx = mod.S[i];
+      const ex = Sx.map(Math.exp), tot = suma(ex), am = A.indexOf(Math.max.apply(null, A));
+      let mx = 0; mod.K.forEach(function (k) { k.forEach(function (v) { mx = Math.max(mx, Math.abs(v)); }); });
+      let h = "<h3>La cuenta de la fila «" + esc(pal[i]) + "»</h3>";
+      h += '<p class="pie">x = ' + vec(mod.E[i]) + " &nbsp;→&nbsp; q = x·W<sub>Q</sub> = " + vec(q) + "</p>";
+      h += '<table class="tabla compacta"><thead><tr><th>clave</th><th>k</th><th class="n">q·k</th><th class="n">÷ √d</th><th class="n">e<sup>x</sup></th><th>peso α</th></tr></thead><tbody>';
+      pal.forEach(function (w, j) {
+        h += "<tr" + (j === am ? ' class="sel"' : "") + "><td>" + esc(w) + "</td><td>" + celdas(mod.K[j], mx) + '</td><td class="n">' + fmt(Sx[j] * 2, 2) + '</td><td class="n">' + fmt(Sx[j], 2) + '</td><td class="n">' + fmt(ex[j], 2) + '</td><td><span class="barra-in" style="width:' + (A[j] * 80).toFixed(1) + 'px"></span>' + fmt(A[j] * 100, 1) + " %</td></tr>";
+      });
+      h += '<tr><td colspan="4"><b>Suma</b> (cada peso = e<sup>x</sup> / suma)</td><td class="n"><b>' + fmt(tot, 2) + "</b></td><td><b>100 %</b></td></tr></tbody></table>";
+      h += '<p class="pie">Salida: z = Σ α<sub>j</sub>·v<sub>j</sub> = ' + vec(mod.Z[i]) + ". La nueva representación de «" + esc(pal[i]) + "» lleva un " + fmt(A[am] * 100, 0) + " % de la información de «" + esc(pal[am]) + "».</p>";
+      cuenta.innerHTML = h;
+    }
+    inp.addEventListener("input", recalcula);
+    let tRec = 0;
+    const anim = RN.anima(function (dt) {
+      tRec += Math.max(0, dt);
+      const n = pal.length; if (!n) return false;
+      const k = Math.floor(tRec / 1.3);
+      if (k >= n) return false;
+      const pr = Math.min(1, (tRec - k * 1.3) / 0.4);
+      if (k !== sel) { sel = k; pintaCalor(); pintaCuenta(); }
+      gen++; pintaArcos(pr);
+    }, svgA);
+    const bp = $("att-play");
+    bp.addEventListener("click", function () { if (!anim.activo) tRec = 0; });
+    RN.botonPlay(bp, anim, ["▶ Recorrer las palabras", "⏸ Pausa"]);
+    recalcula();
+  })();
+
+  // ================================================================ 3 · Cabezas, posición y residuales
+  (function () {
+    const svg = $("mh-svg"), cat = $("mh-cat");
+    let fr = 0, sel = -1;
+    const CAB = [
+      { nombre: "La palabra anterior", sub: "se fija en la posición", color: C.s1 },
+      { nombre: "Quién hace qué", sub: "relación de significado", color: C.s2 },
+      { nombre: "Artículo ↔ sustantivo", sub: "concordancia gramatical", color: C.s3 },
+      { nombre: "Visión de conjunto", sub: "reparte la atención", color: C.s4 }
+    ];
+    const ej = $("mh-ej");
+    FRASES.forEach(function (f, k) { RN.el("button", { type: "button", "aria-pressed": k === 0 ? "true" : "false" }, ej, f.split(" ").slice(0, 2).join(" ") + "…").dataset.k = k; });
+    segmentado(ej, function (b) { fr = +b.dataset.k; sel = -1; dibuja(); });
+    function cabezas(pal) {
+      const n = pal.length, cl = pal.map(clase);
+      const sm = function (M) { return M.map(softmaxFila); };
+      const h1 = sm(pal.map(function (_, i) { return pal.map(function (_, j) { return j === i - 1 ? 3.2 : j === i ? (i === 0 ? 3 : 1) : 0; }); }));
+      const h2 = atencion(pal).A;
+      const h3 = sm(pal.map(function (_, i) {
+        return pal.map(function (_, j) {
+          if (cl[i] === 3) { let k = i + 1; while (k < n && cl[k] === 3) k++; return j === (k < n ? k : i) ? 3.5 : 0; }
+          if (cl[i] <= 1) return (j === i - 1 && cl[j] === 3) ? 3 : j === i ? 1.5 : 0;
+          return j === i ? 2.5 : 0;
+        });
+      }));
+      const h4 = sm(pal.map(function () { return pal.map(function () { return 0; }); }));
+      return [h1, h2, h3, h4];
+    }
+    function dibuja() {
+      vaciar(svg);
+      const pal = tokens(FRASES[fr]), n = pal.length, H = cabezas(pal);
+      if (sel < 0 || sel >= n) sel = n - 1;
+      const PW = 238, G = 12;
+      CAB.forEach(function (cab, h) {
+        const x0 = 6 + h * (PW + G);
+        rc(svg, x0, 4, PW, 354, { fill: RN.rgba(cab.color, 0.05), stroke: RN.rgba(cab.color, 0.55), "stroke-width": 1.3 });
+        el("circle", { cx: x0 + 17, cy: 26, r: 6.5, fill: cab.color }, svg);
+        tx(svg, x0 + 30, 31, cab.nombre, { "font-weight": 700, "font-size": 14.5 });
+        tx(svg, x0 + 17, 51, cab.sub, { "font-size": 13, fill: INK2 });
+        const y = function (i) { return 84 + i * 28; }, xa = x0 + 86, xb = x0 + 152;
+        H[h][sel].forEach(function (a, j) {
+          el("path", { d: "M" + (xa + 5) + "," + (y(sel) - 5) + " C" + (xa + 40) + "," + (y(sel) - 5) + " " + (xb - 40) + "," + (y(j) - 5) + " " + (xb - 5) + "," + (y(j) - 5), fill: "none", stroke: cab.color, "stroke-width": (0.5 + 11 * a).toFixed(2), "stroke-opacity": (0.18 + 0.8 * a).toFixed(2), "stroke-linecap": "round" }, svg);
+        });
+        pal.forEach(function (w, i) {
+          if (i === sel) rc(svg, xa - anchoTxt(w, 13.5) - 6, y(i) - 17, anchoTxt(w, 13.5) + 10, 23, { rx: 6, fill: RN.rgba(AC, 0.16), stroke: AC, "stroke-width": 1.5 });
+          const t = tx(svg, xa, y(i), w, { "text-anchor": "end", "font-size": 13.5, "font-weight": i === sel ? 800 : 500, fill: i === sel ? INK : INK2 });
+          t.setAttribute("class", "clic");
+          t.addEventListener("click", function () { sel = i; dibuja(); });
+          tx(svg, xb, y(i), w, { "font-size": 13.5, fill: INK2 });
+        });
+      });
+      dibujaCat();
+    }
+    function dibujaCat() {
+      vaciar(cat); marcadores(cat, "cat");
+      const r = RN.rng(3 + fr * 7 + sel);
+      CAB.forEach(function (cab, h) {
+        const y = 10 + h * 25;
+        tx(cat, 20, y + 15, "cabeza " + (h + 1), { "font-size": 13, fill: INK2 });
+        for (let k = 0; k < 4; k++) rc(cat, 100 + k * 21, y, 19, 19, { rx: 3, fill: RN.rgba(cab.color, 0.35 + 0.6 * r()) });
+      });
+      flecha(cat, 200, 58, 262, 58, "cat", "n");
+      tx(cat, 231, 46, "unir", { "text-anchor": "middle", "font-size": 13, fill: INK2 });
+      CAB.forEach(function (cab, h) { for (let k = 0; k < 4; k++) rc(cat, 272 + (h * 4 + k) * 21, 48, 19, 19, { rx: 3, fill: RN.rgba(cab.color, 0.35 + 0.6 * r()) }); });
+      tx(cat, 440, 96, "concatenar las 4 salidas", { "text-anchor": "middle", "font-size": 13, fill: INK2 });
+      flecha(cat, 618, 58, 700, 58, "cat", "n");
+      const wo = tx(cat, 659, 46, "× W", { "text-anchor": "middle", "font-size": 14, "font-weight": 700 });
+      el("tspan", { dy: 4, "font-size": 11 }, wo).textContent = "O";
+      for (let k = 0; k < 4; k++) rc(cat, 712 + k * 21, 48, 19, 19, { rx: 3, fill: RN.mezcla("#ffffff", INK2, 0.35 + 0.5 * r()) });
+      lineas(cat, 812, 54, ["una sola representación", "por palabra"], { "font-size": 13, fill: INK2 }, 17);
+    }
+    dibuja();
+
+    // ---- codificación posicional (real)
+    const DM = 64, NP = 50, PE = [];
+    for (let p = 0; p < NP; p++) { const f = []; for (let i = 0; i < DM; i++) { const k = Math.floor(i / 2), ang = p / Math.pow(10000, 2 * k / DM); f.push(i % 2 === 0 ? Math.sin(ang) : Math.cos(ang)); } PE.push(f); }
+    const heat = $("pe-heat"), pos = $("pe-pos"), poso = $("pe-poso");
+    const mH = { l: 54, r: 12, t: 10, b: 42 };
+    function pintaPE() {
+      const L = RN.lienzo(heat, 320), c = L.ctx, P = +pos.value;
+      c.fillStyle = C.surface; c.fillRect(0, 0, L.w, L.h);
+      const cw = (L.w - mH.l - mH.r) / DM, ch = (L.h - mH.t - mH.b) / NP;
+      for (let p = 0; p < NP; p++) for (let i = 0; i < DM; i++) { c.fillStyle = RN.colorPeso(PE[p][i], 1); c.fillRect(mH.l + i * cw, mH.t + p * ch, cw + 0.6, ch + 0.6); }
+      c.strokeStyle = AC; c.lineWidth = 2.5; c.strokeRect(mH.l - 1, mH.t + P * ch - 1, DM * cw + 2, ch + 2);
+      c.fillStyle = MUT; c.font = "12px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "top";
+      for (let i = 0; i < DM; i += 8) c.fillText(i, mH.l + (i + 0.5) * cw, L.h - mH.b + 5);
+      c.textAlign = "right"; c.textBaseline = "middle";
+      for (let p = 0; p < NP; p += 10) c.fillText(p, mH.l - 6, mH.t + (p + 0.5) * ch);
+      c.fillStyle = INK2; c.font = "600 12.5px system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "bottom";
+      c.fillText("dimensión del vector", mH.l + (L.w - mH.l - mH.r) / 2, L.h - 4);
+      c.save(); c.translate(14, mH.t + (L.h - mH.t - mH.b) / 2); c.rotate(-Math.PI / 2); c.textBaseline = "middle"; c.fillText("posición en la frase", 0, 0); c.restore();
+    }
+    heat.addEventListener("mousemove", function (ev) {
+      const r = heat.getBoundingClientRect(), w = r.width, h = r.height;
+      const i = Math.floor((ev.clientX - r.left - mH.l) / ((w - mH.l - mH.r) / DM)), p = Math.floor((ev.clientY - r.top - mH.t) / ((h - mH.t - mH.b) / NP));
+      if (i < 0 || i >= DM || p < 0 || p >= NP) { RN.tip.ocultar(); return; }
+      const k = Math.floor(i / 2);
+      RN.tip.mostrar("posición " + p + " · dimensión " + i + "<br>" + (i % 2 ? "cos" : "sin") + "(" + p + " / 10000<sup>" + (2 * k) + "/64</sup>) = <b>" + fmt(PE[p][i], 3) + "</b>", ev.clientX, ev.clientY);
+    });
+    heat.addEventListener("mouseleave", function () { RN.tip.ocultar(); });
+    const DIMS = [0, 4, 8, 16], COLS = [C.s1, C.s2, C.s3, C.s4];
+    const ondas = DIMS.map(function (i, k) { const pts = []; for (let p = 0; p <= 49.0001; p += 0.1) pts.push([p, Math.sin(p / Math.pow(10000, i / DM))]); return { nombre: "dimensión " + i, color: COLS[k], puntos: pts }; });
+    const graf = RN.grafica($("pe-graf"), {
+      alto: 320, x: { min: 0, max: 49, titulo: "posición en la frase" }, y: { min: -1.15, max: 1.15, titulo: "valor de PE" },
+      extras: function (c, g) {
+        const P = +pos.value, X = g.sx(P);
+        c.strokeStyle = AC; c.lineWidth = 2; c.beginPath(); c.moveTo(X, g.m.t); c.lineTo(X, g.h - g.m.b); c.stroke();
+        DIMS.forEach(function (i, k) { c.beginPath(); c.arc(X, g.sy(PE[P][i]), 5.5, 0, 7); c.fillStyle = COLS[k]; c.fill(); c.lineWidth = 2; c.strokeStyle = "#fff"; c.stroke(); });
+      }
+    });
+    function pintaTodoPE() { poso.textContent = pos.value; pintaPE(); graf.dibujar(ondas); }
+    pos.addEventListener("input", pintaTodoPE);
+    RN.alCambiarTam(heat, pintaPE);
+    pintaTodoPE();
+
+    // ---- bloque residual (ilustrativo)
+    const rs = $("res-svg");
+    const Y = 170;
+    function dibujaRes() {
+      vaciar(rs); marcadores(rs, "res");
+      lineas(rs, 18, Y - 8, ["x", "(embedding"], { "font-size": 13.5, fill: INK2 }, 17);
+      tx(rs, 18, Y + 26, "+ posición)", { "font-size": 13.5, fill: INK2 });
+      const cajas = [[168, "Atención", "multi-cabeza", C.s1], [408, "Normalización", "", MUT], [568, "Red", "feed-forward", C.s3], [808, "Normalización", "", MUT]];
+      flecha(rs, 110, Y, 166, Y, "res", "n");
+      cajas.forEach(function (b) {
+        caja(rs, b[0], Y - 32, 140, 64, b[3]);
+        if (b[2]) { tx(rs, b[0] + 70, Y - 4, b[1], { "text-anchor": "middle", "font-weight": 700 }); tx(rs, b[0] + 70, Y + 15, b[2], { "text-anchor": "middle", "font-size": 13.5, fill: INK2 }); }
+        else tx(rs, b[0] + 70, Y + 5, b[1], { "text-anchor": "middle", "font-weight": 700 });
+      });
+      [368, 768].forEach(function (x) { el("circle", { cx: x, cy: Y, r: 15, fill: "#fff", stroke: AC, "stroke-width": 2.2 }, rs); tx(rs, x, Y + 6, "+", { "text-anchor": "middle", "font-size": 20, "font-weight": 800, fill: AC }); });
+      flecha(rs, 308, Y, 351, Y, "res", "n"); flecha(rs, 383, Y, 406, Y, "res", "n");
+      flecha(rs, 548, Y, 566, Y, "res", "n"); flecha(rs, 708, Y, 751, Y, "res", "n"); flecha(rs, 783, Y, 806, Y, "res", "n");
+      flecha(rs, 948, Y, 990, Y, "res", "n");
+      [[140, 368], [552, 768]].forEach(function (s) {
+        el("circle", { cx: s[0], cy: Y, r: 4.5, fill: AC }, rs);
+        linea(rs, [[s[0], Y], [s[0], 78], [s[1], 78], [s[1], Y - 17]], "res", "a", { "stroke-width": 2.6 });
+      });
+      tx(rs, 254, 68, "conexión residual: x pasa intacta", { "text-anchor": "middle", "font-size": 13.5, fill: INK, "font-weight": 600 });
+      tx(rs, 660, 68, "otra conexión residual", { "text-anchor": "middle", "font-size": 13.5, fill: INK, "font-weight": 600 });
+      el("path", { d: "M150,232 L150,244 L958,244 L958,232", fill: "none", stroke: "#9AA5B1", "stroke-width": 1.6 }, rs);
+      tx(rs, 554, 268, "un bloque del Transformer · se apilan N iguales (N = 6 en el codificador original)", { "text-anchor": "middle", "font-size": 13.5, fill: INK2 });
+      tx(rs, 985, Y - 12, "→ siguiente", { "text-anchor": "end", "font-size": 12.5, fill: INK2 });
+    }
+    dibujaRes();
+    let genR = 0;
+    $("res-play").addEventListener("click", async function () {
+      const g = ++genR; dibujaRes();
+      const prin = [[112, Y], [168, Y], [308, Y], [352, Y]], atajo = [[140, Y], [140, 78], [368, 78], [368, Y - 16]];
+      await Promise.all([viaje(rs, prin, { color: INK2, ms: 1100 }), viaje(rs, atajo, { color: AC, ms: 1100 })]);
+      if (g !== genR) return;
+      await viaje(rs, [[368, Y], [408, Y], [548, Y], [552, Y]], { color: AC, ms: 600 });
+      if (g !== genR) return;
+      await Promise.all([viaje(rs, [[552, Y], [568, Y], [708, Y], [752, Y]], { color: INK2, ms: 1000 }), viaje(rs, [[552, Y], [552, 78], [768, 78], [768, Y - 16]], { color: AC, ms: 1000 })]);
+      if (g !== genR) return;
+      await viaje(rs, [[768, Y], [808, Y], [948, Y], [990, Y]], { color: AC, ms: 700 });
+    });
+  })();
+
+  // ================================================================ 4 · Paralelismo y escala
+  (function () {
+    const svg = $("par-svg"), rn = $("par-n");
+    let n = 12, tau = 12;
+    const X0 = 200, X1 = 966;
+    function dibuja() {
+      vaciar(svg); marcadores(svg, "par");
+      const u = (X1 - X0) / n;
+      tx(svg, 20, 78, "RNN", { "font-weight": 800, "font-size": 16 });
+      tx(svg, 20, 98, "un paso por palabra", { "font-size": 13, fill: INK2 });
+      for (let k = 0; k < n; k++) {
+        const ll = RN.limita(tau - k, 0, 1), x = X0 + k * u + 2;
+        rc(svg, x, 62, u - 4, 44, { rx: 6, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.3 });
+        if (ll > 0) rc(svg, x, 62, (u - 4) * ll, 44, { rx: 6, fill: RN.rgba(C.s1, 0.8) });
+        if (u >= 22) tx(svg, x + (u - 4) / 2, 89, k + 1, { "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: ll >= 1 ? "#fff" : INK2 });
+        if (k > 0 && u >= 26) el("path", { d: "M" + (x - u / 2 + 2) + ",60 Q" + (x - 2) + ",40 " + (x + (u - 4) / 2 - 4) + ",58", fill: "none", stroke: "#9AA5B1", "stroke-width": 1.4, "marker-end": "url(#mk-par-g)" }, svg);
+      }
+      tx(svg, X0, 128, "cada paso necesita el resultado del anterior", { "font-size": 13, fill: INK2 });
+      tx(svg, 20, 190, "Transformer", { "font-weight": 800, "font-size": 16 });
+      tx(svg, 20, 210, "todas a la vez", { "font-size": 13, fill: INK2 });
+      const hs = 96 / n, ll = RN.limita(tau, 0, 1), cw = Math.max(u - 4, 26);
+      for (let k = 0; k < n; k++) {
+        rc(svg, X0 + 2, 152 + k * hs, cw, Math.max(1, hs - (hs > 4 ? 1.5 : 0.6)), { rx: 2, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 0.8 });
+        if (ll > 0) rc(svg, X0 + 2, 152 + k * hs, cw * ll, Math.max(1, hs - (hs > 4 ? 1.5 : 0.6)), { rx: 2, fill: RN.rgba(C.s1, 0.8) });
+      }
+      tx(svg, X0 + cw + 16, 196, "1 paso: las " + n + " palabras a la vez" + (ll >= 1 ? " ✓" : ""), { "font-size": 14, "font-weight": 700 });
+      tx(svg, X0 + cw + 16, 216, n + " × " + n + " = " + RN.fmtN(n * n) + " comparaciones q·k, todas independientes", { "font-size": 13, fill: INK2 });
+      el("line", { x1: X0, y1: 266, x2: X1, y2: 266, stroke: "#9AA5B1", "stroke-width": 1.5 }, svg);
+      const cada = n <= 12 ? 1 : n <= 24 ? 2 : 4;
+      for (let k = 0; k <= n; k += cada) { el("line", { x1: X0 + k * u, y1: 262, x2: X0 + k * u, y2: 270, stroke: "#9AA5B1" }, svg); tx(svg, X0 + k * u, 287, k, { "text-anchor": "middle", "font-size": 12.5, fill: MUT }); }
+      tx(svg, 20, 287, "tiempo (pasos) →", { "font-size": 13, fill: INK2, "font-weight": 600 });
+      if (tau < n) el("line", { x1: X0 + tau * u, y1: 40, x2: X0 + tau * u, y2: 262, stroke: AC, "stroke-width": 2.2 }, svg);
+    }
+    const anim = RN.anima(function (dt) { tau += Math.max(0, dt) * n / 4.5; if (tau >= n) { tau = n; dibuja(); return false; } dibuja(); }, svg);
+    const bp = $("par-play");
+    bp.addEventListener("click", function () { if (!anim.activo && tau >= n) tau = RN.reducirMovimiento ? n : 0; });
+    RN.botonPlay(bp, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    rn.addEventListener("input", function () { n = +rn.value; tau = n; anim.parar(); $("par-no").textContent = n; $("par-k1").textContent = n; $("par-k2").textContent = RN.fmtN(n * n); dibuja(); });
+    dibuja();
+    // línea del tiempo
+    const h = $("par-hist");
+    const HITOS = [["2017", "Transformer (Google)", "traducción automática"], ["2018", "BERT y GPT", "entender y generar texto"], ["2020", "GPT-3", "175.000 millones de parámetros"], ["2022", "ChatGPT", "los LLM, al gran público"], ["Hoy", "GPT, Claude, Llama…", "variantes del Transformer"]];
+    el("line", { x1: 60, y1: 62, x2: 940, y2: 62, stroke: "#CFD8DC", "stroke-width": 3 }, h);
+    HITOS.forEach(function (m, k) {
+      const x = 112 + k * 194;
+      el("circle", { cx: x, cy: 62, r: k === 0 ? 10 : 8, fill: k === 0 ? AC : "#fff", stroke: k === 0 ? AC : INK2, "stroke-width": 2.5 }, h);
+      tx(h, x, 38, m[0], { "text-anchor": "middle", "font-weight": 800, "font-size": 16 });
+      tx(h, x, 98, m[1], { "text-anchor": "middle", "font-weight": 700, "font-size": 14 });
+      tx(h, x, 118, m[2], { "text-anchor": "middle", "font-size": 13, fill: INK2 });
+    });
+    tx(h, 500, 156, "Vaswani y otros, «Attention Is All You Need», NeurIPS 2017.", { "text-anchor": "middle", "font-size": 13, fill: MUT });
+  })();
+
+  // ================================================================ corpus y motor TF-IDF (RAG)
+  const DOCS = [
+    { id: "T09-gpu", fuente: "Tema 9 · I — Aceleración con GPU", paginas: [
+      "Una GPU tiene miles de núcleos sencillos que trabajan a la vez, mientras que una CPU tiene unos pocos núcleos muy potentes pensados para tareas en serie. Entrenar una red neuronal consiste sobre todo en multiplicar matrices, y cada celda del resultado se puede calcular de forma independiente; por eso la GPU acelera tanto el entrenamiento. TensorFlow y Keras usan la GPU a través de CUDA y de la biblioteca cuDNN, que implementa de forma optimizada las operaciones más habituales de las redes.",
+      "A menudo el cuello de botella no es el cálculo sino la lectura de datos: si el disco y la memoria no entregan los lotes a tiempo, la GPU se queda esperando ociosa. La solución es precargar los siguientes lotes mientras la GPU procesa el actual. El tamaño de lote también está limitado por la memoria de la GPU, que debe guardar los pesos, los gradientes, los estados del optimizador y las activaciones de todo el lote."] },
+    { id: "T09-dist", fuente: "Tema 9 · II — Entrenamiento distribuido", paginas: [
+      "En el paralelismo de datos cada GPU guarda una copia completa del modelo y procesa un trozo distinto del lote; después se promedian los gradientes de todas las copias. En el paralelismo de modelo las capas se reparten entre varias GPU porque el modelo no cabe en una sola. El algoritmo all-reduce en anillo combina los gradientes enviando fragmentos de nodo en nodo, de modo que todos terminan con el mismo promedio.",
+      "En el entrenamiento síncrono todos los workers esperan al más lento antes de actualizar los pesos: es el efecto straggler. El entrenamiento asíncrono evita esa espera, pero algunos workers calculan el gradiente con pesos antiguos y aparecen gradientes obsoletos que pueden hacer oscilar el entrenamiento. La acumulación de gradientes suma varios micro-lotes antes de una única actualización para simular un lote mayor."] },
+    { id: "T10-prod", fuente: "Tema 10 · I — Puesta en producción", paginas: [
+      "Un servidor de modelos recibe peticiones de clientes web, móviles u otras aplicaciones, aplica el preprocesado, ejecuta el modelo y devuelve la predicción con una latencia baja. Cuando aumenta la carga se añaden réplicas para que la cola de peticiones no crezca y la latencia se mantenga estable.",
+      "Para cambiar de versión sin riesgo se usan pruebas A/B y despliegues canary: la versión nueva recibe primero una pequeña parte del tráfico y, si la tasa de errores sube, se hace rollback a la versión anterior. En un despliegue serverless se paga solo por petición, pero tras un tiempo sin tráfico la primera petición sufre un arranque en frío con más latencia."] },
+    { id: "T10-nube", fuente: "Tema 10 · II — Ecosistemas en la nube", paginas: [
+      "Para desplegar en la nube, el modelo se empaqueta en una imagen Docker con sus dependencias y se publica en un registro de imágenes. Kubernetes reparte los contenedores en pods, reinicia los que fallan y añade réplicas cuando el uso de CPU supera el 70 %.",
+      "La seguridad se apoya en redes privadas, en políticas IAM que permiten o deniegan cada acción y en el cifrado de los datos en tránsito y en reposo con claves gestionadas por KMS. Para controlar los costes conviene etiquetar los recursos por proyecto, usar instancias spot y configurar alertas de presupuesto."] },
+    { id: "T08-reg", fuente: "Tema 8 — Optimización y regularización", paginas: [
+      "Hay sobreajuste cuando la pérdida de entrenamiento sigue bajando pero la de validación empieza a subir: la red memoriza los ejemplos en lugar de generalizar. La regularización L2 penaliza los pesos grandes y los encoge, mientras que L1 lleva muchos pesos exactamente a cero.",
+      "El dropout apaga al azar una fracción de las neuronas en cada paso del entrenamiento, de modo que la red no puede depender de ninguna neurona concreta; en inferencia se usan todas. La parada temprana detiene el entrenamiento cuando la pérdida de validación deja de mejorar durante varias épocas y restaura los mejores pesos."] },
+    { id: "T05-ent", fuente: "Tema 5 — Cómo aprende la red", paginas: [
+      "La red aprende ajustando sus pesos para reducir la función de pérdida. El descenso del gradiente mueve cada peso en la dirección contraria al gradiente, con un paso proporcional a la tasa de aprendizaje: si es muy pequeña el aprendizaje es lento y si es muy grande la pérdida oscila o diverge.",
+      "La retropropagación calcula el gradiente de la pérdida respecto a todos los pesos aplicando la regla de la cadena desde la salida hacia la entrada. En la práctica los gradientes se calculan sobre mini-lotes: con 1.000 ejemplos y lotes de 32 hay 32 iteraciones por época."] }
+  ];
+  DOCS.forEach(function (d, k) { d.color = RN.serie[k]; d.pal = []; d.paginas.forEach(function (t, pi) { t.split(/\s+/).filter(Boolean).forEach(function (w) { d.pal.push({ w: w, p: pi + 1 }); }); }); });
+  const STOP = new Set(("a al algo algunas algunos ante antes como con contra cual cuando de del desde donde durante e el ella ellas ellos en entre era eran es esa esas ese eso esos esta estaba estas este esto estos fue fueron ha han hay la las le les lo los mas más me mi mientras muy ni no nos o os otra otras otro otros para pero poco por porque que qué quien se ser si sí sin sobre su sus también tan tanto te tiene tienen todo todos tras tu un una uno unos y ya cada cuál cuáles cuánto cuánta cuántos cuántas cómo puede pueden hace hacen mismo misma u").split(" "));
+  const FORMA = new Map();
+  function raiz(w) { if (w.length > 3 && w.endsWith("s")) w = w.slice(0, -1); if (w.length > 3 && w.endsWith("e")) w = w.slice(0, -1); return w; }
+  function terminos(t) {
+    return t.toLowerCase().split(/[^a-záéíóúüñ0-9]+/).filter(function (w) { return w && w.length > 1 && !STOP.has(w); }).map(function (w) {
+      const r = raiz(w.normalize("NFD").replace(/[̀-ͯ]/g, ""));
+      if (!FORMA.has(r)) FORMA.set(r, w);
+      return r;
+    });
+  }
+  function vectoriza(terms, idf) {
+    const tf = new Map(); terms.forEach(function (w) { if (idf.has(w)) tf.set(w, (tf.get(w) || 0) + 1); });
+    const v = new Map(); let n2 = 0;
+    tf.forEach(function (c, w) { const x = c * idf.get(w); v.set(w, x); n2 += x * x; });
+    const nn = Math.sqrt(n2) || 1; v.forEach(function (x, w) { v.set(w, x / nn); });
+    return v;
+  }
+  function coseno(a, b) { let s = 0; const p = a.size < b.size ? a : b, q = p === a ? b : a; p.forEach(function (x, w) { const y = q.get(w); if (y) s += x * y; }); return s; }
+  function construyeIdf(listas) {
+    const df = new Map(); listas.forEach(function (ts) { new Set(ts).forEach(function (w) { df.set(w, (df.get(w) || 0) + 1); }); });
+    const N = listas.length, idf = new Map();
+    df.forEach(function (v, w) { idf.set(w, Math.log((1 + N) / (1 + v)) + 1); });
+    return idf;
+  }
+  function indexar(tam, sol) {
+    const trozos = [];
+    DOCS.forEach(function (d, di) {
+      const paso = Math.max(1, tam - sol); let k = 0;
+      for (let s = 0; s < d.pal.length; s += paso) {
+        const e = Math.min(d.pal.length, s + tam);
+        trozos.push({ doc: di, id: d.id + "#" + (++k), k: k - 1, ini: s, fin: e, texto: d.pal.slice(s, e).map(function (x) { return x.w; }).join(" "), page: d.pal[s].p, offset: s });
+        if (e >= d.pal.length) break;
+      }
+    });
+    trozos.forEach(function (t, g) { t.g = g; t.terms = terminos(t.texto); });
+    const idf = construyeIdf(trozos.map(function (t) { return t.terms; }));
+    trozos.forEach(function (t) { t.vec = vectoriza(t.terms, idf); });
+    return { trozos: trozos, idf: idf, vocab: idf.size };
+  }
+  const RAG = { tam: 40, pct: 25, idx: null, oyentes: [] };
+  RAG.sol = function () { return Math.round(RAG.tam * RAG.pct / 100); };
+  RAG.reindexa = function () { RAG.idx = indexar(RAG.tam, RAG.sol()); RAG.oyentes.forEach(function (f) { f(); }); };
+  RAG.idx = indexar(RAG.tam, RAG.sol());
+
+  // ================================================================ 5 · RAG: LLM + memoria externa
+  (function () {
+    const svg = $("rag-svg");
+    let modo = "rag", gen = 0, respuesta = true, lit = new Set();
+    function nodo(p, x, y, w, h, t, ls, col) {
+      caja(p, x, y, w, h, col);
+      tx(p, x + w / 2, y + 27, t, { "text-anchor": "middle", "font-weight": 800, "font-size": 15.5 });
+      ls.forEach(function (l, k) { tx(p, x + w / 2, y + 48 + k * 18, l, { "text-anchor": "middle", "font-size": 13.5, fill: INK2 }); });
+    }
+    const E = {
+      e1: [[200, 172], [232, 172], [232, 82], [262, 82]], e2: [[442, 82], [538, 82]],
+      e3: [[630, 140], [630, 212]], e4: [[200, 226], [500, 226], [500, 262], [538, 262]], e5: [[722, 262], [788, 262]]
+    };
+    function dibuja() {
+      vaciar(svg); marcadores(svg, "rag");
+      const rag = modo === "rag";
+      nodo(svg, 20, 146, 180, 104, "Usuario", ["«¿Qué es el efecto", "straggler?»"], C.s1);
+      const gR = el("g", { opacity: rag ? 1 : 0.22 }, svg);
+      nodo(gR, 262, 46, 180, 72, "Recuperador", ["busca por similitud"], C.s3);
+      for (let k = 2; k >= 0; k--) { rc(gR, 552 + k * 12, 20 + k * 8, 150, 104, { rx: 8, fill: "#fff", stroke: DOCS[k].color, "stroke-width": 1.6 }); }
+      tx(gR, 627, 60, "Biblioteca", { "text-anchor": "middle", "font-weight": 800, "font-size": 15.5 });
+      tx(gR, 627, 80, "documentos", { "text-anchor": "middle", "font-size": 13.5, fill: INK2 });
+      tx(gR, 627, 97, "actualizados", { "text-anchor": "middle", "font-size": 13.5, fill: INK2 });
+      nodo(svg, 538, 212, 184, 100, "LLM", ["genera el texto con", "lo que sabe + el contexto"], C.s7);
+      const ok = rag;
+      caja(svg, 788, 136, 196, 196, ok ? C.ok : C.bad, { fill: "#fff" });
+      tx(svg, 886, 162, "Respuesta", { "text-anchor": "middle", "font-weight": 800, "font-size": 15.5 });
+      if (respuesta) {
+        const L = ok ? ["«Es la espera de todos", "los workers al más lento", "en el entrenamiento", "síncrono».", "", "✓ Fuente: T09-dist, p. 2"] : ["«Suele referirse a un", "retraso del modelo", "en producción…».", "", "⚠ Sin fuente: puede", "estar inventado"];
+        L.forEach(function (l, k) { tx(svg, 800, 188 + k * 20, l, { "font-size": 13.5, fill: k >= 4 ? (ok ? C.ok : C.bad) : INK, "font-weight": k >= 4 ? 700 : 400 }); });
+      } else tx(svg, 886, 240, "…", { "text-anchor": "middle", "font-size": 22, fill: MUT });
+      const t = function (k) { return lit.has(k) ? "a" : "n"; };
+      if (rag) {
+        linea(svg, E.e1, "rag", t("e1"), { "stroke-width": lit.has("e1") ? 3 : 1.8 });
+        linea(svg, E.e2, "rag", t("e2"), { "stroke-width": lit.has("e2") ? 3 : 1.8 });
+        linea(svg, E.e3, "rag", t("e3"), { "stroke-width": lit.has("e3") ? 3 : 1.8 });
+        tx(svg, 642, 182, "fragmentos + fuente", { "font-size": 13, fill: INK2, "font-weight": 600 });
+        tx(svg, 226, 136, "pregunta", { "font-size": 13, fill: INK2, "text-anchor": "end" });
+      }
+      linea(svg, E.e4, "rag", t("e4"), { "stroke-width": lit.has("e4") ? 3 : 1.8 });
+      tx(svg, 300, 218, "pregunta", { "font-size": 13, fill: INK2 });
+      linea(svg, E.e5, "rag", t("e5"), { "stroke-width": lit.has("e5") ? 3 : 1.8 });
+      tx(svg, 20, 290, rag ? "Memoria no paramétrica: consulta antes de responder." : "Solo memoria paramétrica: lo que quedó en los pesos.", { "font-size": 13.5, fill: INK2, "font-weight": 600 });
+    }
+    async function juega() {
+      const g = ++gen; respuesta = false; lit = new Set(); dibuja();
+      const paso = async function (k, et, ms) { lit.add(k); dibuja(); await viaje(svg, E[k], { etiqueta: et, ms: ms || 800 }); };
+      if (modo === "rag") {
+        await paso("e1", "pregunta"); if (g !== gen) return;
+        await paso("e2", "vector"); if (g !== gen) return;
+        lit.add("e4"); dibuja();
+        await Promise.all([viaje(svg, E.e3, { etiqueta: "contexto", ms: 800 }), viaje(svg, E.e4, { etiqueta: "pregunta", ms: 800 })]); if (g !== gen) return;
+      } else { await paso("e4", "pregunta", 1000); if (g !== gen) return; }
+      await paso("e5", "texto", 600); if (g !== gen) return;
+      respuesta = true; dibuja();
+    }
+    segmentado($("rag-modo"), function (b) { modo = b.dataset.m; gen++; respuesta = true; lit = new Set(); dibuja(); });
+    $("rag-play").addEventListener("click", juega);
+    dibuja();
+
+    // memorias
+    const sp = $("rag-pesos"), r = RN.rng(5);
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 12; j++) rc(sp, 20 + j * 25, 18 + i * 25, 22, 22, { rx: 3, fill: RN.colorPeso(RN.normal(r), 2) });
+    rc(sp, 352, 74, 64, 52, { rx: 8, fill: RN.rgba(INK2, 0.15), stroke: INK2, "stroke-width": 2 });
+    el("path", { d: "M364,74 L364,58 A20,20 0 0 1 404,58 L404,74", fill: "none", stroke: INK2, "stroke-width": 5 }, sp);
+    el("circle", { cx: 384, cy: 96, r: 6, fill: INK2 }, sp);
+    tx(sp, 384, 150, "pesos congelados", { "text-anchor": "middle", "font-size": 13.5, fill: INK2, "font-weight": 600 });
+    tx(sp, 170, 180, "conocimiento aprendido al entrenar", { "text-anchor": "middle", "font-size": 13.5, fill: INK2 });
+    const se = $("rag-estante");
+    let ndoc = 6, genE = 0;
+    function estante(nuevo) {
+      vaciar(se);
+      el("line", { x1: 14, y1: 150, x2: 466, y2: 150, stroke: INK2, "stroke-width": 3, "stroke-linecap": "round" }, se);
+      for (let k = 0; k < ndoc; k++) {
+        const x = 20 + k * 37, col = k < 6 ? DOCS[k].color : AC;
+        const g = el("g", { transform: k === ndoc - 1 && nuevo !== undefined ? "translate(0," + (-80 * (1 - nuevo)) + ")" : "", opacity: k === ndoc - 1 && nuevo !== undefined ? nuevo : 1 }, se);
+        rc(g, x, 96, 31, 52, { rx: 4, fill: RN.rgba(col, 0.18), stroke: col, "stroke-width": 1.6 });
+        for (let l = 0; l < 3; l++) el("line", { x1: x + 6, y1: 108 + l * 9, x2: x + 25, y2: 108 + l * 9, stroke: col, "stroke-width": 1.4 }, g);
+        if (k >= 6) tx(g, x + 15.5, 88, "nuevo", { "text-anchor": "middle", "font-size": 12, fill: INK, "font-weight": 700 });
+      }
+      tx(se, 240, 180, ndoc + " documentos en el índice · se actualiza sin reentrenar", { "text-anchor": "middle", "font-size": 13.5, fill: INK2 });
+      $("rag-ndoc").textContent = ndoc;
+    }
+    $("rag-add").addEventListener("click", function () {
+      if (ndoc >= 12) return;
+      ndoc++; const g = ++genE;
+      RN.tween(500, function (t) { if (g === genE) estante(t); }).then(function () { if (g === genE) estante(); });
+    });
+    $("rag-reset").addEventListener("click", function () { genE++; ndoc = 6; estante(); });
+    estante();
+  })();
+
+  // ================================================================ 6 · Ingesta
+  (function () {
+    const svg = $("ing-svg"), tam = $("ing-tam"), sol = $("ing-sol"), det = $("ing-det");
+    let sel = 1, fase = -1, nTroz = Infinity, nIdx = Infinity, gen = 0;
+    const X0 = 128, XW = 556;
+    const maxW = Math.max.apply(null, DOCS.map(function (d) { return d.pal.length; }));
+    const sc = XW / maxW;
+    function lay() {
+      const nT = RAG.idx.trozos.length, big = nT <= 45, sq = big ? 20 : 14, gap = big ? 6 : 4, cols = big ? 9 : 12;
+      const rows = Math.ceil(nT / cols), h = 86 + rows * (sq + gap) + 24, top = 66 + Math.max(0, (326 - h) / 2);
+      return { sq: sq, gap: gap, cols: cols, top: top, bot: top + h, x0: 857 - (cols * (sq + gap) - gap) / 2 };
+    }
+    function posCuadro(g) { const L = lay(); return [L.x0 + (g % L.cols) * (L.sq + L.gap), L.top + 86 + Math.floor(g / L.cols) * (L.sq + L.gap)]; }
+    function yDoc(d) { return 100 + d * 52; }
+    function centroTrozo(t) { const y0 = yDoc(t.doc); return [X0 + (t.ini + t.fin) / 2 * sc, t.k % 2 === 0 ? y0 - 14 : y0 + 14]; }
+    function dibuja() {
+      vaciar(svg); marcadores(svg, "ing");
+      const I = RAG.idx;
+      [["1 · Fuentes", "PDF, Confluence, web"], ["2 · Troceado", "trozos con solape"], ["3 · Embeddings", "texto → vector"], ["4 · Índice", "base de datos vectorial"]].forEach(function (p, k) {
+        const x = 10 + k * 248, act = fase === k;
+        rc(svg, x, 6, 220, 46, { fill: act ? AC : "#fff", stroke: act ? AC : "#CFD8DC", "stroke-width": 1.5 });
+        tx(svg, x + 14, 25, p[0], { "font-weight": 800, fill: act ? "#fff" : INK });
+        tx(svg, x + 14, 43, p[1], { "font-size": 12.5, fill: act ? "#fff" : INK2 });
+        if (k < 3) flecha(svg, x + 222, 29, x + 245, 29, "ing", "n");
+      });
+      DOCS.forEach(function (d, di) {
+        const y0 = yDoc(di);
+        tx(svg, 8, y0 - 1, d.id, { "font-weight": 700, "font-size": 13.5 });
+        tx(svg, 8, y0 + 16, d.fuente.split(" — ")[0], { "font-size": 12.5, fill: MUT });
+        rc(svg, X0, y0 - 7, d.pal.length * sc, 14, { rx: 3, fill: RN.rgba(d.color, 0.16), stroke: d.color, "stroke-width": 1.2 });
+        const p2 = d.pal.findIndex(function (x) { return x.p === 2; });
+        if (p2 > 0) el("line", { x1: X0 + p2 * sc, y1: y0 - 6, x2: X0 + p2 * sc, y2: y0 + 6, stroke: "#fff", "stroke-width": 2 }, svg);
+      });
+      const T = I.trozos;
+      T.forEach(function (t, g) {
+        if (g >= nTroz) return;
+        const y0 = yDoc(t.doc), d = DOCS[t.doc], sig = T[g + 1];
+        if (sig && sig.doc === t.doc && sig.ini < t.fin) rc(svg, X0 + sig.ini * sc, y0 - 7, (t.fin - sig.ini) * sc, 14, { rx: 0, fill: RN.rgba(d.color, 0.55) });
+        const yb = t.k % 2 === 0 ? y0 - 18 : y0 + 11, es = g === sel;
+        rc(svg, X0 + t.ini * sc + 1, yb, Math.max(2, (t.fin - t.ini) * sc - 2), 7, { rx: 3, fill: es ? AC : d.color });
+        if (es) rc(svg, X0 + t.ini * sc, y0 - 8, (t.fin - t.ini) * sc, 16, { rx: 3, fill: "none", stroke: AC, "stroke-width": 2.5 });
+        const zona = rc(svg, X0 + t.ini * sc, t.k % 2 === 0 ? y0 - 24 : y0 + 2, (t.fin - t.ini) * sc, 22, { rx: 0, fill: "transparent" });
+        zona.setAttribute("class", "clic");
+        zona.addEventListener("mouseenter", function () { if (sel !== g && fase < 0) { sel = g; dibuja(); detalle(); } });
+        zona.addEventListener("click", function () { sel = g; dibuja(); detalle(); });
+      });
+      // índice
+      const Ly = lay(), yt = Ly.top + 13;
+      el("path", { d: "M724," + yt + " L724," + Ly.bot + " A133,13 0 0 0 990," + Ly.bot + " L990," + yt, fill: "#fff", stroke: INK2, "stroke-width": 1.8 }, svg);
+      el("ellipse", { cx: 857, cy: yt, rx: 133, ry: 13, fill: RN.rgba(INK2, 0.1), stroke: INK2, "stroke-width": 1.8 }, svg);
+      tx(svg, 857, Ly.top + 50, "Índice vectorial", { "text-anchor": "middle", "font-weight": 800, "font-size": 15 });
+      tx(svg, 857, Ly.top + 69, Math.min(nIdx, T.length) + " vectores · " + I.vocab + " dimensiones", { "text-anchor": "middle", "font-size": 13, fill: INK2 });
+      T.forEach(function (t, g) {
+        if (g >= nIdx) return;
+        const p = posCuadro(g);
+        rc(svg, p[0], p[1], Ly.sq, Ly.sq, { rx: 3, fill: DOCS[t.doc].color, stroke: g === sel ? AC : "none", "stroke-width": 3 });
+      });
+      flecha(svg, 692, 236, 718, 236, "ing", "n");
+    }
+    function detalle() {
+      const T = RAG.idx.trozos, t = T[Math.min(sel, T.length - 1)], d = DOCS[t.doc];
+      const ant = T[t.g - 1], sig = T[t.g + 1];
+      const iniS = ant && ant.doc === t.doc ? Math.max(t.ini, Math.min(t.fin, ant.fin)) : t.ini;
+      const finS = sig && sig.doc === t.doc ? Math.max(t.ini, sig.ini) : t.fin;
+      const pal = d.pal.slice(t.ini, t.fin).map(function (x, k) { const i = t.ini + k; const w = esc(x.w); return (i < iniS || i >= finS) ? '<mark class="solape">' + w + "</mark>" : w; }).join(" ");
+      const top = Array.from(t.vec.entries()).sort(function (a, b) { return b[1] - a[1]; });
+      const meta = { id: t.id, doc_id: d.id, source: d.fuente, page: t.page, offset: t.offset, texto: t.texto.split(" ").slice(0, 7).join(" ") + "…" };
+      const vecTxt = '  "vector": {' + top.slice(0, 3).map(function (e) { return '"' + (FORMA.get(e[0]) || e[0]) + '": ' + e[1].toFixed(2); }).join(", ") + ", …}";
+      const js = jsonHtml(meta).replace(/\n}$/, ",\n" + jsonHtml(vecTxt) + "\n}");
+      det.innerHTML = '<div><h3>Trozo ' + esc(t.id) + ' <span class="pie">(' + (t.fin - t.ini) + " palabras)</span></h3><p class=\"texto-trozo\">" + pal + '</p><p class="pie"><mark class="solape">Resaltado</mark>: palabras compartidas con el trozo anterior o el siguiente (el solape).</p>'
+        + "<h3>Términos con más peso en su vector</h3>" + top.slice(0, 6).map(function (e) { return '<div class="fila-t"><span>' + esc(FORMA.get(e[0]) || e[0]) + '</span><span class="b" style="width:' + (e[1] * 100).toFixed(0) + "%;background:" + d.color + '"></span><span class="n">' + fmt(e[1], 2) + "</span></div>"; }).join("")
+        + '</div><div><h3>Lo que se guarda en el índice</h3><pre class="code envuelve">' + js + '</pre><p class="pie">El vector TF-IDF tiene ' + RAG.idx.vocab + " dimensiones (una por palabra del vocabulario), pero solo " + t.vec.size + " son distintas de cero.</p></div>";
+    }
+    function kpis() {
+      const T = RAG.idx.trozos, tot = suma(DOCS.map(function (d) { return d.pal.length; })), idx = suma(T.map(function (t) { return t.fin - t.ini; }));
+      $("ing-k1").textContent = T.length;
+      $("ing-k2").textContent = RN.fmtN(idx) + " (+" + fmt((idx / tot - 1) * 100, 0) + " %)";
+      $("ing-k3").textContent = RAG.idx.vocab;
+    }
+    function cambia() {
+      gen++; fase = -1; nTroz = Infinity; nIdx = Infinity;
+      RAG.tam = +tam.value; RAG.pct = +sol.value;
+      $("ing-tamo").textContent = RAG.tam; $("ing-solo").textContent = RAG.pct + " % = " + RAG.sol() + " pal.";
+      RAG.reindexa();
+      sel = Math.min(sel, RAG.idx.trozos.length - 1);
+      dibuja(); detalle(); kpis();
+    }
+    tam.addEventListener("input", cambia); sol.addEventListener("input", cambia);
+    $("ing-play").addEventListener("click", async function () {
+      const g = ++gen, T = RAG.idx.trozos;
+      if (RN.reducirMovimiento) { fase = -1; nTroz = nIdx = Infinity; dibuja(); return; }
+      fase = 0; nTroz = 0; nIdx = 0; dibuja();
+      await RN.espera(600); if (g !== gen) return;
+      fase = 1;
+      for (let k = 1; k <= T.length; k++) { nTroz = k; dibuja(); await RN.espera(Math.max(25, 900 / T.length)); if (g !== gen) return; }
+      fase = 2;
+      for (let k = 0; k < T.length; k++) {
+        sel = k; dibuja(); detalle();
+        if (k === Math.floor(T.length / 2)) fase = 3;
+        await viaje(svg, [centroTrozo(T[k]), [705, 236], [posCuadro(k)[0] + lay().sq / 2, posCuadro(k)[1] + lay().sq / 2]], { color: DOCS[T[k].doc].color, r: 6, ms: Math.max(90, 2600 / T.length) });
+        if (g !== gen) return;
+        nIdx = k + 1;
+      }
+      fase = -1; nIdx = Infinity; dibuja();
+    });
+    cambia();
+  })();
+
+  // ================================================================ 7 · Consulta
+  (function () {
+    const q = $("con-q"), sk = $("con-k"), sel = $("con-ej"), sp = $("con-pasos"), sb = $("con-bars"), srr = $("con-rr");
+    const PREG = ["¿Por qué la GPU se queda esperando a los datos?", "¿Qué hace el dropout con las neuronas?", "¿Cómo se reparte el tráfico en un despliegue canary?", "¿Qué es el efecto straggler en el entrenamiento síncrono?", "¿Cuántas iteraciones por época hay con lotes de 32?"];
+    PREG.forEach(function (p) { RN.el("option", { value: p }, sel, p); });
+    let R = null, paso = -1, gen = 0;
+    function consulta() {
+      const I = RAG.idx, K = +sk.value, terms = terminos(q.value), vq = vectoriza(terms, I.idf);
+      const fuera = Array.from(new Set(terms.filter(function (t) { return !I.idf.has(t); })));
+      const cos = I.trozos.map(function (t) { return { t: t, cos: coseno(vq, t.vec) }; }).sort(function (a, b) { return b.cos - a.cos; });
+      const nc = Math.min(2 * K, cos.length), cand = cos.slice(0, nc), qs = new Set(Array.from(vq.keys()));
+      cand.forEach(function (c, r) { c.r0 = r; const ts = new Set(c.t.terms); let hit = 0; qs.forEach(function (w) { if (ts.has(w)) hit++; }); c.cob = qs.size ? hit / qs.size : 0; c.score = 0.6 * c.cos + 0.4 * c.cob; });
+      const rr = cand.slice().sort(function (a, b) { return b.score - a.score || a.r0 - b.r0; });
+      rr.forEach(function (c, r) { c.r1 = r; });
+      return { K: K, vq: vq, fuera: fuera, cos: cos, nc: nc, cand: cand, rr: rr, fin: rr.slice(0, K) };
+    }
+    function pasos() {
+      vaciar(sp); marcadores(sp, "cp");
+      ["1 · Embed de la pregunta", "2 · Top-K por coseno", "3 · Reordenar", "4 · Prompt"].forEach(function (s, k) {
+        const x = 10 + k * 248, act = paso === k;
+        rc(sp, x, 10, 220, 42, { fill: act ? AC : "#fff", stroke: act ? AC : "#CFD8DC", "stroke-width": 1.5 });
+        tx(sp, x + 110, 36, s, { "text-anchor": "middle", "font-weight": 800, fill: act ? "#fff" : INK });
+        if (k < 3) flecha(sp, x + 222, 31, x + 245, 31, "cp", "n");
+      });
+      ["con-b1", "con-b3", "con-b4"].forEach(function (id, k) { $(id).classList.toggle("foco", (k === 0 && (paso === 0 || paso === 1)) || (k === 1 && paso === 2) || (k === 2 && paso === 3)); });
+    }
+    function terms() {
+      const v = Array.from(R.vq.entries()).sort(function (a, b) { return b[1] - a[1]; });
+      let h = '<div class="terminos">' + v.map(function (e) { return '<span class="termino">' + esc(FORMA.get(e[0]) || e[0]) + " <b>" + fmt(e[1], 2) + "</b></span>"; }).join("");
+      h += R.fuera.map(function (w) { return '<span class="termino fuera" title="No aparece en ningún trozo del índice">' + esc(FORMA.get(w) || w) + "</span>"; }).join("") + "</div>";
+      if (!v.length) h += '<p class="pie">Ninguna palabra de la pregunta aparece en el índice: el coseno es 0 con todo.</p>';
+      else h += '<p class="pie">Vector TF-IDF normalizado de la pregunta (las palabras tachadas no están en el vocabulario del índice).</p>';
+      $("con-terms").innerHTML = h;
+    }
+    function barras(pr) {
+      vaciar(sb);
+      const filas = R.cos.slice(0, 12), mx = Math.max(0.05, filas[0] ? filas[0].cos : 0.05);
+      tx(sb, 8, 20, "trozo", { "font-size": 13, fill: INK2, "font-weight": 700 });
+      tx(sb, 140, 20, "similitud coseno", { "font-size": 13, fill: INK2, "font-weight": 700 });
+      filas.forEach(function (c, r) {
+        const y = 36 + r * 28, cand = r < R.nc, d = DOCS[c.t.doc];
+        const g = el("g", { opacity: cand ? 1 : 0.38 }, sb);
+        el("circle", { cx: 14, cy: y + 10, r: 5.5, fill: d.color }, g);
+        tx(g, 26, y + 15, c.t.id, { "font-size": 13, "font-weight": cand ? 700 : 400 });
+        rc(g, 140, y + 2, 300 * c.cos / mx * pr, 17, { rx: 3, fill: d.color });
+        tx(g, 146 + 300 * c.cos / mx * pr, y + 15, fmt(c.cos, 3), { "font-size": 13, fill: INK });
+        g.addEventListener("mousemove", function (ev) { RN.tip.mostrar("<b>" + esc(c.t.id) + "</b> · p. " + c.t.page + "<br>" + esc(c.t.texto.split(" ").slice(0, 18).join(" ")) + "…", ev.clientX, ev.clientY); });
+        g.addEventListener("mouseleave", function () { RN.tip.ocultar(); });
+      });
+      if (R.nc < filas.length) {
+        const y = 36 + R.nc * 28 - 3;
+        el("line", { x1: 8, y1: y, x2: 512, y2: y, stroke: AC, "stroke-width": 1.6, "stroke-dasharray": "6 4" }, sb);
+        tx(sb, 512, y - 6, "↑ " + R.nc + " candidatos (2·K)", { "text-anchor": "end", "font-size": 13, fill: INK, "font-weight": 700 });
+      }
+    }
+    function reordena(pr) {
+      vaciar(srr);
+      const n = R.nc, H = 62 + n * 32;
+      srr.setAttribute("viewBox", "0 0 520 " + H);
+      tx(srr, 140, 22, "por coseno", { "text-anchor": "middle", "font-weight": 700, fill: INK2 });
+      tx(srr, 390, 22, "tras reordenar", { "text-anchor": "middle", "font-weight": 700, fill: INK2 });
+      const y = function (r) { return 52 + r * 32; };
+      R.cand.forEach(function (c) {
+        const d = DOCS[c.t.doc], queda = c.r1 < R.K;
+        const y1 = y(c.r0) - 5, y2 = RN.lerp(y(c.r0), y(c.r1), pr) - 5;
+        el("line", { x1: 214, y1: y1, x2: RN.lerp(214, 312, Math.max(pr, 0.001)), y2: y2, stroke: d.color, "stroke-width": queda ? 3 : 1.8, "stroke-dasharray": queda ? "" : "5 4", opacity: queda ? 1 : 0.55 }, srr);
+        tx(srr, 206, y(c.r0), (c.r0 + 1) + ". " + c.t.id + " · " + fmt(c.cos, 2), { "text-anchor": "end", "font-size": 13 });
+        if (pr >= 1) tx(srr, 320, y(c.r1), (c.r1 + 1) + ". " + c.t.id + " · " + fmt(c.score, 2) + (queda ? "" : "  ✕"), { "font-size": 13, "font-weight": queda ? 700 : 400, fill: queda ? INK : MUT });
+      });
+      if (R.K < n) { const yy = y(R.K) - 21; el("line", { x1: 300, y1: yy, x2: 512, y2: yy, stroke: AC, "stroke-width": 1.6, "stroke-dasharray": "6 4" }, srr); tx(srr, 512, H - 6, "por debajo de la línea se descartan (K = " + R.K + ")", { "text-anchor": "end", "font-size": 12.5, fill: INK2 }); }
+    }
+    function prompt() {
+      let s = "Usa solo este contexto para responder. Si la respuesta no está en el contexto, dilo.\n\n";
+      R.fin.forEach(function (c, k) { const d = DOCS[c.t.doc]; s += "[" + (k + 1) + "] " + d.id + " · " + d.fuente + " · p. " + c.t.page + " · offset " + c.t.offset + "\n«" + c.t.texto + "»\n\n"; });
+      s += "Pregunta: " + q.value.trim() + "\nRespuesta (cita las fuentes con [n]):";
+      $("con-prompt").innerHTML = esc(s).replace(/^(\[\d+\][^\n]*)$/gm, '<span class="kw">$1</span>').replace(/^(Pregunta:[^\n]*)$/m, '<span class="fn">$1</span>');
+    }
+    function todo() { R = consulta(); pasos(); terms(); barras(1); reordena(1); prompt(); }
+    async function recorre() {
+      const g = ++gen; R = consulta();
+      paso = 0; pasos(); terms(); barras(0); reordena(0); $("con-prompt").textContent = "…";
+      await RN.espera(900); if (g !== gen) return;
+      paso = 1; pasos();
+      await RN.tween(900, function (t) { if (g === gen) barras(t); }); if (g !== gen) return;
+      await RN.espera(500); if (g !== gen) return;
+      paso = 2; pasos();
+      await RN.tween(1100, function (t) { if (g === gen) reordena(t); }); if (g !== gen) return;
+      await RN.espera(600); if (g !== gen) return;
+      paso = 3; pasos(); prompt();
+      await RN.espera(1600); if (g !== gen) return;
+      paso = -1; pasos();
+    }
+    q.addEventListener("input", function () { gen++; paso = -1; todo(); });
+    sel.addEventListener("change", function () { q.value = sel.value; gen++; paso = -1; todo(); });
+    sk.addEventListener("input", function () { $("con-ko").textContent = sk.value; gen++; paso = -1; todo(); });
+    $("con-play").addEventListener("click", recorre);
+    RAG.oyentes.push(function () { gen++; paso = -1; todo(); });
+    todo();
+  })();
+
+  // ================================================================ 8 · Embeddings y coseno
+  (function () {
+    const svg = $("emb-circ"), lect = $("emb-lect"), chk = $("emb-norm");
+    const CX = 210, CY = 200, R = 150;
+    let a = { ang: 30, len: 1 }, b = { ang: 55, len: 1 }, arr = null;
+    const rad = (g) => g * Math.PI / 180;
+    function v(o) { const l = chk.checked ? 1 : o.len; return [l * Math.cos(rad(o.ang)), l * Math.sin(rad(o.ang))]; }
+    function px(p) { return [CX + p[0] * R, CY - p[1] * R]; }
+    function dibuja() {
+      vaciar(svg); marcadores(svg, "emb");
+      el("line", { x1: CX - 195, y1: CY, x2: CX + 195, y2: CY, stroke: "#E4E7EB", "stroke-width": 1.5 }, svg);
+      el("line", { x1: CX, y1: CY - 190, x2: CX, y2: CY + 190, stroke: "#E4E7EB", "stroke-width": 1.5 }, svg);
+      el("circle", { cx: CX, cy: CY, r: R, fill: "none", stroke: "#B0BEC5", "stroke-width": 1.8, "stroke-dasharray": chk.checked ? "" : "5 5" }, svg);
+      tx(svg, CX + R * 0.72, CY + R * 0.72 + 22, "círculo unidad", { "font-size": 13, fill: MUT });
+      const va = v(a), vb = v(b), pa = px(va), pb = px(vb);
+      const na = Math.hypot(va[0], va[1]), nb = Math.hypot(vb[0], vb[1]);
+      // proyección de b sobre a
+      const ua = [va[0] / na, va[1] / na], pr = vb[0] * ua[0] + vb[1] * ua[1], pp = px([ua[0] * pr, ua[1] * pr]);
+      el("line", { x1: pb[0], y1: pb[1], x2: pp[0], y2: pp[1], stroke: INK2, "stroke-width": 1.4, "stroke-dasharray": "4 4" }, svg);
+      // ángulo
+      let a1 = a.ang, a2 = b.ang, d = ((a2 - a1) % 360 + 540) % 360 - 180;
+      const r0 = 44, s0 = px([r0 / R * Math.cos(rad(a1)), r0 / R * Math.sin(rad(a1))]), e0 = px([r0 / R * Math.cos(rad(a1 + d)), r0 / R * Math.sin(rad(a1 + d))]);
+      el("path", { d: "M" + s0.join(",") + " A" + r0 + "," + r0 + " 0 0 " + (d > 0 ? 0 : 1) + " " + e0.join(","), fill: "none", stroke: AC, "stroke-width": 2.5 }, svg);
+      const am = rad(a1 + d / 2), pt = px([(r0 + 20) / R * Math.cos(am), (r0 + 20) / R * Math.sin(am)]);
+      tx(svg, pt[0], pt[1] + 5, "θ", { "text-anchor": "middle", "font-size": 16, "font-weight": 800, fill: AC });
+      [[pa, C.s1, "a", "s1"], [pb, C.s2, "b", "s2"]].forEach(function (z, k) {
+        el("line", { x1: CX, y1: CY, x2: z[0][0], y2: z[0][1], stroke: z[1], "stroke-width": 3.2, "marker-end": "url(#mk-emb-" + z[3] + ")" }, svg);
+        const h = el("circle", { cx: z[0][0], cy: z[0][1], r: 11, fill: RN.rgba(z[1], 0.25), stroke: z[1], "stroke-width": 2 }, svg);
+        h.setAttribute("class", "asa");
+        h.addEventListener("pointerdown", function (ev) { arr = k === 0 ? a : b; svg.setPointerCapture(ev.pointerId); ev.preventDefault(); });
+        const dir = Math.atan2(CY - z[0][1], z[0][0] - CX);
+        tx(svg, z[0][0] + 22 * Math.cos(dir), z[0][1] - 22 * Math.sin(dir) + 6, z[2], { "text-anchor": "middle", "font-size": 18, "font-weight": 800 });
+      });
+      lectura(va, vb, na, nb);
+    }
+    function lectura(va, vb, na, nb) {
+      const ab = va[0] * vb[0] + va[1] * vb[1], cs = ab / (na * nb), th = Math.acos(RN.limita(cs, -1, 1)) * 180 / Math.PI;
+      const v2 = function (p) { return '<span class="vec">(' + fmt(p[0], 2) + "; " + fmt(p[1], 2) + ")</span>"; };
+      let h = "<p><b style=\"color:" + C.s1 + "\">●</b> a = " + v2(va) + " &nbsp; |a| = " + fmt(na, 2) + "</p>";
+      h += "<p><b style=\"color:" + C.s2 + "\">●</b> b = " + v2(vb) + " &nbsp; |b| = " + fmt(nb, 2) + "</p>";
+      h += '<div class="formula">a·b = a₁b₁ + a₂b₂ = ' + fmt(ab, 3) + "</div>";
+      h += '<div class="formula">cos θ = a·b / (|a|·|b|) = ' + fmt(cs, 3) + '<span class="com">θ = ' + fmt(th, 0) + "°</span></div>";
+      if (chk.checked) h += '<div class="bien">✓ Con vectores normalizados (|a| = |b| = 1), el producto escalar ya es el coseno: no hace falta dividir.</div>';
+      else h += '<div class="nota">Sin normalizar, a·b = ' + fmt(ab, 3) + " no es el coseno (" + fmt(cs, 3) + "): depende también de las longitudes, y un texto más largo podría «ganar» solo por tener un vector más largo.</div>";
+      h += '<p class="pie">cos = 1: misma dirección · 0: sin relación · −1: opuestos. La línea discontinua es la proyección de b sobre a.</p>';
+      lect.innerHTML = h;
+    }
+    svg.addEventListener("pointermove", function (ev) {
+      if (!arr) return;
+      const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      const x = (p.x - CX) / R, y = (CY - p.y) / R;
+      arr.ang = Math.atan2(y, x) * 180 / Math.PI;
+      arr.len = RN.limita(Math.hypot(x, y), 0.25, 1.25);
+      dibuja();
+    });
+    ["pointerup", "pointercancel"].forEach(function (e) { svg.addEventListener(e, function () { arr = null; }); });
+    segmentado($("emb-pre"), function (bt) { a.ang = +bt.dataset.a; b.ang = +bt.dataset.b; a.len = 1.2; b.len = 0.7; dibuja(); });
+    chk.addEventListener("change", function () { if (!chk.checked && a.len === 1 && b.len === 1) { a.len = 1.2; b.len = 0.7; } dibuja(); });
+    a.len = 1.2; b.len = 0.7;
+    dibuja();
+
+    // ---- mapa de frases (TF-IDF + PCA real)
+    const TEMAS = [
+      { nombre: "GPU y hardware", color: C.s1, f: ["la GPU multiplica matrices con miles de núcleos en paralelo", "la memoria de la GPU limita el tamaño de lote", "CUDA permite programar los núcleos de la GPU", "con lotes más grandes hace falta más memoria en la GPU", "cada núcleo calcula una celda de la matriz en paralelo", "la GPU se queda ociosa si los datos no llegan a tiempo"] },
+      { nombre: "regularización", color: C.s2, f: ["el dropout apaga neuronas al azar para evitar el sobreajuste", "la regularización L2 encoge los pesos para evitar el sobreajuste", "la parada temprana vigila la pérdida de validación", "el sobreajuste aparece cuando la pérdida de validación sube", "L1 lleva muchos pesos a cero y regulariza la red", "con pocos datos la red memoriza en lugar de generalizar"] },
+      { nombre: "recuperación (RAG)", color: C.s3, f: ["RAG recupera fragmentos de documentos antes de responder", "los embeddings convierten cada fragmento en un vector", "la similitud coseno compara el vector de la pregunta con los fragmentos", "el índice vectorial guarda los vectores de los fragmentos", "el LLM responde usando solo los fragmentos recuperados", "citar la fuente de cada fragmento reduce las alucinaciones"] }
+    ];
+    const FR = []; TEMAS.forEach(function (t, k) { t.f.forEach(function (s) { FR.push({ s: s, tema: k }); }); });
+    FR.forEach(function (f) { f.terms = terminos(f.s); });
+    const idf = construyeIdf(FR.map(function (f) { return f.terms; }));
+    const vocab = Array.from(idf.keys());
+    FR.forEach(function (f) { f.vec = vectoriza(f.terms, idf); f.x = vocab.map(function (w) { return f.vec.get(w) || 0; }); });
+    const n = FR.length, mu = vocab.map(function (_, j) { return suma(FR.map(function (f) { return f.x[j]; })) / n; });
+    const Xc = FR.map(function (f) { return f.x.map(function (v, j) { return v - mu[j]; }); });
+    let G = Xc.map(function (r) { return Xc.map(function (s) { return dot(r, s); }); });
+    const traza = suma(G.map(function (r, i) { return r[i]; }));
+    const eig = [];
+    for (let k = 0; k < 2; k++) {
+      let u = G.map(function (_, i) { return Math.sin(i * 1.7 + 1 + k); }), lam = 0;
+      for (let it = 0; it < 800; it++) { const w = G.map(function (r) { return dot(r, u); }); lam = Math.sqrt(dot(w, w)); u = w.map(function (x) { return x / lam; }); }
+      eig.push({ u: u, lam: lam });
+      G = G.map(function (r, i) { return r.map(function (x, j) { return x - lam * u[i] * u[j]; }); });
+    }
+    const ejes = eig.map(function (e) { return vocab.map(function (_, j) { let s = 0; for (let i = 0; i < n; i++) s += Xc[i][j] * e.u[i]; return s / Math.sqrt(e.lam); }); });
+    const proy = function (x) { return ejes.map(function (ax) { let s = 0; for (let j = 0; j < x.length; j++) s += (x[j] - mu[j]) * ax[j]; return s; }); };
+    FR.forEach(function (f) { f.p = proy(f.x); });
+    $("emb-var").textContent = "Los dos ejes del mapa recogen el " + fmt(eig[0].lam / traza * 100, 0) + " % y el " + fmt(eig[1].lam / traza * 100, 0) + " % de la varianza de " + vocab.length + " dimensiones: el mapa es una sombra aproximada; las vecinas se calculan con el vector completo.";
+    $("emb-ley").innerHTML = TEMAS.map(function (t) { return '<span><i class="punto" style="background:' + t.color + '"></i>' + t.nombre + "</span>"; }).join("") + '<span><i class="punto" style="background:' + INK + ';border-radius:2px;transform:rotate(45deg)"></i>tu frase</span>';
+    const cv = $("emb-mapa"), qi = $("emb-q");
+    let geo = null, Q = null;
+    function calculaQ() {
+      const ts = terminos(qi.value), vq = vectoriza(ts, idf);
+      const xq = vocab.map(function (w) { return vq.get(w) || 0; });
+      const vec = FR.map(function (f, i) { return { i: i, c: coseno(vq, f.vec) }; }).sort(function (x, y) { return y.c - x.c; }).slice(0, 3);
+      Q = { vacio: vq.size === 0, p: vq.size ? proy(xq) : null, vec: vec };
+      $("emb-vec").innerHTML = Q.vacio ? '<li><span class="pie">Ninguna palabra de tu frase está en el vocabulario de estas frases.</span></li>' : vec.map(function (v) { const f = FR[v.i]; return '<li><span class="n">' + fmt(v.c, 2) + '</span><span class="punto" style="background:' + TEMAS[f.tema].color + '"></span><span>' + esc(f.s) + "</span></li>"; }).join("");
+    }
+    function pinta() {
+      const L = RN.lienzo(cv, 380), c = L.ctx, m = 34;
+      c.fillStyle = C.surface; c.fillRect(0, 0, L.w, L.h);
+      const todos = FR.map(function (f) { return f.p; }).concat(Q && Q.p ? [Q.p] : []);
+      const xs = todos.map(function (p) { return p[0]; }), ys = todos.map(function (p) { return p[1]; });
+      const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+      const s = Math.min((L.w - 2 * m) / ((x1 - x0) || 1), (L.h - 2 * m) / ((y1 - y0) || 1));
+      const ox = (L.w - s * (x1 - x0)) / 2, oy = (L.h - s * (y1 - y0)) / 2;
+      const P = function (p) { return [ox + (p[0] - x0) * s, L.h - oy - (p[1] - y0) * s]; };
+      geo = { P: P };
+      const o = P([0, 0]);
+      c.strokeStyle = C.grid; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(0, o[1]); c.lineTo(L.w, o[1]); c.moveTo(o[0], 0); c.lineTo(o[0], L.h); c.stroke();
+      c.fillStyle = MUT; c.font = "12px system-ui, sans-serif"; c.textAlign = "right"; c.textBaseline = "bottom";
+      c.fillText("componente principal 1 →", L.w - 8, L.h - 6);
+      c.textAlign = "left"; c.textBaseline = "top"; c.fillText("↑ componente principal 2", 8, 8);
+      if (Q && Q.p) {
+        const pq = P(Q.p);
+        Q.vec.forEach(function (v) {
+          const pf = P(FR[v.i].p);
+          c.strokeStyle = INK2; c.lineWidth = 1.5; c.setLineDash([5, 4]); c.beginPath(); c.moveTo(pq[0], pq[1]); c.lineTo(pf[0], pf[1]); c.stroke(); c.setLineDash([]);
+        });
+      }
+      FR.forEach(function (f) { const p = P(f.p); c.beginPath(); c.arc(p[0], p[1], 7, 0, 7); c.fillStyle = TEMAS[f.tema].color; c.fill(); c.lineWidth = 2; c.strokeStyle = "#fff"; c.stroke(); });
+      if (Q && Q.p) {
+        const pq = P(Q.p);
+        c.save(); c.translate(pq[0], pq[1]); c.rotate(Math.PI / 4); c.fillStyle = INK; c.fillRect(-8, -8, 16, 16); c.lineWidth = 2; c.strokeStyle = "#fff"; c.strokeRect(-8, -8, 16, 16); c.restore();
+        c.font = "700 13px system-ui, sans-serif"; c.fillStyle = INK; c.textAlign = "left"; c.textBaseline = "middle";
+        c.lineWidth = 4; c.strokeStyle = "#fff"; c.strokeText("tu frase", pq[0] + 14, pq[1] - 12); c.fillText("tu frase", pq[0] + 14, pq[1] - 12);
+      }
+    }
+    cv.addEventListener("mousemove", function (ev) {
+      if (!geo) return;
+      const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+      let mejor = null, md = 14;
+      FR.forEach(function (f) { const p = geo.P(f.p), d = Math.hypot(p[0] - x, p[1] - y); if (d < md) { md = d; mejor = f; } });
+      if (mejor) RN.tip.mostrar("<b>" + TEMAS[mejor.tema].nombre + "</b><br>" + esc(mejor.s), ev.clientX, ev.clientY); else RN.tip.ocultar();
+    });
+    cv.addEventListener("mouseleave", function () { RN.tip.ocultar(); });
+    qi.addEventListener("input", function () { calculaQ(); pinta(); });
+    RN.alCambiarTam(cv, pinta);
+    calculaQ(); pinta();
+    $("emb-meta").innerHTML = jsonHtml({ doc_id: "T09-gpu", source: "Tema 9 · I — Aceleración con GPU", page: 2, offset: 30, text: "A menudo el cuello de botella…" }).replace(/\n}$/, ",\n  <span class=\"kw\">\"embedding\"</span>: [<span class=\"num\">0.031</span>, <span class=\"num\">-0.084</span>, … <span class=\"com\">768 números</span>]\n}");
+  })();
+
+  // ================================================================ 9 · MCP
+  (function () {
+    const svg = $("mcp-svg"), json = $("mcp-json"), lis = Array.from($("mcp-pasos").children);
+    let paso = 4, gen = 0, fl = null;
+    const SQL = "SELECT COUNT(*) FROM pedidos WHERE estado = 'pendiente'";
+    const MSG = [
+      "",
+      "// 1 · Descubrir — cliente → servidor\n" + JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) + "\n\n// servidor → cliente\n" + JSON.stringify({ jsonrpc: "2.0", id: 1, result: { tools: [{ name: "consultar_sql", description: "Consulta de solo lectura en la base de datos de pedidos", inputSchema: { type: "object", properties: { consulta: { type: "string" } }, required: ["consulta"] } }, { name: "listar_tablas", description: "Lista las tablas disponibles", inputSchema: { type: "object", properties: {} } }] } }, null, 2),
+      "// 2 · Decidir — dentro del host, sin mensajes al servidor\n// El LLM ve la pregunta y la lista de tools y elige:\n" + JSON.stringify({ tool: "consultar_sql", arguments: { consulta: SQL } }, null, 2),
+      "// 3 · Ejecutar — cliente → servidor\n" + JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "consultar_sql", arguments: { consulta: SQL } } }, null, 2) + "\n\n// servidor → cliente\n" + JSON.stringify({ jsonrpc: "2.0", id: 2, result: { content: [{ type: "text", text: "[{\"count\": 42}]" }], isError: false } }, null, 2),
+      "// 4 · Insertar — el resultado entra en el contexto\n" + JSON.stringify([{ role: "user", content: "¿Cuántos pedidos hay pendientes?" }, { role: "tool", name: "consultar_sql", content: "[{\"count\": 42}]" }, { role: "assistant", content: "Hay 42 pedidos pendientes de envío." }], null, 2)
+    ];
+    function dibuja() {
+      vaciar(svg); marcadores(svg, "mcp");
+      caja(svg, 14, 14, 386, 372, C.s1, { fill: RN.rgba(C.s1, 0.05) });
+      tx(svg, 32, 42, "Host · tu aplicación", { "font-weight": 800, "font-size": 16 });
+      tx(svg, 32, 62, "IDE, chat o agente", { "font-size": 13.5, fill: INK2 });
+      caja(svg, 34, 80, 160, 88, C.s7, { fill: "#fff" });
+      tx(svg, 114, 116, "LLM", { "text-anchor": "middle", "font-weight": 800, "font-size": 17 });
+      tx(svg, 114, 138, "decide qué tool usar", { "text-anchor": "middle", "font-size": 13, fill: INK2 });
+      caja(svg, 220, 80, 160, 88, C.s1, { fill: "#fff" });
+      tx(svg, 300, 116, "Cliente MCP", { "text-anchor": "middle", "font-weight": 800, "font-size": 15.5 });
+      tx(svg, 300, 138, paso >= 1 ? "conoce 2 tools" : "habla el protocolo", { "text-anchor": "middle", "font-size": 13, fill: paso >= 1 ? INK : INK2, "font-weight": paso >= 1 ? 700 : 400 });
+      el("line", { x1: 194, y1: 124, x2: 220, y2: 124, stroke: INK2, "stroke-width": 1.8 }, svg);
+      if (paso === 2 || fl === "decide") {
+        rc(svg, 40, 172, 300, 30, { rx: 15, fill: AC });
+        tx(svg, 190, 192, "→ consultar_sql(consulta)", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 700, fill: "#fff", "font-family": MONO });
+      }
+      rc(svg, 34, 208, 346, 166, { rx: 10, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.5 });
+      tx(svg, 48, 230, "Contexto de la conversación", { "font-size": 13, "font-weight": 700, fill: MUT });
+      const bur = function (y, t, col, fondo) { const w = Math.min(316, anchoTxt(t, 13.5) + 20); rc(svg, 48, y, w, 28, { rx: 14, fill: fondo, stroke: col, "stroke-width": 1.3 }); tx(svg, 58, y + 19, t, { "font-size": 13.5 }); };
+      bur(242, "Usuario: ¿cuántos pedidos hay pendientes?", C.s1, RN.rgba(C.s1, 0.1));
+      if (paso >= 4) { bur(280, "consultar_sql → [{\"count\": 42}]", AC, RN.rgba(AC, 0.12)); bur(318, "LLM: hay 42 pedidos pendientes de envío.", C.s7, RN.rgba(C.s7, 0.1)); }
+      // canal
+      tx(svg, 500, 84, "JSON-RPC 2.0", { "text-anchor": "middle", "font-weight": 800, "font-size": 14 });
+      tx(svg, 500, 196, "stdio (local) o HTTP", { "text-anchor": "middle", "font-size": 13, fill: INK2 });
+      flecha(svg, 402, 110, 596, 110, "mcp", paso === 1 || paso === 3 ? "a" : "g", { "stroke-dasharray": "6 5" });
+      flecha(svg, 596, 150, 402, 150, "mcp", paso === 1 || paso === 3 ? "a" : "g", { "stroke-dasharray": "6 5" });
+      tx(svg, 500, 128, "petición", { "text-anchor": "middle", "font-size": 12.5, fill: MUT });
+      tx(svg, 500, 170, "respuesta", { "text-anchor": "middle", "font-size": 12.5, fill: MUT });
+      // servidor
+      caja(svg, 600, 14, 386, 372, C.s3, { fill: RN.rgba(C.s3, 0.05) });
+      tx(svg, 618, 42, "Servidor MCP", { "font-weight": 800, "font-size": 16 });
+      tx(svg, 618, 62, "base de datos de pedidos", { "font-size": 13.5, fill: INK2 });
+      const sec = function (y, t, items, on, exe) {
+        tx(svg, 618, y, t, { "font-size": 14, "font-weight": 700 });
+        items.forEach(function (it, k) {
+          const w = anchoTxt(it, 13) + 22, x = 618 + k * 172;
+          rc(svg, x, y + 10, w, 30, { rx: 8, fill: exe && k === 0 ? AC : on ? RN.rgba(C.s3, 0.2) : "#fff", stroke: exe && k === 0 ? AC : C.s3, "stroke-width": on ? 2 : 1.3 });
+          tx(svg, x + 11, y + 30, it, { "font-size": 13, "font-family": MONO, fill: exe && k === 0 ? "#fff" : INK, "font-weight": 600 });
+        });
+      };
+      sec(102, "Tools · acciones", ["consultar_sql", "listar_tablas"], paso >= 1, paso === 3 || fl === "exe");
+      sec(190, "Resources · datos para leer", ["esquema://pedidos"], false, false);
+      sec(278, "Prompts · plantillas", ["informe_diario"], false, false);
+      // base de datos
+      el("path", { d: "M906,300 L906,350 A34,9 0 0 0 974,350 L974,300", fill: "#fff", stroke: INK2, "stroke-width": 1.6 }, svg);
+      el("ellipse", { cx: 940, cy: 300, rx: 34, ry: 9, fill: RN.rgba(INK2, 0.12), stroke: INK2, "stroke-width": 1.6 }, svg);
+      tx(svg, 940, 336, "BD", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 700 });
+      if (paso === 3 || fl === "exe") linea(svg, [[760, 127], [940, 127], [940, 287]], "mcp", "a", { "stroke-width": 2.4 });
+      lis.forEach(function (li, k) { li.classList.toggle("activo", k + 1 === paso); li.classList.toggle("hecho", k + 1 < paso); });
+      json.innerHTML = paso >= 1 ? MSG[paso].split("\n").map(function (l) { return l.indexOf("//") === 0 ? '<span class="com">' + esc(l) + "</span>" : jsonHtml(l); }).join("\n") : '<span class="com">// Pulsa «Siguiente» o «Reproducir»</span>';
+    }
+    async function anima(k, g) {
+      if (RN.reducirMovimiento) return;
+      if (k === 1) { await viaje(svg, [[410, 110], [590, 110]], { etiqueta: "tools/list", mono: true, ms: 900 }); if (g !== gen) return; await viaje(svg, [[590, 150], [410, 150]], { etiqueta: "2 tools", mono: true, color: C.s3, ms: 900 }); }
+      if (k === 2) { fl = "decide"; dibuja(); await RN.espera(700); fl = null; }
+      if (k === 3) { await viaje(svg, [[410, 110], [590, 110]], { etiqueta: "tools/call", mono: true, ms: 900 }); if (g !== gen) return; fl = "exe"; dibuja(); await RN.espera(700); fl = null; if (g !== gen) return; await viaje(svg, [[590, 150], [410, 150]], { etiqueta: "resultado", mono: true, color: C.s3, ms: 900 }); }
+      if (k === 4) { await viaje(svg, [[300, 168], [300, 200], [200, 294]], { etiqueta: "42", mono: true, ms: 800 }); }
+    }
+    async function ir(k, animar) {
+      const g = ++gen; fl = null;
+      paso = k - 1 < 0 ? 0 : k - 1;
+      if (animar) { paso = Math.max(0, k - 1); dibuja(); lis.forEach(function (li, j) { li.classList.toggle("activo", j + 1 === k); }); await anima(k, g); if (g !== gen) return; }
+      paso = k; dibuja();
+    }
+    $("mcp-sig").addEventListener("click", function () { ir(paso >= 4 ? 1 : paso + 1, true); });
+    $("mcp-ant").addEventListener("click", function () { gen++; fl = null; paso = Math.max(0, paso - 1); dibuja(); });
+    $("mcp-play").addEventListener("click", async function () {
+      const g0 = gen + 1;
+      paso = 0; gen++; dibuja();
+      for (let k = 1; k <= 4; k++) { await ir(k, true); if (gen !== g0 + k) return; await RN.espera(500); if (gen !== g0 + k) return; }
+    });
+    dibuja();
+  })();
+
+  // ================================================================ 10 · Nodos en local
+  (function () {
+    const svg = $("loc-svg"), lis = Array.from($("loc-pasos").children), op = $("loc-op");
+    let inf = 0, idx = 0, paso = 0, gen = 0;
+    const INF = [
+      { n: "Ollama", e: "localhost:11434/api/chat", d: "La opción de arranque más rápido: ofrece una API local por defecto y gestiona los modelos con facilidad." },
+      { n: "llama.cpp", e: "llama-server · localhost:8080", d: "Inferencia muy eficiente optimizada para el formato GGUF; permite correr modelos grandes incluso en CPU modestas." },
+      { n: "vLLM", e: "localhost:8000/v1/chat/completions", d: "Servidor de inferencia de alto rendimiento (mucho caudal) con endpoints compatibles con los de OpenAI." }
+    ];
+    const IDX = [
+      { n: "SQLite + extensión vectorial", d: "Ligero: un único fichero con una extensión vectorial; suficiente para volúmenes pequeños." },
+      { n: "FAISS · en memoria", d: "Biblioteca para búsquedas de vecinos muy rápidas en memoria." },
+      { n: "Chroma · base vectorial", d: "Base de datos vectorial con colecciones y metadatos: una gestión más robusta." }
+    ];
+    const RUTAS = [
+      [[[178, 196], [200, 196], [200, 100], [222, 100]], "pregunta"],
+      [[[430, 100], [470, 100]], "vector"],
+      [[[620, 140], [620, 162], [178, 162], [178, 196]], "top-K"],
+      [[[178, 225], [258, 225]], "prompt"],
+      [[[410, 272], [410, 304]], "tools/call"],
+      [[[560, 344], [582, 344], [582, 296], [602, 296]], "SQL"],
+      [[[602, 296], [582, 296], [582, 344], [560, 344]], "JSON"],
+      [[[410, 304], [410, 272]], "resultado"],
+      [[[258, 240], [178, 240]], "respuesta"]
+    ];
+    const PASO_DE_RUTA = [1, 1, 2, 3, 4, 5, 5, 5, 6];
+    function nodo(x, y, w, h, t, ls, col, act) {
+      caja(svg, x, y, w, h, col, { fill: act ? RN.rgba(col, 0.22) : "#fff", "stroke-width": act ? 3 : 1.8 });
+      tx(svg, x + 14, y + 26, t, { "font-weight": 800, "font-size": 15 });
+      ls.forEach(function (l, k) { tx(svg, x + 14, y + 46 + k * 18, l[0], { "font-size": l[1] ? 13 : 13.5, fill: l[1] ? INK : INK2, "font-family": l[1] ? MONO : null }); });
+    }
+    function dibuja(ruta) {
+      vaciar(svg); marcadores(svg, "loc");
+      rc(svg, 8, 8, 798, 404, { rx: 16, fill: RN.rgba(C.s3, 0.04), stroke: C.s3, "stroke-width": 2, "stroke-dasharray": "9 6" });
+      tx(svg, 26, 36, "Tu red local · los datos no salen de aquí", { "font-weight": 800, "font-size": 15, fill: INK });
+      const A = function (k) { return paso === k; };
+      nodo(26, 180, 152, 76, "Aplicación", [["el usuario pregunta"]], C.s1, A(1) || A(3) || A(6));
+      nodo(222, 58, 208, 84, "Nodo de embeddings", [["sentence-transformers"], ["microservicio Python"]], C.s7, A(1));
+      nodo(470, 58, 312, 84, "Nodo de indexación", [[IDX[idx].n], ["trozos + metadatos"]], C.s4, A(2));
+      nodo(258, 180, 302, 92, "Nodo de inferencia · " + INF[inf].n, [[INF[inf].e, true], ["el LLM, en tu propio hardware"]], C.s1, A(3) || A(4) || A(6));
+      nodo(258, 304, 302, 84, "Nodo MCP local", [["brazo ejecutor: tools y datos"], ["sin salir de la red"]], C.s3, A(4) || A(5));
+      rc(svg, 600, 186, 186, 202, { rx: 10, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.5 });
+      tx(svg, 614, 208, "Recursos internos", { "font-size": 13.5, "font-weight": 700, fill: INK2 });
+      ["Ficheros del proyecto", "BD interna (SQL)", "Búsqueda semántica", "Scripts de utilidad"].forEach(function (t, k) {
+        const on = A(5) && k === 1;
+        rc(svg, 612, 220 + k * 40, 162, 32, { rx: 8, fill: on ? AC : RN.rgba(C.s3, 0.1), stroke: on ? AC : C.s3, "stroke-width": 1.3 });
+        tx(svg, 624, 241 + k * 40, t, { "font-size": 13.5, fill: on ? "#fff" : INK, "font-weight": on ? 700 : 400 });
+      });
+      // conexiones fijas
+      [[[178, 196], [200, 196], [200, 100], [222, 100]], [[430, 100], [470, 100]], [[620, 142], [620, 162], [178, 162], [178, 180]], [[178, 225], [258, 225]], [[410, 272], [410, 304]], [[560, 344], [582, 344], [582, 296], [602, 296]]].forEach(function (p) {
+        el("polyline", { points: p.map(function (q) { return q.join(","); }).join(" "), fill: "none", stroke: "#B0BEC5", "stroke-width": 1.8, "stroke-linejoin": "round" }, svg);
+      });
+      // internet, bloqueado
+      el("path", { d: "M858,232 a26,26 0 0 1 8,-50 a34,34 0 0 1 64,-8 a26,26 0 0 1 40,30 a20,20 0 0 1 -6,28 z", fill: "#fff", stroke: "#B0BEC5", "stroke-width": 2 }, svg);
+      tx(svg, 912, 214, "Internet", { "text-anchor": "middle", "font-size": 13.5, "font-weight": 700, fill: MUT });
+      el("line", { x1: 808, y1: 210, x2: 852, y2: 210, stroke: "#B0BEC5", "stroke-width": 2, "stroke-dasharray": "4 4" }, svg);
+      el("circle", { cx: 830, cy: 210, r: 12, fill: "#fff", stroke: C.bad, "stroke-width": 2.2 }, svg);
+      el("path", { d: "M824,204 L836,216 M836,204 L824,216", stroke: C.bad, "stroke-width": 2.6, "stroke-linecap": "round" }, svg);
+      lineas(svg, 912, 270, ["sin llamadas", "externas"], { "text-anchor": "middle", "font-size": 13.5, fill: INK2 }, 18);
+      lis.forEach(function (li, k) { li.classList.toggle("activo", k + 1 === paso); li.classList.toggle("hecho", paso > 0 && k + 1 < paso); });
+    }
+    function opciones() {
+      op.innerHTML = '<div class="box acento"><h3>' + esc(INF[inf].n) + '</h3><p>' + esc(INF[inf].d) + '</p><p class="pie">Punto de acceso por defecto: <code>' + esc(INF[inf].e) + "</code></p></div>"
+        + '<div class="box acento" style="margin-top:.7rem"><h3>' + esc(IDX[idx].n) + "</h3><p>" + esc(IDX[idx].d) + "</p></div>"
+        + '<p class="pie" style="margin-top:.6rem">El nodo de embeddings suele ser un microservicio en Python con sentence-transformers que convierte texto en vectores bajo demanda.</p>';
+    }
+    segmentado($("loc-inf"), function (b) { inf = +b.dataset.v; dibuja(); opciones(); });
+    segmentado($("loc-idx"), function (b) { idx = +b.dataset.v; dibuja(); opciones(); });
+    $("loc-play").addEventListener("click", async function () {
+      const g = ++gen;
+      for (let k = 0; k < RUTAS.length; k++) {
+        paso = PASO_DE_RUTA[k]; dibuja();
+        if (RN.reducirMovimiento) continue;
+        await viaje(svg, RUTAS[k][0], { etiqueta: RUTAS[k][1], ms: 750, mono: /\//.test(RUTAS[k][1]) });
+        if (g !== gen) return;
+      }
+      await RN.espera(1200); if (g !== gen) return;
+      paso = 0; dibuja();
+    });
+    dibuja(); opciones();
+  })();
+})();
+</script>
+</body>
+</html>

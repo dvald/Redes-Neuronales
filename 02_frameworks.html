@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 2 · Frameworks: TensorFlow y Keras — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .dos-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  @media (max-width: 900px) { .dos-col { grid-template-columns: 1fr; } }
+  pre.code .ln { display: block; padding: 0 .35rem; margin: 0 -.35rem; border-radius: 3px; min-height: 1.5em; transition: background .2s; }
+  pre.code .ln.on { background: rgba(255,203,107,.2); box-shadow: inset 3px 0 #FFCB6B; }
+  pre.code.compacto { font-size: .8rem; }
+  .titulo-code { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--ink2); margin: .2rem 0 .1rem; }
+
+  /* 1 · pila y conceptos */
+  .pila-grid { display: grid; grid-template-columns: minmax(360px, 1.2fr) minmax(280px, 1fr); gap: 1.2rem; align-items: start; }
+  @media (max-width: 900px) { .pila-grid { grid-template-columns: 1fr; } }
+  #pq-svg .nivel { cursor: pointer; }
+  .info-nivel { min-height: 15rem; }
+  .info-nivel .paso-act { font-size: .95rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; margin-top: .6rem; color: var(--ink); min-height: 2.6rem; }
+  .conceptos { display: flex; flex-wrap: wrap; gap: .45rem; margin: .4rem 0 .8rem; }
+  .conceptos button { font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #CFD8DC; background: #fff; color: var(--ink2); border-radius: 999px; padding: .28rem .75rem .28rem .5rem; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; }
+  .conceptos button i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .conceptos button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+  .cc { border-radius: 3px; padding: 0 1px; transition: background .2s, opacity .2s, box-shadow .2s; }
+  .cc[data-c="datos"] { background: rgba(42,120,214,.32); box-shadow: inset 0 -2px #5b9de8; }
+  .cc[data-c="pesos"] { background: rgba(98,80,214,.38); box-shadow: inset 0 -2px #8f80f0; }
+  .cc[data-c="delante"] { background: rgba(27,175,122,.30); box-shadow: inset 0 -2px #1baf7a; }
+  .cc[data-c="error"] { background: rgba(235,104,52,.32); box-shadow: inset 0 -2px #eb6834; }
+  .cc[data-c="deriv"] { background: rgba(227,73,72,.34); box-shadow: inset 0 -2px #f06a69; }
+  .cc[data-c="actual"] { background: rgba(237,161,0,.30); box-shadow: inset 0 -2px #eda100; }
+  .cc[data-c="epocas"] { background: rgba(232,123,164,.32); box-shadow: inset 0 -2px #e87ba4; }
+  .codigos[data-foco] .cc { background: transparent; box-shadow: none; }
+  .codigos[data-foco="datos"] .cc[data-c="datos"] { background: rgba(42,120,214,.55); box-shadow: inset 0 -2px #5b9de8; }
+  .codigos[data-foco="pesos"] .cc[data-c="pesos"] { background: rgba(98,80,214,.6); box-shadow: inset 0 -2px #8f80f0; }
+  .codigos[data-foco="delante"] .cc[data-c="delante"] { background: rgba(27,175,122,.5); box-shadow: inset 0 -2px #1baf7a; }
+  .codigos[data-foco="error"] .cc[data-c="error"] { background: rgba(235,104,52,.55); box-shadow: inset 0 -2px #eb6834; }
+  .codigos[data-foco="deriv"] .cc[data-c="deriv"] { background: rgba(227,73,72,.6); box-shadow: inset 0 -2px #f06a69; }
+  .codigos[data-foco="actual"] .cc[data-c="actual"] { background: rgba(237,161,0,.5); box-shadow: inset 0 -2px #eda100; }
+  .codigos[data-foco="epocas"] .cc[data-c="epocas"] { background: rgba(232,123,164,.55); box-shadow: inset 0 -2px #e87ba4; }
+  .resumen-code { display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: .9rem; color: var(--ink2); margin-top: .2rem; }
+  .resumen-code b { color: var(--ink); }
+
+  /* 2 · tensores */
+  .ten-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr); gap: 1rem; align-items: stretch; }
+  @media (max-width: 900px) { .ten-grid { grid-template-columns: 1fr; } }
+  .forma-panel { display: flex; flex-direction: column; gap: .6rem; }
+  .forma { font-family: var(--mono); font-size: 2rem; font-weight: 800; color: var(--ink); line-height: 1.2; }
+  .dims { list-style: none; margin: 0 !important; padding: 0; }
+  .dims li { display: flex; align-items: center; gap: .5rem; margin-bottom: .3rem; font-size: .95rem; }
+  .dims li b { font-family: var(--mono); min-width: 2.6rem; text-align: right; }
+  .dims li i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  #te-svg image { image-rendering: pixelated; }
+
+  /* 3 · grafo */
+  #gr-ctl .ctl { min-width: 8.6rem; }
+  #gr-ctl input[type=range] { width: 8.6rem; }
+  .cadena { font-family: var(--mat); font-size: 1.08rem; white-space: normal !important; }
+
+  /* 5 · TF1 frente a TF2 */
+  .linea-t { display: flex; flex-wrap: wrap; gap: .3rem; min-height: 2.1rem; align-items: center; padding: .35rem .5rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-top: .4rem; }
+  .linea-t .chip { color: #fff; font-size: .78rem; animation: aparecer .3s ease-out; }
+  .linea-t .vacio { color: var(--muted); font-size: .85rem; }
+  .paso-tf { font-size: 1.02rem; font-weight: 600; color: var(--ink); background: var(--acento-l); border-radius: 8px; padding: .55rem .9rem; margin: .3rem 0 .8rem; min-height: 2.6rem; }
+
+  /* 6 · otros frameworks */
+  .fws { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .7rem; margin-bottom: 1rem; }
+  @media (max-width: 1000px) { .fws { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .fw { font: inherit; text-align: left; background: #fff; border: 1px solid var(--line); border-top: 5px solid var(--c); border-radius: 10px; padding: .65rem .75rem; cursor: pointer; display: flex; flex-direction: column; gap: .25rem; transition: box-shadow .15s; }
+  .fw:hover { box-shadow: 0 4px 14px rgba(0,0,0,.09); }
+  .fw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--c); }
+  .fw .n { font-weight: 800; font-size: 1.02rem; color: var(--ink); }
+  .fw .o { font-size: .78rem; font-weight: 700; color: var(--ink2); }
+  .fw .d { font-size: .86rem; color: #37474F; line-height: 1.4; }
+
+  /* 7 · constructor Keras */
+  .capas-ed { display: flex; flex-direction: column; gap: .45rem; margin: .3rem 0 .6rem; }
+  .capa-ed { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: .4rem .7rem; }
+  .capa-ed .tit { font-weight: 800; min-width: 7.5rem; }
+  .capa-ed label { font-size: .85rem; color: var(--ink2); font-weight: 700; display: inline-flex; align-items: center; gap: .35rem; }
+  .capa-ed input[type=number] { width: 5.5rem; }
+  .capa-ed .quitar { margin-left: auto; }
+  .capa-ed.fija { background: var(--soft); }
+  .presets { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: .5rem; }
+  .tabla.summary td, .tabla.summary th { font-size: .86rem; }
+  .tabla.summary td.mono { font-family: var(--mono); white-space: nowrap; }
+  .barra-p { height: 6px; border-radius: 3px; background: var(--acento); margin: 3px 0 0 auto; }
+  .ventajas .box h3 { font-size: .98rem; }
+  .ventajas .box p { margin: 0; font-size: .92rem; }
+  .ventajas svg { width: 44px; height: 44px; display: block; margin-bottom: .3rem; }
+
+  /* 8 · compile y fit */
+  .fit-grid { display: grid; grid-template-columns: minmax(330px, .95fr) minmax(360px, 1.05fr); gap: 1rem; align-items: start; }
+  @media (max-width: 960px) { .fit-grid { grid-template-columns: 1fr; } }
+  .fit-sub { display: grid; grid-template-columns: minmax(0, 1fr) 10.5rem; gap: .8rem; align-items: start; margin-top: .7rem; }
+  .fit-sub .kpi { min-width: 0; margin-bottom: .5rem; padding: .4rem .7rem; }
+  .fit-sub .kpi .v { font-size: 1.25rem; }
+  .chips-c { display: flex; flex-wrap: wrap; gap: .4rem; min-height: 2rem; margin-top: .5rem; }
+  .chips-c .chip { background: var(--acento-l); color: var(--ink); border: 1px solid #90CAF9; font-family: var(--mono); font-weight: 600; font-size: .8rem; transition: opacity .4s; }
+  #fi-datos { aspect-ratio: 1 / 1; cursor: crosshair; }
+</style>
+</head>
+<body class="bloque-fund" data-pagina="02_frameworks.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 2</span>Frameworks: TensorFlow y Keras</h1>
+  <p>Qué hace un framework por nosotros, qué son los tensores y el grafo de computación, y cómo se construye y entrena una red con Keras.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-porque" aria-controls="p-porque" aria-selected="true">1 · ¿Por qué un framework?</button>
+  <button class="tab" role="tab" id="t-tensores" aria-controls="p-tensores" aria-selected="false">2 · Tensores</button>
+  <button class="tab" role="tab" id="t-grafo" aria-controls="p-grafo" aria-selected="false">3 · Grafo</button>
+  <button class="tab" role="tab" id="t-porgrafos" aria-controls="p-porgrafos" aria-selected="false">4 · ¿Por qué grafos?</button>
+  <button class="tab" role="tab" id="t-tf12" aria-controls="p-tf12" aria-selected="false">5 · TF 1 frente a TF 2</button>
+  <button class="tab" role="tab" id="t-otros" aria-controls="p-otros" aria-selected="false">6 · Otros frameworks</button>
+  <button class="tab" role="tab" id="t-keras" aria-controls="p-keras" aria-selected="false">7 · Construir en Keras</button>
+  <button class="tab" role="tab" id="t-fit" aria-controls="p-fit" aria-selected="false">8 · De compile a fit</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 -->
+  <section id="p-porque" class="panel">
+    <div class="card">
+      <h2>Capas de abstracción: de tu código a la GPU</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Un framework apila capas que hacen el trabajo pesado. Tú escribes una línea; debajo, cada nivel resuelve una parte. Pasa el ratón por un nivel.</p>
+      <div class="controles"><button class="btn" id="pq-play">▶ Seguir una llamada a model.fit()</button></div>
+      <div class="pila-grid">
+        <div class="escena"><svg id="pq-svg" viewBox="0 0 600 404" aria-label="Pila de abstracción: tu código, Keras, TensorFlow, CUDA y cuDNN, hardware"></svg></div>
+        <div class="box acento info-nivel" aria-live="polite">
+          <h3 id="pq-tit">¿Qué hace cada nivel por ti?</h3>
+          <ul id="pq-lista"><li>Cada nivel esconde los detalles del de abajo.</li><li>Gracias a eso, entrenar una red cabe en unas pocas líneas de Keras.</li></ul>
+          <div class="paso-act" id="pq-paso">Pulsa «Seguir una llamada» para ver el viaje de model.fit() por la pila.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>La misma neurona, sin framework y con Keras</h2>
+      <p class="lead">A la izquierda, una neurona que aprende puertas lógicas de 3 entradas, escrita con NumPy. A la derecha, lo mismo en Keras. Cada concepto tiene el mismo color en los dos; pulsa uno para resaltarlo.</p>
+      <div class="conceptos" id="pq-conc" role="group" aria-label="Conceptos">
+        <button type="button" data-c="datos" aria-pressed="false"><i style="background:var(--s1)"></i>Datos X, y</button>
+        <button type="button" data-c="pesos" aria-pressed="false"><i style="background:var(--s7)"></i>Pesos y sesgo</button>
+        <button type="button" data-c="delante" aria-pressed="false"><i style="background:var(--s3)"></i>Propagación hacia delante</button>
+        <button type="button" data-c="error" aria-pressed="false"><i style="background:var(--s2)"></i>Error (pérdida)</button>
+        <button type="button" data-c="deriv" aria-pressed="false"><i style="background:var(--s8)"></i>Derivadas</button>
+        <button type="button" data-c="actual" aria-pressed="false"><i style="background:var(--s4)"></i>Actualización y tasa de aprendizaje</button>
+        <button type="button" data-c="epocas" aria-pressed="false"><i style="background:var(--s5)"></i>Épocas</button>
+      </div>
+      <div class="dos-col codigos" id="pq-codigos">
+        <div>
+          <div class="titulo-code">Sin framework: NumPy</div>
+<pre class="code compacto"><span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cc" data-c="datos">X</span> = np.array([[0,0,0], [0,0,1], <span class="com">…</span>, [1,1,1]])  <span class="com"># 8 filas</span>
+<span class="cc" data-c="datos">y</span> = np.array([[0], [0], <span class="com">…</span>, [1]])               <span class="com"># AND</span>
+
+<span class="cc" data-c="pesos">weights = 2 * np.random.random((3, 1)) - 1</span>
+<span class="cc" data-c="pesos">bias = 2 * np.random.random(1) - 1</span>
+<span class="cc" data-c="epocas">epochs = 10000</span>
+<span class="cc" data-c="actual">learning_rate = 0.1</span>
+
+<span class="cc" data-c="epocas">for epoch in range(epochs):</span>
+    output = <span class="cc" data-c="delante">sigmoid(np.dot(<span class="cc" data-c="datos">X</span>, <span class="cc" data-c="pesos">weights</span>) + <span class="cc" data-c="pesos">bias</span>)</span>
+    <span class="cc" data-c="error">error = <span class="cc" data-c="datos">y</span> - output</span>
+    <span class="cc" data-c="deriv">adjustment = np.dot(<span class="cc" data-c="datos">X</span>.T, error * (output * (1 - output)))</span>
+    <span class="cc" data-c="actual">weights += adjustment * learning_rate</span>
+    <span class="cc" data-c="actual">bias += </span><span class="cc" data-c="deriv">np.sum(error * (output * (1 - output)))</span><span class="cc" data-c="actual"> \
+            * learning_rate</span></pre>
+          <div class="resumen-code"><span><b>15</b> líneas</span><span>derivadas <b>escritas a mano</b></span><span>bucle de épocas <b>a mano</b></span></div>
+        </div>
+        <div>
+          <div class="titulo-code">Con framework: Keras</div>
+<pre class="code compacto"><span class="kw">from</span> tensorflow.keras.models <span class="kw">import</span> Sequential
+<span class="kw">from</span> tensorflow.keras.layers <span class="kw">import</span> Dense
+<span class="kw">from</span> tensorflow.keras.optimizers <span class="kw">import</span> SGD
+
+model = Sequential([
+    <span class="cc" data-c="pesos">Dense(1</span>, <span class="cc" data-c="delante">activation="sigmoid"</span>, <span class="cc" data-c="pesos">input_shape=(3,)</span>)
+])                                <span class="com"># crea pesos y sesgo</span>
+model.compile(<span class="cc" data-c="actual">optimizer=SGD(learning_rate=0.1)</span>,
+              <span class="cc" data-c="error">loss="mse"</span>)  <span class="cc" data-c="deriv"><span class="com"># derivadas: automáticas</span></span>
+model.fit(<span class="cc" data-c="datos">X</span>, <span class="cc" data-c="datos">y</span>, <span class="cc" data-c="epocas">epochs=10000</span>, verbose=0)
+
+
+<span class="com"># Los mismos X e y de la izquierda.</span>
+<span class="com"># fit() recorre las épocas, calcula el error,</span>
+<span class="com"># las derivadas y actualiza los pesos.</span></pre>
+          <div class="resumen-code"><span><b>6</b> líneas</span><span>derivadas <b>automáticas</b></span><span>épocas <b>dentro de fit()</b></span></div>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> un framework no cambia las matemáticas de la neurona; te ahorra escribir a mano las derivadas, el bucle de entrenamiento y el código para la GPU.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 -->
+  <section id="p-tensores" class="panel">
+    <div class="card">
+      <h2>Un tensor es una caja de números con varias dimensiones</h2>
+      <div class="meta"><span class="tag illus">Esquema ilustrativo</span></div>
+      <p class="lead">El rango (o número de ejes) dice cuántos índices hacen falta para llegar a un número; la forma (shape) dice cuántos hay en cada eje.</p>
+      <div class="escena"><svg id="te-rangos" viewBox="0 0 1100 250" aria-label="Escalar, vector, matriz, tensor de 3 dimensiones y tensor de 4 dimensiones dibujados con cubos"></svg></div>
+    </div>
+    <div class="card">
+      <h2>Tensores de verdad: datos con su forma</h2>
+      <div class="meta"><span class="tag real">Píxeles calculados en el navegador</span></div>
+      <p class="lead">Elige un ejemplo para ver cómo se guardan los datos que entran en una red y cuál es su forma.</p>
+      <div class="controles">
+        <div class="seg" id="te-seg" role="group" aria-label="Ejemplo de tensor">
+          <button type="button" data-e="tabla" aria-pressed="true">Filas de una tabla</button>
+          <button type="button" data-e="mnist" aria-pressed="false">Imagen MNIST</button>
+          <button type="button" data-e="lote" aria-pressed="false">Lote de MNIST</button>
+          <button type="button" data-e="color" aria-pressed="false">Imagen en color</button>
+          <button type="button" data-e="lotecolor" aria-pressed="false">Lote en color (4D)</button>
+        </div>
+        <button class="btn" id="te-flat" hidden>Aplanar con Flatten → (784,)</button>
+      </div>
+      <div class="ten-grid">
+        <div class="escena"><svg id="te-svg" viewBox="0 0 720 390" aria-label="Dibujo del ejemplo de tensor elegido"></svg></div>
+        <div class="box forma-panel">
+          <div class="titulo-code">x.shape</div>
+          <div class="forma" id="te-forma"></div>
+          <ul class="dims" id="te-dims"></ul>
+          <div><span class="titulo-code">Valores en total</span><div style="font-size:1.35rem;font-weight:800" id="te-total"></div></div>
+          <p id="te-txt" style="margin:0;font-size:.95rem"></p>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> todo lo que entra en una red (tablas, imágenes, texto) se convierte en tensores. La primera dimensión suele ser el lote: cuántos ejemplos procesamos a la vez.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section id="p-grafo" class="panel">
+    <div class="card">
+      <h2>El grafo de computación de una neurona</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Los nodos son operaciones y las aristas, los tensores que viajan entre ellas. Hacia delante salen los valores; hacia atrás, los gradientes, multiplicando la derivada local de cada nodo.</p>
+      <div class="controles" id="gr-ctl">
+        <div class="ctl"><label for="gr-x1">Entrada x₁</label><input id="gr-x1" type="range" min="-3" max="3" step="0.1" value="2"><output id="gr-x1o"></output></div>
+        <div class="ctl"><label for="gr-x2">Entrada x₂</label><input id="gr-x2" type="range" min="-3" max="3" step="0.1" value="1"><output id="gr-x2o"></output></div>
+        <div class="ctl"><label for="gr-w1">Peso w₁</label><input id="gr-w1" type="range" min="-2" max="2" step="0.05" value="0.6"><output id="gr-w1o"></output></div>
+        <div class="ctl"><label for="gr-w2">Peso w₂</label><input id="gr-w2" type="range" min="-2" max="2" step="0.05" value="-0.4"><output id="gr-w2o"></output></div>
+        <div class="ctl"><label for="gr-b">Sesgo b</label><input id="gr-b" type="range" min="-2" max="2" step="0.05" value="0.3"><output id="gr-bo"></output></div>
+        <div class="ctl"><label for="gr-y">Objetivo y</label><input id="gr-y" type="range" min="-1" max="4" step="0.1" value="2"><output id="gr-yo"></output></div>
+      </div>
+      <div class="controles">
+        <button class="btn" id="gr-del">▶ Hacia delante</button>
+        <button class="btn" id="gr-atr">◀ Hacia atrás (gradientes)</button>
+        <button class="btn gris" id="gr-paso">Un paso de descenso (η = 0,1)</button>
+        <div class="kpis" style="margin:0"><div class="kpi"><div class="t">Pérdida L</div><div class="v" id="gr-L">—</div></div></div>
+      </div>
+      <div class="escena"><svg id="gr-svg" viewBox="0 0 1100 384" aria-label="Grafo: x y w entran en MatMul, se suma b, ReLU y pérdida cuadrática; valores hacia delante y gradientes hacia atrás"></svg></div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>valor hacia delante</span><span><i style="background:var(--s2)"></i>gradiente hacia atrás (∂L/∂·)</span></div>
+      <div class="dos-col" style="margin-top:.6rem">
+        <div>
+          <h3>La regla de la cadena, con los números</h3>
+          <div class="formula cadena" id="gr-cad1"></div>
+          <div class="formula cadena" id="gr-cad2"></div>
+          <p id="gr-nota" style="margin-top:.4rem"></p>
+        </div>
+        <div>
+          <h3>Lo mismo en TensorFlow 2</h3>
+<pre class="code compacto" id="gr-code"></pre>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> como TensorFlow guarda el grafo de operaciones, puede recorrerlo hacia atrás y calcular por sí solo todos los gradientes (diferenciación automática). Es la retropropagación hecha por el framework.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 -->
+  <section id="p-porgrafos" class="panel">
+    <div class="card">
+      <h2>¿Por qué TensorFlow usa grafos?</h2>
+      <div class="meta"><span class="tag illus">Animaciones ilustrativas</span></div>
+      <p class="lead">Tener el cálculo descrito como un grafo, y no como líneas de Python sueltas, permite cuatro cosas.</p>
+      <div class="controles"><button class="btn" id="pg-play">⏸ Pausa</button></div>
+      <div class="dos-col">
+        <div class="box"><h3>1 · Eficiencia y optimización</h3><div class="escena"><svg id="pg-1" viewBox="0 0 520 250" aria-label="Fusión de operaciones y eliminación de operaciones repetidas"></svg></div><p style="margin:.5rem 0 0">TensorFlow analiza el grafo, fusiona operaciones que se pueden combinar y elimina las redundantes.</p></div>
+        <div class="box"><h3>2 · Distribución del cálculo</h3><div class="escena"><svg id="pg-2" viewBox="0 0 520 250" aria-label="Subgrafos repartidos entre CPU, GPU 0 y GPU 1"></svg></div><p style="margin:.5rem 0 0">El grafo se divide en subgrafos que se ejecutan en distintos dispositivos o máquinas.</p></div>
+        <div class="box"><h3>3 · Persistencia y reutilización</h3><div class="escena"><svg id="pg-3" viewBox="0 0 520 250" aria-label="El grafo se guarda como SavedModel y se carga en un servidor sin el código de entrenamiento"></svg></div><p style="margin:.5rem 0 0">El grafo se guarda y se lleva a producción: para predecir no hace falta el código de entrenamiento.</p></div>
+        <div class="box"><h3>4 · Depuración estructurada</h3><div class="escena"><svg id="pg-4" viewBox="0 0 520 250" aria-label="Grafo con las formas de cada tensor en el que se ve dónde falla"></svg></div><p style="margin:.5rem 0 0">Con el grafo a la vista se localiza dónde falla el flujo de datos, como unas formas que no encajan.</p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> un grafo es una descripción completa del cálculo: se puede optimizar, repartir, guardar e inspeccionar antes de ejecutarlo.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 -->
+  <section id="p-tf12" class="panel">
+    <div class="card">
+      <h2>TensorFlow 1 frente a TensorFlow 2</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">En TensorFlow 1 primero se construye el grafo y luego se ejecuta en una sesión. En TensorFlow 2 cada línea se ejecuta al momento, y el grafo se pide cuando conviene con @tf.function.</p>
+      <div class="controles">
+        <button class="btn gris" id="tf-ant">◀ Anterior</button>
+        <button class="btn gris" id="tf-sig">Siguiente ▶</button>
+        <button class="btn" id="tf-play">▶ Reproducir</button>
+        <div class="ctl"><span class="etq">Paso</span><output id="tf-n">1 de 5</output></div>
+      </div>
+      <div class="paso-tf" id="tf-txt"></div>
+      <div class="dos-col">
+        <div>
+          <div class="titulo-code">TensorFlow 1 · definir y luego ejecutar</div>
+<pre class="code compacto" id="tf-c1"></pre>
+          <div class="escena"><svg id="tf-g1" viewBox="0 0 520 168" aria-label="Grafo de TensorFlow 1"></svg></div>
+          <div class="linea-t" id="tf-l1"></div>
+        </div>
+        <div>
+          <div class="titulo-code">TensorFlow 2 · ejecución inmediata</div>
+<pre class="code compacto" id="tf-c2"></pre>
+          <div class="escena"><svg id="tf-g2" viewBox="0 0 520 168" aria-label="Grafo de TensorFlow 2"></svg></div>
+          <div class="linea-t" id="tf-l2"></div>
+        </div>
+      </div>
+      <table class="tabla" style="margin-top:1rem">
+        <thead><tr><th></th><th>TensorFlow 1</th><th>TensorFlow 2</th></tr></thead>
+        <tbody>
+          <tr><td><b>Modo por defecto</b></td><td>Grafo estático: primero se define, después se ejecuta</td><td>Ejecución inmediata (eager): cada línea calcula al momento</td></tr>
+          <tr><td><b>Entradas</b></td><td><code>tf.placeholder</code> + <code>feed_dict</code></td><td>Tensores o arrays de NumPy normales</td></tr>
+          <tr><td><b>Ejecutar</b></td><td><code>tf.Session</code> y <code>sess.run(...)</code></td><td>Llamar a la función como en Python</td></tr>
+          <tr><td><b>Depurar</b></td><td>Difícil: los valores no existen hasta <code>sess.run</code></td><td>Fácil: <code>print()</code> en cualquier línea</td></tr>
+          <tr><td><b>Grafo</b></td><td>Siempre</td><td>Cuando se pide con <code>@tf.function</code> (rendimiento, exportar)</td></tr>
+          <tr><td><b>Alto nivel</b></td><td>Varias API a la vez</td><td>Keras integrado (<code>tf.keras</code>)</td></tr>
+        </tbody>
+      </table>
+      <div class="clave"><strong>Idea clave:</strong> TensorFlow 2 sigue usando grafos por debajo, pero ya no obliga a pensar en ellos: se programa como en Python normal.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 -->
+  <section id="p-otros" class="panel">
+    <div class="card">
+      <h2>Otros frameworks</h2>
+      <div class="meta"><span class="tag illus">Mapa orientativo</span></div>
+      <p class="lead">TensorFlow no es la única opción. Pulsa uno para verlo en el mapa y comparar cómo se escribe la misma red pequeña (4 → 8 → 1).</p>
+      <div class="fws" id="ot-fws"></div>
+      <div class="dos-col">
+        <div class="escena"><svg id="ot-svg" viewBox="0 0 540 400" aria-label="Mapa orientativo de frameworks según nivel de abstracción y uso en investigación o producción"></svg></div>
+        <div>
+          <div class="titulo-code" id="ot-tit"></div>
+<pre class="code compacto" id="ot-code"></pre>
+          <p id="ot-nota" style="font-size:.92rem;margin-top:.4rem"></p>
+        </div>
+      </div>
+      <div class="clave"><strong>Hasta aquí llega nuestra relación con TensorFlow:</strong> en la asignatura trabajamos con Keras, su API de alto nivel. Desde Keras 3 (2023), el mismo código Keras también puede ejecutarse sobre JAX o PyTorch.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 -->
+  <section id="p-keras" class="panel">
+    <div class="card">
+      <h2>Keras: construye un modelo</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Elige el problema y las capas: se dibuja la red, se genera el código Keras y se calcula la tabla de model.summary().</p>
+      <div class="presets" id="ke-pre">
+        <button class="btn gris" data-p="0">Vivienda</button>
+        <button class="btn gris" data-p="1">Reseñas en 3 clases</button>
+        <button class="btn gris" data-p="2">Spam</button>
+        <button class="btn gris" data-p="3">MNIST</button>
+      </div>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Tipo de problema</span>
+          <div class="seg" id="ke-tipo" role="group" aria-label="Tipo de problema">
+            <button type="button" data-t="bin" aria-pressed="false">Binaria</button>
+            <button type="button" data-t="multi" aria-pressed="false">Multiclase</button>
+            <button type="button" data-t="reg" aria-pressed="true">Regresión</button>
+          </div>
+        </div>
+        <div class="ctl" id="ke-clases-c"><label for="ke-clases">Nº de clases</label><input id="ke-clases" type="number" min="3" max="100" value="3"></div>
+        <div class="ctl"><span class="etq">Entrada</span>
+          <div class="seg" id="ke-ent" role="group" aria-label="Tipo de entrada">
+            <button type="button" data-e="vec" aria-pressed="true">Vector</button>
+            <button type="button" data-e="img" aria-pressed="false">Imagen 28 × 28</button>
+          </div>
+        </div>
+        <div class="ctl" id="ke-nin-c"><label for="ke-nin">Nº de características</label><input id="ke-nin" type="number" min="1" max="10000" value="8"></div>
+        <div class="ctl"><label for="ke-opt">Optimizador</label><select id="ke-opt"><option value="adam">adam</option><option value="sgd">sgd</option><option value="rmsprop">rmsprop</option></select></div>
+      </div>
+      <div class="capas-ed" id="ke-capas"></div>
+      <button class="btn gris" id="ke-add">+ Añadir capa oculta</button>
+      <div class="escena" style="margin-top:.9rem"><svg id="ke-svg" viewBox="0 0 1100 330" aria-label="Dibujo de la red construida"></svg></div>
+      <div class="dos-col" style="margin-top:.9rem">
+        <div>
+          <div class="titulo-code">Código Keras generado</div>
+<pre class="code compacto" id="ke-code"></pre>
+        </div>
+        <div>
+          <div class="titulo-code">model.summary()</div>
+          <table class="tabla summary" id="ke-sum"></table>
+          <p class="pie">Cada capa Dense tiene (entradas × neuronas) pesos + 1 sesgo por neurona.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Ventajas de Keras</h2>
+      <div class="grid4 ventajas">
+        <div class="box"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="6" y="9" width="32" height="6" rx="3" fill="#1E88E5"/><rect x="6" y="19" width="22" height="6" rx="3" fill="#90CAF9"/><rect x="6" y="29" width="27" height="6" rx="3" fill="#90CAF9"/></svg><h3>Sintaxis sencilla</h3><p>Un prototipo de red en unas pocas líneas.</p></div>
+        <div class="box"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M24 4 L10 25 L21 25 L18 40 L34 17 L23 17 Z" fill="#eda100"/></svg><h3>Rapidez para prototipar</h3><p>Probar una idea, cambiar capas y volver a entrenar es inmediato.</p></div>
+        <div class="box"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="5" y="8" width="14" height="14" rx="2" fill="#1baf7a"/><rect x="9" y="12" width="14" height="14" rx="2" fill="#1baf7a" opacity=".6"/><circle cx="31" cy="30" r="8" fill="none" stroke="#6250d6" stroke-width="3.5"/><path d="M37 24 l3 -4 l1 6 z" fill="#6250d6"/></svg><h3>Muchos tipos de red</h3><p>Densas, convolucionales, recurrentes… con la misma forma de trabajar.</p></div>
+        <div class="box"><svg viewBox="0 0 44 44" aria-hidden="true"><rect x="7" y="9" width="30" height="26" rx="4" fill="#253447"/><g fill="#90CAF9"><rect x="11" y="13" width="5" height="5" rx="1"/><rect x="19" y="13" width="5" height="5" rx="1"/><rect x="27" y="13" width="5" height="5" rx="1"/><rect x="11" y="21" width="5" height="5" rx="1"/><rect x="19" y="21" width="5" height="5" rx="1"/><rect x="27" y="21" width="5" height="5" rx="1"/></g></svg><h3>Escala a GPU y TPU</h3><p>El mismo código se ejecuta en GPU o TPU sin cambios.</p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> con Keras describimos la red (capas, activaciones, pérdida) y el framework se encarga del resto. Contar parámetros es sencillo: (entradas × neuronas) + neuronas en cada capa densa.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 -->
+  <section id="p-fit" class="panel">
+    <div class="card">
+      <h2>De compile a fit: el ciclo de vida de un modelo Keras</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Una red 2 → 8 → 8 → 1 aprende a separar dos clases. Cada línea del código se ilumina cuando ocurre; los lotes pasan por la red y el historial se dibuja época a época.</p>
+      <div class="controles">
+        <button class="btn" id="fi-play">▶ Ejecutar</button>
+        <button class="btn gris" id="fi-reset">Reiniciar</button>
+        <div class="ctl"><span class="etq">Velocidad</span>
+          <div class="seg" id="fi-vel" role="group" aria-label="Velocidad">
+            <button type="button" data-v="lenta" aria-pressed="false">Lenta</button>
+            <button type="button" data-v="normal" aria-pressed="true">Normal</button>
+            <button type="button" data-v="rapida" aria-pressed="false">Rápida</button>
+          </div>
+        </div>
+      </div>
+      <div class="fit-grid">
+        <div>
+<pre class="code compacto" id="fi-code"></pre>
+          <ol class="pasos" id="fi-pasos">
+            <li>Definir el modelo: capas y activaciones</li>
+            <li><b>compile</b>: optimizador, pérdida y métricas</li>
+            <li><b>fit</b>: épocas × lotes, con validación</li>
+            <li><b>evaluate</b>: datos de prueba que no ha visto</li>
+            <li><b>predict</b>: usar el modelo con datos nuevos</li>
+          </ol>
+        </div>
+        <div>
+          <div class="escena"><svg id="fi-red" viewBox="0 0 520 190" aria-label="Red 2-8-8-1 con sus pesos"></svg></div>
+          <div class="chips-c" id="fi-chips"></div>
+          <div class="fit-sub">
+            <canvas id="fi-datos" class="lienzo" aria-label="Datos de entrenamiento y regiones de decisión de la red"></canvas>
+            <div>
+              <div class="kpi"><div class="t">Época</div><div class="v" id="fi-ep">0 / 30</div></div>
+              <div class="kpi"><div class="t">Lote</div><div class="v" id="fi-lote">0 / 7</div></div>
+              <div class="kpi"><div class="t">Pérdida (entr.)</div><div class="v" id="fi-loss">—</div></div>
+              <div class="kpi"><div class="t">Exactitud (entr.)</div><div class="v" id="fi-acc">—</div></div>
+              <div class="kpi"><div class="t">Prueba</div><div class="v" id="fi-test" style="font-size:1rem">—</div></div>
+            </div>
+          </div>
+          <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>clase 1</span><span><i class="punto" style="background:var(--s2)"></i>clase 0</span><span><i class="punto" style="background:#fff;border:2px solid #1F2933"></i>lote actual</span><span><i style="background:#fff;border:2px solid #C62828;width:11px;height:11px;border-radius:2px"></i>error en prueba</span></div>
+        </div>
+      </div>
+      <div class="dos-col" style="margin-top:.6rem">
+        <canvas id="fi-cl" class="lienzo" aria-label="Historial de la pérdida en entrenamiento y validación"></canvas>
+        <canvas id="fi-ca" class="lienzo" aria-label="Historial de la exactitud en entrenamiento y validación"></canvas>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>entrenamiento (loss, accuracy)</span><span><i style="background:var(--s2)"></i>validación (val_loss, val_accuracy)</span></div>
+      <p class="pie">Datos: 300 puntos con forma de dos lunas, repartidos en 200 de entrenamiento, 50 de validación y 50 de prueba. Tras el entrenamiento, haz clic en el plano para predecir un punto nuevo.</p>
+      <div class="clave"><strong>Idea clave:</strong> compile prepara el entrenamiento, fit lo ejecuta (épocas × lotes) y devuelve el historial, evaluate mide con datos no vistos y predict usa el modelo.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/mlp.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, S = RN.svg;
+  const $ = function (id) { return document.getElementById(id); };
+  const ACENTO = RN.acento();
+  const fx = function (v) { return Math.round(v * 10) / 10; };
+  const F = function (x, d) { return RN.fmt(x, d).replace("-", "−"); };
+
+  // ------------------------------------------------------------------ utilidades
+  function T(p, x, y, s, o) {
+    o = o || {};
+    const a = { x: x, y: y, "font-size": o.fs || 13, fill: o.fill || C.ink, "text-anchor": o.anchor || "start" };
+    if (o.fw) a["font-weight"] = o.fw;
+    if (o.base) a["dominant-baseline"] = o.base;
+    if (o.op !== undefined) a.opacity = o.op;
+    if (o.mono) a["font-family"] = "ui-monospace, Menlo, Consolas, monospace";
+    if (o.estilo) a["font-style"] = o.estilo;
+    const e = S("text", a, p);
+    e.textContent = s;
+    return e;
+  }
+  function vaciar(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+  function caja(g, cx, cy, w, h, o) {
+    o = o || {};
+    return S("rect", { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: o.rx === undefined ? 9 : o.rx, fill: o.fill || "#fff", stroke: o.stroke || C.ink2, "stroke-width": o.sw || 2 }, g);
+  }
+  function flechaDefs(svg, id, col) {
+    const d = S("defs", {}, svg);
+    const m = S("marker", { id: id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: "auto-start-reverse" }, d);
+    S("path", { d: "M0 0 L10 5 L0 10 Z", fill: col || C.ink2 }, m);
+  }
+  const tramo = function (p, a, b) { return RN.limita((p - a) / (b - a), 0, 1); };
+  function segBotones(cont, fn) {
+    const bs = Array.from(cont.querySelectorAll("button"));
+    bs.forEach(function (b) { b.addEventListener("click", function () { bs.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); fn(b); }); });
+    return bs;
+  }
+  // Resaltado sencillo de Python, línea a línea
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function py(linea) {
+    const re = /(#.*$)|("[^"]*"|'[^']*')|(@[\w.]+)|(\b\d+(?:\.\d+)?(?:e-?\d+)?\b)|\b(import|from|as|def|return|with|for|in|None|True|False|lambda)\b|([A-Za-z_][\w]*)(?=\()/g;
+    let out = "", ult = 0, m;
+    while ((m = re.exec(linea))) {
+      out += esc(linea.slice(ult, m.index));
+      const t = esc(m[0]);
+      if (m[1]) out += '<span class="com">' + t + "</span>";
+      else if (m[2]) out += '<span class="str">' + t + "</span>";
+      else if (m[3]) out += '<span class="fn">' + t + "</span>";
+      else if (m[4]) out += '<span class="num">' + t + "</span>";
+      else if (m[5]) out += '<span class="kw">' + t + "</span>";
+      else out += '<span class="fn">' + t + "</span>";
+      ult = m.index + m[0].length;
+    }
+    return out + esc(linea.slice(ult));
+  }
+  function ponCodigo(pre, lineas) {
+    pre.innerHTML = lineas.map(function (l, k) { return '<span class="ln" data-i="' + k + '">' + (l.length ? py(l) : "​") + "</span>"; }).join("");
+    return Array.from(pre.querySelectorAll(".ln"));
+  }
+  function marcaLineas(lns, idx) { lns.forEach(function (l, k) { l.classList.toggle("on", idx.indexOf(k) >= 0); }); }
+
+  // ================================================================== 1 · ¿por qué un framework?
+  (function () {
+    const svg = $("pq-svg");
+    const NIV = [
+      { n: "Tu código", s: "Describes qué quieres: modelo, pérdida y datos", col: C.s1, chips: ["model.fit(X, y)"], mono: true,
+        q: ["Solo describes la arquitectura, la pérdida y los datos.", "Unas pocas líneas: el resto lo hacen los niveles de abajo."], paso: "Tu código llama a model.fit(X, y, epochs=10)." },
+      { n: "Keras", s: "API de alto nivel: capas, modelos, compile y fit", col: C.s8, chips: ["capas", "modelos", "fit()"],
+        q: ["Crea las capas (Dense, Conv2D, LSTM…) con sus pesos y sesgos.", "compile() fija optimizador, pérdida y métricas.", "fit() recorre por ti las épocas y los lotes."], paso: "Keras trocea los datos en lotes y, para cada lote, pide a TensorFlow la pérdida y los gradientes." },
+      { n: "TensorFlow", s: "Tensores, grafo de computación y gradientes", col: C.s2, chips: ["tensores", "grafo", "∂L/∂w"],
+        q: ["Guarda los datos como tensores (arrays de n dimensiones).", "Describe el cálculo como un grafo de operaciones.", "Calcula todas las derivadas automáticamente."], paso: "TensorFlow ejecuta el grafo: multiplicaciones de matrices, activaciones y, hacia atrás, los gradientes." },
+      { n: "CUDA y cuDNN", s: "Bibliotecas de NVIDIA para programar la GPU", col: C.s6, chips: ["CUDA", "cuDNN"],
+        q: ["CUDA permite repartir un cálculo entre miles de hilos de la GPU.", "cuDNN trae versiones muy optimizadas de las operaciones de las redes (convoluciones, multiplicaciones de matrices…)."], paso: "cuDNN elige la implementación más rápida de cada operación y CUDA la lanza en la GPU." },
+      { n: "Hardware", s: "Donde se hacen de verdad las cuentas", col: "#52606D", chips: ["CPU", "GPU", "TPU"],
+        q: ["La CPU coordina y prepara los datos.", "La GPU (o la TPU de Google) multiplica matrices en paralelo.", "El mismo código Keras sirve para CPU, GPU o TPU."], paso: "Miles de núcleos de la GPU calculan a la vez y el resultado sube de nuevo hasta Keras." }
+    ];
+    const Y0 = 14, H = 64, GAP = 14, X0 = 24, W = 552;
+    const els = NIV.map(function (nv, k) {
+      const y = Y0 + k * (H + GAP);
+      const g = S("g", { class: "nivel", tabindex: 0, role: "button", "aria-label": nv.n }, svg);
+      const r = S("rect", { x: X0, y: y, width: W, height: H, rx: 10, fill: "#fff", stroke: "#D5DCE3", "stroke-width": 1.5 }, g);
+      S("rect", { x: X0, y: y, width: 10, height: H, rx: 5, fill: nv.col }, g);
+      S("rect", { x: X0 + 5, y: y, width: 5, height: H, fill: nv.col }, g);
+      T(g, X0 + 26, y + 27, nv.n, { fs: 17, fw: 800 });
+      T(g, X0 + 26, y + 48, nv.s, { fs: 12.5, fill: C.ink2 });
+      let xr = X0 + W - 12;
+      const gch = S("g", {}, g);
+      nv.chips.slice().reverse().forEach(function (c) {
+        const w = c.length * (nv.mono ? 8.2 : 7.2) + 18;
+        xr -= w;
+        S("rect", { x: xr, y: y + 10, width: w, height: 24, rx: 12, fill: RN.mezcla("#ffffff", nv.col, 0.14), stroke: nv.col, "stroke-width": 1.2 }, gch);
+        T(gch, xr + w / 2, y + 26.5, c, { fs: 12.5, fw: 700, anchor: "middle", mono: nv.mono });
+        xr -= 6;
+      });
+      if (k < NIV.length - 1) S("path", { d: "M" + (X0 + W / 2 - 7) + " " + (y + H + 3) + " L" + (X0 + W / 2) + " " + (y + H + GAP - 3) + " L" + (X0 + W / 2 + 7) + " " + (y + H + 3), fill: "none", stroke: "#B0BEC5", "stroke-width": 2 }, svg);
+      g.addEventListener("pointerenter", function () { if (!anim.activo) muestra(k); });
+      g.addEventListener("focus", function () { if (!anim.activo) muestra(k); });
+      g.addEventListener("click", function () { anim.parar(); muestra(k); });
+      return { g: g, r: r, y: y, ch: gch };
+    });
+    const ficha = S("g", { opacity: 0 }, svg);
+    S("rect", { x: -64, y: -12, width: 128, height: 24, rx: 12, fill: C.ink }, ficha);
+    const fichaT = T(ficha, 0, 4.5, "model.fit()", { fs: 12.5, fw: 700, anchor: "middle", fill: "#fff", mono: true });
+    function resalta(k) {
+      els.forEach(function (e, j) {
+        e.r.setAttribute("stroke", j === k ? NIV[j].col : "#D5DCE3");
+        e.r.setAttribute("stroke-width", j === k ? 3 : 1.5);
+        e.r.setAttribute("fill", j === k ? RN.mezcla("#ffffff", NIV[j].col, 0.07) : "#fff");
+      });
+    }
+    function muestra(k, paso) {
+      resalta(k);
+      $("pq-tit").textContent = NIV[k].n + ": qué hace por ti";
+      const ul = $("pq-lista"); ul.innerHTML = "";
+      NIV[k].q.forEach(function (t) { RN.el("li", {}, ul, t); });
+      if (paso) $("pq-paso").textContent = NIV[k].paso;
+    }
+    // viaje de una llamada: baja y vuelve a subir
+    const T_NIV = 1.7;
+    const anim = RN.anima(function (dt, t) {
+      t = Math.max(0, t); // el primer fotograma puede llegar con dt < 0
+      const n = NIV.length, total = (2 * n - 1) * T_NIV;
+      if (t >= total) { ficha.setAttribute("opacity", 0); els.forEach(function (e) { e.ch.setAttribute("opacity", 1); }); $("pq-paso").textContent = "Fin del viaje: Keras recibe la pérdida, actualiza los pesos y pasa al lote siguiente."; resalta(-1); return false; }
+      const seg = Math.floor(t / T_NIV), f = (t % T_NIV) / T_NIV;
+      const k = seg < n ? seg : 2 * n - 2 - seg;
+      const sub = seg >= n;
+      muestra(k, !sub);
+      if (sub) $("pq-paso").textContent = k === 0 ? "Vuelve a tu código: history con la pérdida de cada época." : "Sube el resultado: " + ["", "Keras guarda la pérdida y aplica el optimizador.", "TensorFlow devuelve los gradientes ∂L/∂w.", "cuDNN y CUDA devuelven los resultados de la GPU."][k];
+      fichaT.textContent = sub ? "pérdida, ∂L/∂w" : "model.fit()";
+      const kSig = sub ? Math.max(0, k - 1) : Math.min(n - 1, k + 1);
+      const y0 = els[k].y + H / 2, y1 = els[kSig].y + H / 2;
+      const yy = f < 0.6 ? y0 : RN.lerp(y0, y1, RN.suave((f - 0.6) / 0.4));
+      ficha.setAttribute("transform", "translate(" + (X0 + W - 76) + " " + (yy - 8) + ")");
+      ficha.setAttribute("opacity", 1);
+      els.forEach(function (e, j) { e.ch.setAttribute("opacity", j === k || j === kSig && f >= 0.6 ? 0.12 : 1); });
+    }, svg);
+    RN.botonPlay($("pq-play"), anim, ["▶ Seguir una llamada a model.fit()", "⏸ Pausa"]);
+    $("pq-play").addEventListener("click", function () { if (anim.activo) anim.reiniciar(); });
+    if (RN.reducirMovimiento) $("pq-play").addEventListener("click", function () { anim.parar(); muestra(2, true); });
+
+    // conceptos coloreados
+    const cont = $("pq-codigos");
+    const bs = Array.from($("pq-conc").querySelectorAll("button"));
+    bs.forEach(function (b) {
+      b.addEventListener("click", function () {
+        const on = b.getAttribute("aria-pressed") !== "true";
+        bs.forEach(function (x) { x.setAttribute("aria-pressed", x === b && on ? "true" : "false"); });
+        if (on) cont.dataset.foco = b.dataset.c; else delete cont.dataset.foco;
+      });
+    });
+  })();
+
+  // ================================================================== 2 · tensores
+  // Dígitos «al estilo MNIST» dibujados en un lienzo de 28 × 28 (fondo negro, trazo blanco)
+  // Trazos de cada dígito en una caja de 20 × 20 (como los dígitos centrados de MNIST)
+  const TRAZOS = {
+    0: function (c) { c.ellipse(10, 10, 6, 9, 0, 0, 2 * Math.PI); },
+    1: function (c) { c.moveTo(7, 4); c.lineTo(11, 1); c.lineTo(10.5, 19); },
+    2: function (c) { c.moveTo(4, 5); c.quadraticCurveTo(9, -1, 14, 3); c.quadraticCurveTo(17, 8, 4, 19); c.lineTo(17, 18.5); },
+    3: function (c) { c.moveTo(4, 3); c.quadraticCurveTo(15, -1, 14, 6); c.quadraticCurveTo(13, 9.5, 8, 9.5); c.quadraticCurveTo(17, 10, 15, 16); c.quadraticCurveTo(11, 21, 4, 17); },
+    4: function (c) { c.moveTo(12, 1); c.lineTo(3, 13); c.lineTo(17, 13); c.moveTo(13, 6); c.lineTo(13, 19.5); },
+    5: function (c) { c.moveTo(16, 1.5); c.lineTo(6, 1.5); c.lineTo(5, 9); c.quadraticCurveTo(10, 6.5, 14.5, 9.5); c.quadraticCurveTo(18, 14, 13.5, 18); c.quadraticCurveTo(8, 20.5, 4, 17); },
+    6: function (c) { c.moveTo(14, 1); c.quadraticCurveTo(5, 5, 4.5, 13); c.quadraticCurveTo(5, 19.5, 10, 19); c.quadraticCurveTo(15.5, 18, 15, 13); c.quadraticCurveTo(14, 8.5, 9, 9.5); c.quadraticCurveTo(6, 10.5, 5, 13); },
+    7: function (c) { c.moveTo(3, 2); c.lineTo(17, 2); c.quadraticCurveTo(11, 9, 8, 19.5); },
+    8: function (c) { c.ellipse(10, 5.5, 4.5, 4.5, 0, 0, 2 * Math.PI); c.moveTo(16, 14.5); c.ellipse(10, 14.5, 6, 5, 0, 0, 2 * Math.PI); },
+    9: function (c) { c.moveTo(15, 7); c.ellipse(10, 6.5, 5, 5, 0, 0, 2 * Math.PI); c.moveTo(15, 7); c.quadraticCurveTo(15, 14, 12, 19.5); }
+  };
+  function digito(d, semilla) {
+    const cv = document.createElement("canvas"); cv.width = 28; cv.height = 28;
+    const c = cv.getContext("2d");
+    const r = RN.rng(semilla);
+    c.fillStyle = "#000"; c.fillRect(0, 0, 28, 28);
+    c.save();
+    c.translate(14 + (r() - 0.5) * 2, 14 + (r() - 0.5) * 2);
+    c.transform(1, 0, -0.25 + r() * 0.3, 1, 0, 0);
+    const k = 0.92 + r() * 0.12;
+    c.scale(k, k);
+    c.translate(-10, -10);
+    c.strokeStyle = "#fff"; c.lineWidth = 2.1 + r() * 0.6; c.lineCap = "round"; c.lineJoin = "round";
+    c.beginPath(); TRAZOS[d](c); c.stroke();
+    c.restore();
+    const im = c.getImageData(0, 0, 28, 28).data, px = [];
+    for (let k = 0; k < 784; k++) px.push(im[k * 4]);
+    return { px: px, url: cv.toDataURL() };
+  }
+  // Imagen en color de 32 × 32 (un barco en el mar, al estilo CIFAR-10)
+  function imagenColor(semilla, v) {
+    v = v || 0;
+    const CASCO = ["#8B2E2E", "#2E4B8B", "#2E7D32", "#6D4C41"][v % 4], SOLX = [25, 7, 21, 11][v % 4], MAR = ["#1F5F8B", "#2A6F97", "#16507A", "#327FA8"][v % 4];
+    const cv = document.createElement("canvas"); cv.width = 32; cv.height = 32;
+    const c = cv.getContext("2d"), r = RN.rng(semilla);
+    const gr = c.createLinearGradient(0, 0, 0, 20); gr.addColorStop(0, "#5DA9E9"); gr.addColorStop(1, "#BFE3F7");
+    c.fillStyle = gr; c.fillRect(0, 0, 32, 20);
+    c.fillStyle = MAR; c.fillRect(0, 20, 32, 12);
+    c.fillStyle = "#FFD54F"; c.beginPath(); c.arc(SOLX, 6, 3.2, 0, 7); c.fill();
+    c.fillStyle = CASCO; c.beginPath(); c.moveTo(6, 19); c.lineTo(26, 19); c.lineTo(23, 24); c.lineTo(9, 24); c.closePath(); c.fill();
+    c.fillStyle = "#F5F5F5"; c.beginPath(); c.moveTo(15, 5); c.lineTo(15, 18); c.lineTo(23, 18); c.closePath(); c.fill();
+    c.fillStyle = "#E0E0E0"; c.beginPath(); c.moveTo(14, 8); c.lineTo(14, 18); c.lineTo(9, 18); c.closePath(); c.fill();
+    c.fillStyle = "#4A2A1A"; c.fillRect(14.5, 4, 1, 15);
+    for (let k = 0; k < 14; k++) { c.fillStyle = "rgba(255,255,255," + (0.15 + r() * 0.25) + ")"; c.fillRect(Math.floor(r() * 32), 21 + Math.floor(r() * 11), 2, 1); }
+    const im = c.getImageData(0, 0, 32, 32).data;
+    const canal = function (k) {
+      const o = document.createElement("canvas"); o.width = 32; o.height = 32;
+      const oc = o.getContext("2d"), id = oc.createImageData(32, 32);
+      for (let p = 0; p < 1024; p++) {
+        const v = im[p * 4 + k];
+        // escala de blanco (0) al color puro del canal (255)
+        id.data[p * 4] = k === 0 ? 255 : 255 - v; id.data[p * 4 + 1] = k === 1 ? 255 : 255 - v; id.data[p * 4 + 2] = k === 2 ? 255 : 255 - v; id.data[p * 4 + 3] = 255;
+      }
+      oc.putImageData(id, 0, 0);
+      return o.toDataURL();
+    };
+    return { url: cv.toDataURL(), canales: [canal(0), canal(1), canal(2)] };
+  }
+  (function () {
+    // ---------------- rangos en isométrico
+    const c30 = Math.cos(Math.PI / 6), s30 = 0.5;
+    function bloque(g, cx, cy, a, b, c, s, col) {
+      const P = function (x, y, z) { return [(x - y) * s * c30, (x + y) * s * s30 - z * s]; };
+      const esq = []; [0, a].forEach(function (x) { [0, b].forEach(function (y) { [0, c].forEach(function (z) { esq.push(P(x, y, z)); }); }); });
+      const mnx = Math.min.apply(null, esq.map(function (p) { return p[0]; })), mxx = Math.max.apply(null, esq.map(function (p) { return p[0]; }));
+      const mny = Math.min.apply(null, esq.map(function (p) { return p[1]; })), mxy = Math.max.apply(null, esq.map(function (p) { return p[1]; }));
+      const ox = cx - (mnx + mxx) / 2, oy = cy - (mny + mxy) / 2;
+      const Q = function (x, y, z) { const p = P(x, y, z); return fx(p[0] + ox) + "," + fx(p[1] + oy); };
+      const top = RN.mezcla("#ffffff", col, 0.35), izq = RN.mezcla("#ffffff", col, 0.6), der = RN.mezcla("#ffffff", col, 0.85);
+      for (let i = 0; i < a; i++) for (let j = 0; j < b; j++) S("polygon", { points: [Q(i, j, c), Q(i + 1, j, c), Q(i + 1, j + 1, c), Q(i, j + 1, c)].join(" "), fill: top, stroke: "#fff", "stroke-width": 1.2 }, g);
+      for (let i = 0; i < a; i++) for (let k = 0; k < c; k++) S("polygon", { points: [Q(i, b, k), Q(i + 1, b, k), Q(i + 1, b, k + 1), Q(i, b, k + 1)].join(" "), fill: izq, stroke: "#fff", "stroke-width": 1.2 }, g);
+      for (let j = 0; j < b; j++) for (let k = 0; k < c; k++) S("polygon", { points: [Q(a, j, k), Q(a, j + 1, k), Q(a, j + 1, k + 1), Q(a, j, k + 1)].join(" "), fill: der, stroke: "#fff", "stroke-width": 1.2 }, g);
+      return { ox: ox, oy: oy, h: mxy - mny, w: mxx - mnx };
+    }
+    const sv = $("te-rangos");
+    const R = [
+      { n: "Escalar", r: "rango 0", f: "forma ()", d: [1, 1, 1], ej: "una temperatura: 21,5" },
+      { n: "Vector", r: "rango 1", f: "forma (4,)", d: [4, 1, 1], ej: "una fila de una tabla" },
+      { n: "Matriz", r: "rango 2", f: "forma (3, 4)", d: [4, 1, 3], ej: "una tabla, una imagen gris" },
+      { n: "Tensor 3D", r: "rango 3", f: "forma (3, 4, 2)", d: [4, 2, 3], ej: "una imagen en color" },
+      { n: "Tensor 4D", r: "rango 4", f: "forma (3, 3, 4, 2)", d: [4, 2, 3], ej: "un lote de imágenes en color" }
+    ];
+    R.forEach(function (e, k) {
+      const cx = 110 + k * 220, g = S("g", {}, sv), col = RN.serie[k === 0 ? 0 : k === 1 ? 2 : k === 2 ? 3 : k === 3 ? 4 : 6];
+      if (k < 4) bloque(g, cx, 98, e.d[0], e.d[1], e.d[2], k === 0 ? 30 : 21, col);
+      else [-1, 0, 1].forEach(function (o) { bloque(g, cx + o * 60, 98 + o * 5, e.d[0], e.d[1], e.d[2], 11, col); });
+      T(sv, cx, 192, e.n, { fs: 15, fw: 800, anchor: "middle" });
+      T(sv, cx, 211, e.r + " · " + e.f, { fs: 13, fill: C.ink2, anchor: "middle", mono: true });
+      T(sv, cx, 230, e.ej, { fs: 12.5, fill: C.muted, anchor: "middle" });
+    });
+
+    // ---------------- ejemplos
+    const svg = $("te-svg");
+    const COLD = { lote: C.s1, filas: C.s1, alto: C.s3, ancho: C.s4, canales: C.s5, carac: C.s7, pix: C.s7 };
+    const d5 = digito(5, 11);
+    const lotes = [3, 0, 4, 1, 9, 2].map(function (d, k) { return digito(d, 40 + k * 7); });
+    const barco = imagenColor(5);
+    const EJ = {
+      tabla: { forma: [[32, "lote", "filas (ejemplos)"], [4, "carac", "características"]], txt: "Cada fila es una vivienda con 4 características. Un lote de 32 filas es una matriz de forma (32, 4)." },
+      mnist: { forma: [[28, "alto", "alto (filas de píxeles)"], [28, "ancho", "ancho (columnas)"]], txt: "Una imagen de MNIST en escala de grises: cada píxel es un número de 0 (negro) a 255 (blanco). Pasa el ratón por la imagen." },
+      flat: { forma: [[784, "pix", "píxeles en fila"]], txt: "Flatten pone las 28 filas una detrás de otra: un vector de 784 números, lo que espera una capa Dense." },
+      lote: { forma: [[32, "lote", "imágenes en el lote"], [28, "alto", "alto"], [28, "ancho", "ancho"]], txt: "Al entrenar no se pasa una imagen sino un lote: 32 imágenes de 28 × 28 forman un tensor de 3 dimensiones." },
+      color: { forma: [[32, "alto", "alto"], [32, "ancho", "ancho"], [3, "canales", "canales (R, G, B)"]], txt: "Una imagen en color (como las de CIFAR-10) tiene tres canales: rojo, verde y azul. Cada canal es una matriz de 32 × 32." },
+      lotecolor: { forma: [[64, "lote", "imágenes en el lote"], [32, "alto", "alto"], [32, "ancho", "ancho"], [3, "canales", "canales"]], txt: "Un lote de imágenes en color ya es un tensor de 4 dimensiones: (lote, alto, ancho, canales)." }
+    };
+    function panel(id) {
+      const e = EJ[id];
+      $("te-forma").innerHTML = "(" + e.forma.map(function (f) { return '<span style="color:' + COLD[f[1]] + '">' + f[0] + "</span>"; }).join(", ") + (e.forma.length === 1 ? "," : "") + ")";
+      const ul = $("te-dims"); ul.innerHTML = "";
+      e.forma.forEach(function (f) { const li = RN.el("li", {}, ul); RN.el("i", { style: "background:" + COLD[f[1]] }, li); RN.el("b", {}, li, String(f[0])); li.appendChild(document.createTextNode(" " + f[2])); });
+      $("te-total").textContent = RN.fmtN(e.forma.reduce(function (s, f) { return s * f[0]; }, 1)) + " números";
+      $("te-txt").textContent = e.txt;
+    }
+    function llave(g, x1, y1, x2, y2, txt, col, lado) {
+      // corchete con texto; lado: "arriba" | "izq" | "abajo"
+      if (lado === "izq") {
+        S("path", { d: "M" + (x1 + 6) + " " + y1 + " L" + x1 + " " + y1 + " L" + x1 + " " + y2 + " L" + (x1 + 6) + " " + y2, fill: "none", stroke: col, "stroke-width": 2.5 }, g);
+        const t = T(g, x1 - 8, (y1 + y2) / 2, txt, { fs: 13, fw: 800, fill: C.ink, anchor: "middle" });
+        t.setAttribute("transform", "rotate(-90 " + (x1 - 8) + " " + (y1 + y2) / 2 + ")");
+      } else {
+        const yy = lado === "abajo" ? y1 + 6 : y1 - 6, ty = lado === "abajo" ? y1 + 22 : y1 - 10;
+        S("path", { d: "M" + x1 + " " + y1 + " L" + x1 + " " + yy + " L" + x2 + " " + yy + " L" + x2 + " " + y1, fill: "none", stroke: col, "stroke-width": 2.5 }, g);
+        T(g, (x1 + x2) / 2, ty, txt, { fs: 13, fw: 800, anchor: "middle" });
+      }
+    }
+    function hoja(g, url, x, y, lado, borde, etq) {
+      // imagen «de pie» en perspectiva isométrica (eje horizontal hacia abajo a la derecha)
+      const gg = S("g", { transform: "matrix(" + c30 + " " + s30 + " 0 1 " + fx(x) + " " + fx(y) + ")" }, g);
+      S("image", { href: url, x: 0, y: 0, width: lado, height: lado, preserveAspectRatio: "none" }, gg);
+      S("rect", { x: 0, y: 0, width: lado, height: lado, fill: "none", stroke: borde || "#fff", "stroke-width": 1.5 }, gg);
+      if (etq) { S("rect", { x: 5, y: 5, width: 20, height: 19, rx: 4, fill: "#fff" }, gg); T(gg, 15, 19, etq, { fs: 13, fw: 800, fill: borde || C.ink, anchor: "middle" }); }
+      return gg;
+    }
+    let filas = null, flat = false, actual = "tabla";
+    const tip = function (e, px, cel, ox, oy) {
+      const rc = svg.getBoundingClientRect(), k = rc.width / 720;
+      const c = Math.floor(((e.clientX - rc.left) / k - ox) / cel), f = Math.floor(((e.clientY - rc.top) / k - oy) / cel);
+      if (c < 0 || c > 27 || f < 0 || f > 27) { RN.tip.ocultar(); return; }
+      RN.tip.mostrar("píxel [" + f + ", " + c + "] = <b>" + px[f * 28 + c] + "</b>", e.clientX, e.clientY);
+    };
+    function dibuja(id) {
+      vaciar(svg); actual = id; flat = false; filas = null;
+      $("te-flat").hidden = id !== "mnist";
+      $("te-flat").textContent = "Aplanar con Flatten → (784,)";
+      panel(id);
+      if (id === "tabla") {
+        const cab = ["m²", "habitaciones", "antigüedad", "km al centro"];
+        const r = RN.rng(3), X0 = 112, Y0 = 70, CW = 116, RH = 34;
+        cab.forEach(function (h, j) { T(svg, X0 + j * CW + CW / 2, Y0 - 12, h, { fs: 13, fw: 800, fill: C.ink2, anchor: "middle" }); });
+        for (let i = 0; i < 7; i++) {
+          const y = Y0 + i * RH;
+          if (i === 6) { T(svg, X0 + 2 * CW, y + 22, "⋮  (32 filas en el lote)", { fs: 15, fw: 700, fill: C.ink2, anchor: "middle" }); break; }
+          S("rect", { x: X0, y: y, width: CW * 4, height: RH - 4, rx: 6, fill: i === 0 ? RN.mezcla("#ffffff", C.s7, 0.12) : "#fff", stroke: i === 0 ? C.s7 : "#E0E6EA", "stroke-width": i === 0 ? 2 : 1 }, svg);
+          const v = [Math.round(55 + r() * 90), 1 + Math.floor(r() * 4), Math.round(r() * 60), r() * 12];
+          v.forEach(function (n, j) { T(svg, X0 + j * CW + CW / 2, y + 20, j === 3 ? RN.fmt(n, 1) : String(n), { fs: 14, mono: true, anchor: "middle" }); });
+        }
+        llave(svg, X0, Y0 - 32, X0 + 4 * CW, 0, "4 características", COLD.carac, "arriba");
+        llave(svg, X0 - 22, Y0, 0, Y0 + 6 * RH, "lote: 32 filas", COLD.lote, "izq");
+        T(svg, X0 + 4 * CW + 10, Y0 + 15, "← una fila:", { fs: 13, fw: 700, fill: C.s7 });
+        T(svg, X0 + 4 * CW + 10, Y0 + 32, "forma (4,)", { fs: 13, fw: 700, fill: C.s7, mono: true });
+      } else if (id === "mnist") {
+        const cel = 9, ox = 60, oy = 50;
+        filas = [];
+        const gR = S("g", {}, svg);
+        for (let f = 0; f < 28; f++) {
+          const gf = S("g", { transform: "translate(" + ox + " " + (oy + f * cel) + ")" }, gR);
+          for (let c = 0; c < 28; c++) { const v = d5.px[f * 28 + c]; S("rect", { x: c * cel, y: 0, width: cel + 0.2, height: cel + 0.2, fill: "rgb(" + v + "," + v + "," + v + ")" }, gf); }
+          filas.push(gf);
+        }
+        S("rect", { x: ox, y: oy, width: 28 * cel, height: 28 * cel, fill: "transparent", stroke: "#90A4AE", "stroke-width": 1, class: "rejilla" }, svg).addEventListener("mousemove", function (e) { if (!flat) tip(e, d5.px, cel, ox, oy); });
+        svg.lastChild.addEventListener("mouseleave", function () { RN.tip.ocultar(); });
+        const gl = S("g", { class: "llaves" }, svg);
+        llave(gl, ox, oy - 4, ox + 28 * cel, 0, "ancho: 28", COLD.ancho, "arriba");
+        llave(gl, ox - 14, oy, 0, oy + 28 * cel, "alto: 28", COLD.alto, "izq");
+        T(gl, ox + 28 * cel + 30, oy + 60, "etiqueta: 5", { fs: 15, fw: 800 });
+        T(gl, ox + 28 * cel + 30, oy + 82, "como la primera imagen", { fs: 13, fill: C.ink2 });
+        T(gl, ox + 28 * cel + 30, oy + 100, "de MNIST", { fs: 13, fill: C.ink2 });
+        const gv = S("g", { class: "valores" }, gl);
+        const f0 = 13;
+        T(gv, ox + 28 * cel + 30, oy + 150, "fila 13 (valores 0-255):", { fs: 12.5, fw: 700, fill: C.ink2 });
+        T(gv, ox + 28 * cel + 30, oy + 170, d5.px.slice(f0 * 28 + 6, f0 * 28 + 16).join(" "), { fs: 12.5, mono: true });
+        S("rect", { x: ox - 2, y: oy + f0 * cel - 1, width: 28 * cel + 4, height: cel + 2, fill: "none", stroke: C.s4, "stroke-width": 2 }, gv);
+        svg.__llaves = gl;
+      } else if (id === "lote") {
+        const lado = 160, sep = 26;
+        for (let k = 5; k >= 0; k--) hoja(svg, lotes[k].url, 90 + k * sep * c30, 120 - k * sep * s30, lado, k === 0 ? "#FFCB6B" : "#B0BEC5");
+        const x0 = 90, y0 = 120;
+        // ejes
+        S("line", { x1: x0 + 4, y1: y0 + lado + 18 + 4 * s30, x2: x0 + lado * c30, y2: y0 + lado + 18 + lado * s30, stroke: COLD.ancho, "stroke-width": 3 }, svg);
+        T(svg, x0 + lado * c30 / 2 - 8, y0 + lado + 54 + lado * s30 / 2, "ancho: 28", { fs: 13, fw: 800, anchor: "middle" });
+        S("line", { x1: x0 - 12, y1: y0, x2: x0 - 12, y2: y0 + lado, stroke: COLD.alto, "stroke-width": 3 }, svg);
+        T(svg, x0 - 22, y0 + lado / 2, "alto: 28", { fs: 13, fw: 800, anchor: "end" });
+        const ex = x0 + lado * c30 + 18, ey = y0 + lado * s30 - 6;
+        S("line", { x1: ex, y1: ey, x2: ex + 5 * sep * c30, y2: ey - 5 * sep * s30, stroke: COLD.lote, "stroke-width": 3 }, svg);
+        T(svg, ex + 5 * sep * c30 + 10, ey - 5 * sep * s30 + 4, "lote: 32 imágenes", { fs: 13, fw: 800 });
+        T(svg, ex + 5 * sep * c30 + 10, ey - 5 * sep * s30 + 22, "(aquí se ven 6)", { fs: 12.5, fill: C.ink2 });
+      } else if (id === "color") {
+        S("image", { href: barco.url, x: 40, y: 80, width: 192, height: 192, preserveAspectRatio: "none" }, svg);
+        S("rect", { x: 40, y: 80, width: 192, height: 192, fill: "none", stroke: "#90A4AE" }, svg);
+        T(svg, 136, 300, "lo que vemos", { fs: 13, fw: 700, fill: C.ink2, anchor: "middle" });
+        T(svg, 270, 182, "=", { fs: 34, fw: 800, fill: C.ink2, anchor: "middle" });
+        const lado = 170, sep = 46, x0 = 330, y0 = 130;
+        const NOMC = ["R", "G", "B"], COLC = ["#C62828", "#2E7D32", "#1565C0"];
+        for (let k = 2; k >= 0; k--) hoja(svg, barco.canales[k], x0 + k * sep * c30, y0 - k * sep * s30, lado, COLC[k], NOMC[k]);
+        S("line", { x1: x0 + lado * c30 + 14, y1: y0 + lado * s30 - 10, x2: x0 + lado * c30 + 14 + 2 * sep * c30, y2: y0 + lado * s30 - 10 - 2 * sep * s30, stroke: COLD.canales, "stroke-width": 3 }, svg);
+        T(svg, x0 + lado * c30 + 22 + 2 * sep * c30, y0 + lado * s30 - 6 - 2 * sep * s30, "canales: 3", { fs: 13, fw: 800 });
+        T(svg, x0 + 40, y0 + lado + lado * s30 + 34, "cada canal: cuánto rojo, verde o azul hay en cada píxel", { fs: 12.5, fill: C.ink2 });
+      } else {
+        const lado = 74, sep = 16;
+        for (let m = 0; m < 4; m++) {
+          const x0 = 40 + m * 150, y0 = 170 - m * 6;
+          const im = m === 0 ? barco : imagenColor(20 + m * 3, m);
+          for (let k = 2; k >= 0; k--) hoja(svg, im.canales[k], x0 + k * sep * c30, y0 - k * sep * s30, lado, ["#C62828", "#2E7D32", "#1565C0"][k]);
+          T(svg, x0 + 34, 296, "imagen " + (m + 1), { fs: 12.5, fill: C.ink2, anchor: "middle" });
+        }
+        T(svg, 660, 230, "…", { fs: 34, fw: 800, fill: C.ink2, anchor: "middle" });
+        llave(svg, 40, 330, 690, 0, "lote: 64 imágenes de (32, 32, 3)", COLD.lote, "abajo");
+        T(svg, 40, 70, "4 dimensiones: (lote, alto, ancho, canales)", { fs: 14, fw: 800 });
+        T(svg, 40, 92, "es lo que recibe una red convolucional en cada paso", { fs: 13, fill: C.ink2 });
+      }
+    }
+    // Flatten: las filas se colocan una detrás de otra
+    $("te-flat").addEventListener("click", function () {
+      if (actual !== "mnist" || !filas) return;
+      flat = !flat;
+      const cel = 9, ox = 60, oy = 50, sx = 0.86, Y = 340;
+      const ll = svg.__llaves;
+      if (ll) ll.setAttribute("opacity", flat ? 0 : 1);
+      const rj = svg.querySelector(".rejilla");
+      if (rj) rj.setAttribute("opacity", flat ? 0 : 1);
+      panel(flat ? "flat" : "mnist");
+      this.textContent = flat ? "Volver a 28 × 28" : "Aplanar con Flatten → (784,)";
+      const desde = flat ? 0 : 1, hasta = flat ? 1 : 0;
+      let et = svg.querySelector(".et-flat");
+      if (!et) {
+        et = S("g", { class: "et-flat", opacity: 0 }, svg);
+        T(et, 30, Y - 12, "784 números en fila: (784,)", { fs: 13.5, fw: 800 });
+        S("line", { x1: 30, y1: Y + 26, x2: 30 + 784 * sx, y2: Y + 26, stroke: COLD.pix, "stroke-width": 3 }, et);
+        T(et, 30 + 784 * sx, Y + 44, "fila 1 · fila 2 · … · fila 28", { fs: 12.5, fill: C.ink2, anchor: "end" });
+      }
+      RN.tween(RN.reducirMovimiento ? 0 : 1600, function (t) {
+        const p = RN.lerp(desde, hasta, t);
+        filas.forEach(function (g, f) {
+          const q = RN.suave(RN.limita((p * 1.6 - f / 28 * 0.6), 0, 1));
+          const x = RN.lerp(ox, 30 + f * 28 * cel * sx / cel, q), y = RN.lerp(oy + f * cel, Y, q);
+          const kx = RN.lerp(1, sx / cel, q), ky = RN.lerp(1, 20 / cel, q);
+          g.setAttribute("transform", "translate(" + fx(x) + " " + fx(y) + ") scale(" + kx.toFixed(4) + " " + ky.toFixed(3) + ")");
+        });
+        et.setAttribute("opacity", RN.limita((p - 0.7) / 0.3, 0, 1));
+      });
+    });
+    segBotones($("te-seg"), function (b) { RN.tip.ocultar(); dibuja(b.dataset.e); });
+    dibuja("tabla");
+  })();
+
+  // ================================================================== 3 · grafo de computación
+  (function () {
+    const svg = $("gr-svg");
+    flechaDefs(svg, "gr-fl", "#9AA5B1");
+    const ids = ["x1", "x2", "w1", "w2", "b", "y"];
+    const sl = {}; ids.forEach(function (k) { sl[k] = $("gr-" + k); });
+    const V = {}; ids.forEach(function (k) { V[k] = +sl[k].value; });
+    // nodos
+    const YM = 190;
+    const N = {
+      x: { x: 92, y: 98, w: 116, h: 44, t: "x", s: "entrada", fuente: true },
+      w: { x: 92, y: 284, w: 116, h: 44, t: "w", s: "Variable", fuente: true },
+      mm: { x: 300, y: YM, w: 132, h: 68, t: "MatMul", s: "s = x · w" },
+      b: { x: 500, y: 340, w: 116, h: 44, t: "b", s: "Variable", fuente: true },
+      add: { x: 500, y: YM, w: 132, h: 68, t: "Add", s: "z = s + b" },
+      relu: { x: 700, y: YM, w: 132, h: 68, t: "ReLU", s: "a = max(0, z)" },
+      y: { x: 900, y: 340, w: 116, h: 44, t: "y", s: "objetivo", fuente: true },
+      loss: { x: 900, y: YM, w: 132, h: 68, t: "Pérdida", s: "L = (a − y)²" }
+    };
+    const gA = S("g", {}, svg), gN = S("g", {}, svg), gC = S("g", {}, svg), gP = S("g", {}, svg);
+    const A = {
+      x: { de: "x", a: "mm" }, w: { de: "w", a: "mm" }, s: { de: "mm", a: "add" }, b: { de: "b", a: "add", vert: true },
+      z: { de: "add", a: "relu" }, a: { de: "relu", a: "loss" }, y: { de: "y", a: "loss", vert: true }, L: { de: "loss", a: null }
+    };
+    function borde(n, hacia) {
+      const dx = hacia[0] - n.x, dy = hacia[1] - n.y;
+      const t = Math.min(Math.abs((n.w / 2) / (dx || 1e-9)), Math.abs((n.h / 2) / (dy || 1e-9)));
+      return [n.x + dx * t, n.y + dy * t];
+    }
+    Object.keys(A).forEach(function (k) {
+      const e = A[k], n1 = N[e.de];
+      let p1, p2;
+      if (e.a) { const n2 = N[e.a]; p1 = borde(n1, [n2.x, n2.y]); p2 = borde(n2, [n1.x, n1.y]); }
+      else { p1 = [n1.x + n1.w / 2, n1.y]; p2 = [1090, n1.y]; }
+      e.p1 = p1; e.p2 = p2;
+      e.l = S("line", { x1: p1[0], y1: p1[1], x2: p2[0] - (e.a ? 0 : 0), y2: p2[1], stroke: "#B6C0CA", "stroke-width": 2.5, "marker-end": "url(#gr-fl)" }, gA);
+    });
+    Object.keys(N).forEach(function (k) {
+      const n = N[k];
+      n.r = caja(gN, n.x, n.y, n.w, n.h, { fill: n.fuente ? "#F5F7FA" : "#fff", stroke: n.fuente ? "#9AA5B1" : C.ink2, sw: n.fuente ? 1.5 : 2.2, rx: n.fuente ? 22 : 10 });
+      T(gN, n.x, n.y - (n.fuente ? 1 : 12), n.t, { fs: n.fuente ? 17 : 16, fw: 800, anchor: "middle", estilo: n.fuente ? "italic" : null });
+      T(gN, n.x, n.y + (n.fuente ? 16 : 7), n.s, { fs: 12, fill: C.ink2, anchor: "middle" });
+      if (!n.fuente) n.loc = T(gN, n.x, n.y + 25, "", { fs: 12, fw: 800, fill: C.s2, anchor: "middle" });
+    });
+    // fichas de valores (azul) y gradientes (naranja)
+    function chip(col) {
+      const g = S("g", { opacity: 0 }, gC);
+      const r = S("rect", { height: 24, rx: 12, fill: RN.mezcla("#ffffff", col, 0.13), stroke: col, "stroke-width": 1.5 }, g);
+      const t = T(g, 0, 0, "", { fs: 12.5, fw: 700, anchor: "middle", base: "middle" });
+      return { g: g, r: r, t: t };
+    }
+    function ponChip(c, txt, x, y) {
+      c.t.textContent = txt;
+      const w = txt.length * 7.1 + 16;
+      c.r.setAttribute("x", x - w / 2); c.r.setAttribute("y", y - 12); c.r.setAttribute("width", w);
+      c.t.setAttribute("x", x); c.t.setAttribute("y", y + 1);
+    }
+    Object.keys(A).forEach(function (k) { A[k].cv = chip(C.s1); A[k].cg = chip(C.s2); });
+    function posChip(k, atras) {
+      const e = A[k], mx = (e.p1[0] + e.p2[0]) / 2, my = (e.p1[1] + e.p2[1]) / 2;
+      if (k === "L") return atras ? [1030, YM + 50] : [1030, YM - 50];
+      if (e.vert) return atras ? [mx - 66, my + 6] : [mx + 62, my + 6];
+      if (k === "x") return atras ? [92, 148] : [92, 60];
+      if (k === "w") return atras ? [92, 236] : [92, 322];
+      return atras ? [mx, YM + 50] : [mx, YM - 50];
+    }
+    let R = null;
+    function calcula() {
+      const s = V.x1 * V.w1 + V.x2 * V.w2, z = s + V.b, a = Math.max(0, z), L = (a - V.y) * (a - V.y);
+      const dLa = 2 * (a - V.y), dz = z > 0 ? 1 : 0, dLz = dLa * dz;
+      return { s: s, z: z, a: a, L: L, dLa: dLa, dz: dz, dLz: dLz, dLs: dLz, dLb: dLz, dw1: dLz * V.x1, dw2: dLz * V.x2, dx1: dLz * V.w1, dx2: dLz * V.w2 };
+    }
+    const vec = function (a, b, d) { return "[" + F(a, d) + "; " + F(b, d) + "]"; };
+    function textos() {
+      return {
+        v: { x: "x = " + vec(V.x1, V.x2, 1), w: "w = " + vec(V.w1, V.w2, 2), s: "s = " + F(R.s, 2), b: "b = " + F(V.b, 2), z: "z = " + F(R.z, 2), a: "a = " + F(R.a, 2), y: "y = " + F(V.y, 1), L: "L = " + F(R.L, 3) },
+        g: { L: "∂L/∂L = 1", a: "∂L/∂a = " + F(R.dLa, 2), z: "∂L/∂z = " + F(R.dLz, 2), s: "∂L/∂s = " + F(R.dLs, 2), b: "∂L/∂b = " + F(R.dLb, 2), w: "∂L/∂w = " + vec(R.dw1, R.dw2, 2), x: "∂L/∂x = " + vec(R.dx1, R.dx2, 2) },
+        loc: { loss: "∂L/∂a = 2(a − y)", relu: "∂a/∂z = " + (R.dz ? "1 (z > 0)" : "0 (z ≤ 0)"), add: "∂z/∂s = ∂z/∂b = 1", mm: "∂s/∂w = x" }
+      };
+    }
+    const ORD_V = [["x", "w"], ["s", "b"], ["z"], ["a", "y"], ["L"]];
+    const ORD_G = [["L"], ["a"], ["z"], ["s", "b"], ["w", "x"]];
+    const NODO_G = { L: "loss", a: "relu", z: "add", s: "mm" };
+    function estado(verV, verG) {
+      const tx = textos();
+      Object.keys(A).forEach(function (k) {
+        const pv = posChip(k, false), pg = posChip(k, true);
+        ponChip(A[k].cv, tx.v[k], pv[0], pv[1]);
+        A[k].cv.g.setAttribute("opacity", verV.indexOf(k) >= 0 ? 1 : 0);
+        if (tx.g[k]) { ponChip(A[k].cg, tx.g[k], pg[0], pg[1]); A[k].cg.g.setAttribute("opacity", verG.indexOf(k) >= 0 ? 1 : 0); }
+      });
+      ["loss", "relu", "add", "mm"].forEach(function (n) {
+        const vis = (n === "loss" && verG.indexOf("a") >= 0) || (n === "relu" && verG.indexOf("z") >= 0) || (n === "add" && verG.indexOf("s") >= 0) || (n === "mm" && verG.indexOf("w") >= 0);
+        N[n].loc.textContent = vis ? tx.loc[n] : "";
+      });
+      const apagada = R.z <= 0;
+      N.relu.r.setAttribute("stroke", apagada ? C.bad : C.ink2);
+    }
+    const TODOS = ["x", "w", "s", "b", "z", "a", "y", "L"];
+    let ficha = 0;
+    function pulso(k, atras, ms) {
+      const e = A[k];
+      const a = atras ? e.p2 : e.p1, b = atras ? e.p1 : e.p2;
+      const c = S("circle", { r: 6.5, fill: atras ? C.s2 : C.s1, stroke: "#fff", "stroke-width": 1.5 }, gP);
+      return RN.tween(ms, function (t) { c.setAttribute("cx", RN.lerp(a[0], b[0], t)); c.setAttribute("cy", RN.lerp(a[1], b[1], t)); }).then(function () { c.remove(); });
+    }
+    async function adelante() {
+      const yo = ++ficha;
+      vaciar(gP);
+      const verV = [];
+      estado(verV, []);
+      for (const grupo of ORD_V) {
+        await Promise.all(grupo.map(function (k) { return pulso(k, false, 520); }));
+        if (yo !== ficha) return;
+        grupo.forEach(function (k) { verV.push(k); });
+        estado(verV, []);
+        await RN.espera(120);
+        if (yo !== ficha) return;
+      }
+    }
+    async function atras() {
+      const yo = ++ficha;
+      vaciar(gP);
+      const verG = [];
+      estado(TODOS, verG);
+      for (const grupo of ORD_G) {
+        await Promise.all(grupo.map(function (k) { return pulso(k, true, 520); }));
+        if (yo !== ficha) return;
+        grupo.forEach(function (k) { verG.push(k); });
+        estado(TODOS, verG);
+        await RN.espera(220);
+        if (yo !== ficha) return;
+      }
+    }
+    function cadenas() {
+      $("gr-cad1").innerHTML = "∂L/∂w₁ = ∂L/∂a · ∂a/∂z · ∂z/∂s · ∂s/∂w₁ = (" + F(R.dLa, 2) + ") · " + R.dz + " · 1 · " + F(V.x1, 1) + " = <b>" + F(R.dw1, 2) + "</b>";
+      $("gr-cad2").innerHTML = "∂L/∂b = ∂L/∂a · ∂a/∂z · ∂z/∂b = (" + F(R.dLa, 2) + ") · " + R.dz + " · 1 = <b>" + F(R.dLb, 2) + "</b>";
+      $("gr-nota").innerHTML = R.z <= 0
+        ? "<b>z ≤ 0:</b> la ReLU está apagada, su derivada local es 0 y no llega gradiente a w ni a b. Esa neurona no aprende con este ejemplo."
+        : (R.dLa < 0 ? "Como a es menor que y, los gradientes son negativos: restarlos (w ← w − η·∂L/∂w) <b>sube</b> w y b." : R.dLa > 0 ? "Como a es mayor que y, los gradientes son positivos: el descenso <b>baja</b> w y b." : "a = y: la pérdida es 0 y no hay nada que corregir.");
+      const p = function (v) { const r = Math.round(v * 100) / 100; return Number.isInteger(r) ? r.toFixed(1) : r.toString(); }; // siempre literales float
+      ponCodigo($("gr-code"), [
+        "import tensorflow as tf",
+        "x = tf.constant([[" + p(V.x1) + ", " + p(V.x2) + "]])",
+        "w = tf.Variable([[" + p(V.w1) + "], [" + p(V.w2) + "]])",
+        "b = tf.Variable(" + p(V.b) + ")",
+        "y = " + p(V.y),
+        "with tf.GradientTape() as tape:   # graba el grafo",
+        "    a = tf.nn.relu(tf.matmul(x, w) + b)",
+        "    L = tf.square(a - y)",
+        "dw, db = tape.gradient(L, [w, b])  # hacia atrás",
+        "# dw = [[" + p(R.dw1) + "], [" + p(R.dw2) + "]]   db = " + p(R.dLb)
+      ]);
+    }
+    function salidas() { ids.forEach(function (k) { $("gr-" + k + "o").textContent = F(V[k], k === "x1" || k === "x2" || k === "y" ? 1 : 2); }); }
+    function todo() { R = calcula(); salidas(); $("gr-L").textContent = F(R.L, 3); cadenas(); }
+    ids.forEach(function (k) { sl[k].addEventListener("input", function () { ficha++; vaciar(gP); V[k] = +sl[k].value; todo(); estado(TODOS, TODOS); }); });
+    $("gr-del").addEventListener("click", adelante);
+    $("gr-atr").addEventListener("click", atras);
+    $("gr-paso").addEventListener("click", function () {
+      ficha++; vaciar(gP);
+      const L0 = R.L;
+      V.w1 = RN.limita(V.w1 - 0.1 * R.dw1, -2, 2); V.w2 = RN.limita(V.w2 - 0.1 * R.dw2, -2, 2); V.b = RN.limita(V.b - 0.1 * R.dLb, -2, 2);
+      sl.w1.value = V.w1; sl.w2.value = V.w2; sl.b.value = V.b;
+      todo(); estado(TODOS, TODOS);
+      $("gr-nota").innerHTML = "Paso de descenso: w ← w − 0,1·∂L/∂w y b ← b − 0,1·∂L/∂b. La pérdida pasa de " + F(L0, 3) + " a <b>" + F(R.L, 3) + "</b>.";
+      ["w", "b"].forEach(function (n) { const r = N[n].r; r.setAttribute("stroke", C.s4); r.setAttribute("stroke-width", 4); setTimeout(function () { r.setAttribute("stroke", "#9AA5B1"); r.setAttribute("stroke-width", 1.5); }, 700); });
+    });
+    todo();
+    estado(TODOS, TODOS);
+  })();
+
+  // ================================================================== 4 · ¿por qué grafos?
+  (function () {
+    const escenas = [];
+    function nodo(g, cx, cy, w, h, txt, o) {
+      o = o || {};
+      const gg = S("g", {}, g);
+      const r = caja(gg, cx, cy, w, h, { fill: o.fill || "#fff", stroke: o.stroke || C.ink2, sw: o.sw || 2, rx: 8 });
+      const t = T(gg, cx, cy + 4.5, txt, { fs: o.fs || 13, fw: 700, anchor: "middle", fill: o.tc || C.ink });
+      return { g: gg, r: r, t: t };
+    }
+    function linea(g, x1, y1, x2, y2, col, id) {
+      return S("line", { x1: x1, y1: y1, x2: x2, y2: y2, stroke: col || "#9AA5B1", "stroke-width": 2.2, "marker-end": "url(#" + id + ")" }, g);
+    }
+    // ---------- 1 · optimizar
+    (function () {
+      const svg = $("pg-1"); flechaDefs(svg, "pg1-fl", "#9AA5B1");
+      T(svg, 16, 26, "Fusionar operaciones", { fs: 13, fw: 800, fill: C.ink2 });
+      T(svg, 16, 146, "Eliminar operaciones repetidas", { fs: 13, fw: 800, fill: C.ink2 });
+      S("line", { x1: 16, y1: 124, x2: 504, y2: 124, stroke: "#E4E7EB", "stroke-width": 1.5 }, svg);
+      const gF = S("g", {}, svg);
+      const XS = [100, 230, 360];
+      const ops = ["MatMul", "Add", "ReLU"].map(function (n, k) { return nodo(gF, XS[k], 74, 96, 38, n); });
+      const fl = [linea(gF, 148, 74, 182, 74, null, "pg1-fl"), linea(gF, 278, 74, 312, 74, null, "pg1-fl")];
+      const fus = nodo(gF, 230, 74, 300, 40, "MatMul + Add + ReLU (un solo kernel)", { stroke: C.s3, fill: RN.mezcla("#ffffff", C.s3, 0.12), sw: 2.5 });
+      const cont1 = T(svg, 504, 26, "", { fs: 13, fw: 800, anchor: "end", fill: C.s3 });
+      // repetidas
+      const gR = S("g", {}, svg);
+      const xN = nodo(gR, 60, 196, 60, 34, "x");
+      const n1 = nodo(gR, 210, 172, 128, 34, "normalizar(x)"), n2 = nodo(gR, 210, 222, 128, 34, "normalizar(x)");
+      const cA = nodo(gR, 420, 172, 96, 34, "capa A"), cB = nodo(gR, 420, 222, 96, 34, "capa B");
+      linea(gR, 90, 190, 144, 176, null, "pg1-fl");
+      const l2 = linea(gR, 90, 202, 144, 218, null, "pg1-fl");
+      linea(gR, 274, 172, 370, 172, null, "pg1-fl");
+      const lB = linea(gR, 274, 222, 370, 222, null, "pg1-fl");
+      const lB2 = S("line", { x1: 274, y1: 176, x2: 370, y2: 218, stroke: C.s3, "stroke-width": 2.5, "marker-end": "url(#pg1-fl)", opacity: 0 }, gR);
+      const cont2 = T(svg, 504, 146, "", { fs: 13, fw: 800, anchor: "end", fill: C.s3 });
+      escenas.push(function (t) {
+        const c = t % 8, m = RN.suave(tramo(c, 1.6, 3.0)), m2 = RN.suave(tramo(c, 3.2, 4.4));
+        ops.forEach(function (o, k) {
+          const x = RN.lerp(XS[k], 230 + (k - 1) * 70, m);
+          o.g.setAttribute("transform", "translate(" + (x - XS[k]) + " 0)");
+          o.g.setAttribute("opacity", 1 - tramo(c, 2.6, 3.0));
+        });
+        fl.forEach(function (f) { f.setAttribute("opacity", 1 - m); });
+        fus.g.setAttribute("opacity", tramo(c, 2.6, 3.0));
+        cont1.textContent = c > 3 ? "3 operaciones → 1" : "3 operaciones";
+        n2.g.setAttribute("opacity", 1 - m2); l2.setAttribute("opacity", 1 - m2); lB.setAttribute("opacity", 1 - m2);
+        lB2.setAttribute("opacity", m2);
+        n1.r.setAttribute("stroke", m2 > 0.5 ? C.s3 : C.ink2);
+        cont2.textContent = c > 4.4 ? "2 cálculos iguales → 1" : "2 cálculos iguales";
+      });
+    })();
+    // ---------- 2 · distribuir
+    (function () {
+      const svg = $("pg-2"); flechaDefs(svg, "pg2-fl", "#9AA5B1");
+      const LAN = [["CPU", "#7B8794", 52], ["GPU 0", C.s1, 128], ["GPU 1", C.s3, 204]];
+      LAN.forEach(function (l) {
+        S("rect", { x: 8, y: l[2] - 32, width: 504, height: 64, rx: 10, fill: RN.mezcla("#ffffff", l[1], 0.08), stroke: RN.mezcla("#ffffff", l[1], 0.4) }, svg);
+        T(svg, 20, l[2] + 5, l[0], { fs: 13, fw: 800, fill: l[1] === "#7B8794" ? C.ink2 : l[1] });
+      });
+      const ND = [["leer datos", 0, 105], ["preprocesar", 0, 215], ["capa 1", 1, 215], ["capa 2", 1, 335], ["capa 3", 2, 335], ["pérdida", 2, 455]];
+      const gl = S("g", {}, svg);
+      const ns = ND.map(function (d) { return nodo(svg, d[2], LAN[d[1]][2], 92, 34, d[0], { stroke: LAN[d[1]][1], fill: "#fff" }); });
+      const rutas = [];
+      for (let k = 0; k < ND.length - 1; k++) {
+        const a = [ND[k][2], LAN[ND[k][1]][2]], b = [ND[k + 1][2], LAN[ND[k + 1][1]][2]];
+        let p1, p2;
+        if (a[1] === b[1]) { p1 = [a[0] + 46, a[1]]; p2 = [b[0] - 46, b[1]]; } else { p1 = [a[0], a[1] + 17]; p2 = [b[0], b[1] - 17]; }
+        linea(gl, p1[0], p1[1], p2[0], p2[1], a[1] === b[1] ? "#9AA5B1" : C.s4, "pg2-fl");
+        rutas.push({ p1: p1, p2: p2, cambio: a[1] !== b[1] });
+      }
+      const pt = S("circle", { r: 6.5, fill: C.s4, stroke: "#fff", "stroke-width": 1.5 }, svg);
+      const aviso = T(svg, 504, 18, "", { fs: 12.5, fw: 800, fill: "#7A5A00", anchor: "end" });
+      escenas.push(function (t) {
+        const c = (t % 6) / 6 * rutas.length, k = Math.min(rutas.length - 1, Math.floor(c)), f = c - k, r = rutas[k];
+        pt.setAttribute("cx", RN.lerp(r.p1[0], r.p2[0], f)); pt.setAttribute("cy", RN.lerp(r.p1[1], r.p2[1], f));
+        aviso.textContent = r.cambio ? "el tensor viaja de un dispositivo a otro" : "";
+        ns.forEach(function (n, j) { n.r.setAttribute("stroke-width", j === k + (f > 0.95 ? 1 : 0) ? 3.5 : 2); });
+      });
+    })();
+    // ---------- 3 · persistir
+    (function () {
+      const svg = $("pg-3"); flechaDefs(svg, "pg3-fl", "#9AA5B1");
+      const gE = S("g", {}, svg);
+      S("rect", { x: 10, y: 30, width: 160, height: 190, rx: 12, fill: "#F5F7FA", stroke: "#CFD8DC", "stroke-width": 1.5 }, gE);
+      T(gE, 90, 52, "Entrenamiento", { fs: 13.5, fw: 800, anchor: "middle" });
+      [0, 1, 2, 3, 4].forEach(function (k) { S("rect", { x: 24, y: 66 + k * 11, width: [90, 120, 70, 104, 60][k], height: 6, rx: 3, fill: "#B0BEC5" }, gE); });
+      T(gE, 24, 135, "código + datos", { fs: 12, fill: C.ink2 });
+      S("ellipse", { cx: 128, cy: 150, rx: 22, ry: 7, fill: "#90CAF9" }, gE); S("rect", { x: 106, y: 150, width: 44, height: 30, fill: "#90CAF9" }, gE); S("ellipse", { cx: 128, cy: 180, rx: 22, ry: 7, fill: "#64B5F6" }, gE); S("ellipse", { cx: 128, cy: 150, rx: 22, ry: 7, fill: "#BBDEFB" }, gE);
+      const miniG = function (g, x, y) { const ns = [[x, y], [x + 30, y - 14], [x + 30, y + 14], [x + 60, y]]; [[0, 1], [0, 2], [1, 3], [2, 3]].forEach(function (e) { S("line", { x1: ns[e[0]][0], y1: ns[e[0]][1], x2: ns[e[1]][0], y2: ns[e[1]][1], stroke: C.ink2, "stroke-width": 1.5 }, g); }); return ns.map(function (p) { return S("circle", { cx: p[0], cy: p[1], r: 6, fill: "#fff", stroke: C.ink2, "stroke-width": 1.8 }, g); }); };
+      const nE = miniG(gE, 26, 196);
+      const noViaja = T(gE, 90, 238, "", { fs: 12, fw: 700, fill: C.ink2, anchor: "middle" });
+      // carpeta SavedModel
+      const gS = S("g", {}, svg);
+      S("path", { d: "M196 92 L226 92 L234 100 L322 100 L322 176 L196 176 Z", fill: "#FFE7A8", stroke: "#D9A400", "stroke-width": 1.5 }, gS);
+      T(gS, 259, 84, "modelo/ (SavedModel)", { fs: 12.5, fw: 800, anchor: "middle" });
+      T(gS, 206, 124, "saved_model.pb", { fs: 12, fw: 700, mono: true });
+      T(gS, 206, 139, "→ el grafo", { fs: 12, fill: C.ink2 });
+      T(gS, 206, 158, "variables/", { fs: 12, fw: 700, mono: true });
+      T(gS, 206, 172, "→ los pesos", { fs: 12, fill: C.ink2 });
+      // servidor
+      const gV = S("g", {}, svg);
+      S("rect", { x: 350, y: 30, width: 160, height: 190, rx: 12, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, gV);
+      T(gV, 430, 52, "Servidor", { fs: 13.5, fw: 800, anchor: "middle" });
+      T(gV, 430, 68, "solo grafo + pesos", { fs: 12, fill: C.ink2, anchor: "middle" });
+      const nV = miniG(gV, 400, 110);
+      const pet = S("g", {}, svg);
+      const req = S("rect", { width: 46, height: 20, rx: 6, fill: RN.mezcla("#ffffff", C.s1, 0.2), stroke: C.s1 }, pet);
+      const reqT = T(pet, 23, 14, "{…}", { fs: 12, fw: 700, anchor: "middle", mono: true });
+      T(gV, 430, 180, "predicciones", { fs: 12, fill: C.ink2, anchor: "middle" });
+      const doc = S("g", {}, svg);
+      S("path", { d: "M0 0 L22 0 L30 8 L30 34 L0 34 Z", fill: "#fff", stroke: C.s4, "stroke-width": 2 }, doc);
+      T(doc, 15, 24, "pb", { fs: 11.5, fw: 800, anchor: "middle", fill: "#7A5A00" });
+      const etq = T(svg, 260, 222, "", { fs: 12.5, fw: 700, anchor: "middle", mono: true });
+      escenas.push(function (t) {
+        const c = t % 9;
+        nE.forEach(function (n, k) { n.setAttribute("fill", c < 2 && Math.sin(t * 6 + k) > 0.3 ? C.s3 : "#fff"); });
+        gE.setAttribute("opacity", c > 4.8 ? 0.4 : 1);
+        noViaja.textContent = c > 4.8 ? "no hace falta en producción" : "";
+        let dx = 60, dy = 180, vis = 0;
+        if (c >= 2 && c < 3.4) { const f = RN.suave(tramo(c, 2, 3.2)); dx = RN.lerp(60, 244, f); dy = RN.lerp(180, 110, f); vis = 1; etq.textContent = "tf.saved_model.save(...)"; }
+        else if (c >= 3.4 && c < 4.8) { const f = RN.suave(tramo(c, 3.4, 4.6)); dx = RN.lerp(244, 416, f); dy = RN.lerp(110, 140, f); vis = 1; etq.textContent = "tf.saved_model.load(...)"; }
+        else etq.textContent = c >= 4.8 ? "petición → predicción" : "";
+        doc.setAttribute("transform", "translate(" + dx + " " + dy + ")"); doc.setAttribute("opacity", vis);
+        if (c >= 4.8) {
+          const f = ((c - 4.8) % 1.4) / 1.4, ida = f < 0.5;
+          const x = ida ? RN.lerp(520, 470, f * 2) : RN.lerp(470, 520, (f - 0.5) * 2);
+          pet.setAttribute("transform", "translate(" + (x - 23) + " " + (ida ? 140 : 160) + ")"); pet.setAttribute("opacity", 1);
+          reqT.textContent = ida ? "{…}" : "0,93";
+          req.setAttribute("stroke", ida ? C.s1 : C.s3); req.setAttribute("fill", RN.mezcla("#ffffff", ida ? C.s1 : C.s3, 0.2));
+          nV.forEach(function (n, k) { n.setAttribute("fill", Math.sin(t * 8 - k) > 0.4 ? C.s3 : "#fff"); });
+        } else { pet.setAttribute("opacity", 0); nV.forEach(function (n) { n.setAttribute("fill", "#fff"); }); }
+      });
+    })();
+    // ---------- 4 · depurar
+    (function () {
+      const svg = $("pg-4"); flechaDefs(svg, "pg4-fl", "#9AA5B1");
+      const g = S("g", {}, svg);
+      const NOD = [["Entrada", "(None, 28, 28)"], ["Flatten", "(None, 784)"], ["Dense(128)", "(None, 28, 128)", "(None, 128)"], ["Dense(10)", "(None, 28, 10)", "(None, 10)"], ["Pérdida", ""]];
+      const XA = [56, null, 196, 326, 456], XB = [56, 156, 256, 356, 456];
+      const els = NOD.map(function (d) {
+        const n = nodo(g, 0, 98, 88, 38, d[0], { fs: 12.5 });
+        n.forma = T(n.g, 0, 136, d[1], { fs: 12, fw: 700, anchor: "middle", mono: true });
+        return n;
+      });
+      const fl = [0, 1, 2, 3].map(function () { return S("line", { stroke: "#9AA5B1", "stroke-width": 2.2, "marker-end": "url(#pg4-fl)" }, g); });
+      T(svg, 456, 30, "etiquetas: (None, 10)", { fs: 12, fw: 700, anchor: "middle", mono: true });
+      linea(svg, 456, 38, 456, 76, null, "pg4-fl");
+      const msg = S("g", {}, svg);
+      const mr = S("rect", { x: 12, y: 168, width: 496, height: 66, rx: 10 }, msg);
+      const m1 = T(msg, 26, 194, "", { fs: 13, fw: 800 });
+      const m2 = T(msg, 26, 216, "", { fs: 12.5, mono: true });
+      escenas.push(function (t) {
+        const c = t % 10, fase = c < 5 ? 0 : 1, m = RN.suave(tramo(c, 5, 6.2));
+        const xs = XB.map(function (xb, k) { return k === 1 ? xb : RN.lerp(XA[k], xb, m); });
+        els.forEach(function (n, k) {
+          n.g.setAttribute("transform", "translate(" + xs[k] + " 0)");
+          if (k === 1) n.g.setAttribute("opacity", m);
+          const prog = fase === 0 ? tramo(c, 0.4 + k * 0.6, 0.8 + k * 0.6) : tramo(c, 6.2 + k * 0.4, 6.5 + k * 0.4);
+          n.forma.setAttribute("opacity", prog);
+          if (d2(k)) n.forma.textContent = fase === 0 ? NOD[k][1] : NOD[k][2];
+          const err = fase === 0 && k === 4 && c > 3.3;
+          n.r.setAttribute("stroke", err ? C.bad : (fase === 1 && k === 4 && c > 8 ? C.ok : C.ink2));
+          n.r.setAttribute("stroke-width", err || (fase === 1 && k === 4 && c > 8) ? 3.5 : 2);
+        });
+        const orden = [0, 1, 2, 3, 4].filter(function (k) { return k !== 1 || m > 0.05; });
+        fl.forEach(function (l, i) {
+          const a = orden[i], b = orden[i + 1];
+          if (b === undefined) { l.setAttribute("opacity", 0); return; }
+          l.setAttribute("opacity", 1);
+          l.setAttribute("x1", xs[a] + 44); l.setAttribute("y1", 98); l.setAttribute("x2", xs[b] - 46); l.setAttribute("y2", 98);
+        });
+        if (fase === 0 && c > 3.3) {
+          msg.setAttribute("opacity", 1); mr.setAttribute("fill", "#FFEBEE"); mr.setAttribute("stroke", C.bad);
+          m1.textContent = "✗ Error: las formas no encajan"; m1.setAttribute("fill", C.bad);
+          m2.textContent = "(None, 10) frente a (None, 28, 10): falta aplanar";
+        } else if (fase === 1 && c > 8) {
+          msg.setAttribute("opacity", 1); mr.setAttribute("fill", "#E8F5E9"); mr.setAttribute("stroke", C.ok);
+          m1.textContent = "✓ Con Flatten las formas encajan"; m1.setAttribute("fill", C.ok);
+          m2.textContent = "(None, 784) → (None, 128) → (None, 10)";
+        } else msg.setAttribute("opacity", 0);
+      });
+      function d2(k) { return k === 2 || k === 3; }
+    })();
+    const cont = $("p-porgrafos");
+    const anim = RN.anima(function (dt, t) { escenas.forEach(function (f) { f(Math.max(0, t)); }); }, $("pg-1"));
+    escenas.forEach(function (f) { f(RN.reducirMovimiento ? 8.5 : 0.01); });
+    RN.botonPlay($("pg-play"), anim, ["▶ Reproducir", "⏸ Pausa"]);
+    if (!RN.reducirMovimiento) anim.iniciar();
+    void cont;
+  })();
+
+  // ================================================================== 5 · TF1 frente a TF2
+  (function () {
+    const L1 = ponCodigo($("tf-c1"), [
+      "import tensorflow as tf            # TensorFlow 1.x",
+      "x = tf.placeholder(tf.float32, shape=(None, 2))",
+      "w = tf.Variable([[0.6], [-0.4]])",
+      "b = tf.Variable(0.3)",
+      "y = tf.nn.relu(tf.matmul(x, w) + b)  # aún no calcula",
+      "init = tf.global_variables_initializer()",
+      "with tf.Session() as sess:",
+      "    sess.run(init)",
+      "    print(sess.run(y, feed_dict={x: [[2.0, 1.0]]}))"
+    ]);
+    const L2 = ponCodigo($("tf-c2"), [
+      "import tensorflow as tf            # TensorFlow 2.x",
+      "x = tf.constant([[2.0, 1.0]])",
+      "w = tf.Variable([[0.6], [-0.4]])",
+      "b = tf.Variable(0.3)",
+      "y = tf.nn.relu(tf.matmul(x, w) + b)  # ya vale [[1.1]]",
+      "print(y)",
+      "@tf.function                       # pide un grafo",
+      "def neurona(x):",
+      "    return tf.nn.relu(tf.matmul(x, w) + b)",
+      "neurona(x)   # 1.ª llamada: traza el grafo"
+    ]);
+    const PASOS = [
+      { t: "Crear la entrada. En TF1, x es un hueco (placeholder) que se rellenará más tarde; en TF2, x ya contiene los valores 2 y 1.", l1: [1], l2: [1], g1: { x: "?" }, g2: { x: "[2; 1]" }, c1: ["construir", "#7B8794"], c2: ["ejecutar x", C.s3] },
+      { t: "Crear los pesos y el sesgo. En TF1 aún no tienen valor (hay que inicializarlos); en TF2 ya existen.", l1: [2, 3], l2: [2, 3], g1: { x: "?", w: "?", b: "?" }, g2: { x: "[2; 1]", w: "[0,6; −0,4]", b: "0,3" }, c1: ["construir", "#7B8794"], c2: ["ejecutar w, b", C.s3] },
+      { t: "Definir la neurona. TF1 solo añade nodos al grafo, sin calcular nada; TF2 calcula al momento: y = 1,1.", l1: [4], l2: [4], g1: { x: "?", w: "?", b: "?", mm: "?", add: "?", relu: "?" }, g2: { x: "[2; 1]", w: "[0,6; −0,4]", b: "0,3", mm: "0,8", add: "1,1", relu: "1,1" }, c1: ["construir", "#7B8794"], c2: ["ejecutar y", C.s3] },
+      { t: "Ver el resultado. TF1 necesita abrir una sesión e inicializar las variables; en TF2 basta con print(y).", l1: [5, 6, 7], l2: [5], g1: { x: "?", w: "[0,6; −0,4]", b: "0,3", mm: "?", add: "?", relu: "?" }, g2: { x: "[2; 1]", w: "[0,6; −0,4]", b: "0,3", mm: "0,8", add: "1,1", relu: "1,1" }, c1: ["sesión", C.s7], c2: ["print → [[1,1]]", C.s3] },
+      { t: "Ejecutar. TF1: sess.run rellena x con feed_dict y el grafo se recorre entero → [[1,1]]. TF2: @tf.function convierte la función en un grafo cuando interesa (rendimiento o exportar).", l1: [8], l2: [6, 7, 8, 9], g1: { x: "[2; 1]", w: "[0,6; −0,4]", b: "0,3", mm: "0,8", add: "1,1", relu: "1,1" }, g2: { x: "[2; 1]", w: "[0,6; −0,4]", b: "0,3", mm: "0,8", add: "1,1", relu: "1,1", graf: true }, c1: ["ejecutar todo", C.s3], c2: ["trazar grafo", C.s7] }
+    ];
+    function grafo(svg) {
+      flechaDefs(svg, svg.id + "-fl", "#9AA5B1");
+      const P = { x: [52, 40], w: [52, 120], mm: [190, 80], b: [318, 148], add: [318, 80], relu: [446, 80] };
+      const ar = [["x", "mm"], ["w", "mm"], ["mm", "add"], ["b", "add"], ["add", "relu"]];
+      const gr = S("rect", { x: 128, y: 44, width: 382, height: 72, rx: 12, fill: "none", stroke: C.s7, "stroke-width": 2, opacity: 0 }, svg);
+      const grT = T(svg, 504, 36, "grafo (tf.function)", { fs: 12, fw: 800, fill: C.s7, anchor: "end", op: 0 });
+      const lineas = ar.map(function (a) {
+        const p = P[a[0]], q = P[a[1]], fuente = a[0] === "x" || a[0] === "w" || a[0] === "b";
+        const x1 = p[0] + (a[0] === "b" ? 0 : fuente ? 34 : 46), y1 = p[1] + (a[0] === "b" ? -16 : 0), x2 = q[0] - (a[0] === "b" ? 0 : 46), y2 = q[1] + (a[0] === "b" ? 17 : 0);
+        return { a: a, l: S("line", { x1: x1, y1: y1, x2: x2, y2: y2, stroke: "#9AA5B1", "stroke-width": 2, "marker-end": "url(#" + svg.id + "-fl)", opacity: 0 }, svg) };
+      });
+      const nodos = {};
+      Object.keys(P).forEach(function (k) {
+        const p = P[k], fuente = k === "x" || k === "w" || k === "b";
+        const g = S("g", { opacity: 0 }, svg);
+        const r = caja(g, p[0], p[1], fuente ? 68 : 92, fuente ? 30 : 34, { fill: fuente ? "#F5F7FA" : "#fff", stroke: fuente ? "#9AA5B1" : C.ink2, rx: fuente ? 15 : 8, sw: fuente ? 1.5 : 2 });
+        T(g, p[0], p[1] + 5, { x: "x", w: "w", b: "b", mm: "MatMul", add: "Add", relu: "ReLU" }[k], { fs: 13.5, fw: 800, anchor: "middle", estilo: fuente ? "italic" : null });
+        const v = k === "b" ? T(svg, p[0] + 42, p[1] + 5, "", { fs: 12.5, fw: 800 }) : T(svg, p[0], fuente ? p[1] + 30 : p[1] - 24, "", { fs: 12.5, fw: 800, anchor: "middle" });
+        nodos[k] = { g: g, r: r, v: v };
+      });
+      return { nodos: nodos, gr: gr, grT: grT, lineas: lineas };
+    }
+    const G1 = grafo($("tf-g1")), G2 = grafo($("tf-g2"));
+    function pintaG(G, est) {
+      Object.keys(G.nodos).forEach(function (k) {
+        const n = G.nodos[k], v = est[k];
+        n.g.setAttribute("opacity", v === undefined ? 0 : 1);
+        n.v.textContent = v === undefined ? "" : v;
+        n.v.setAttribute("fill", v === "?" ? C.muted : C.s1);
+      });
+      G.gr.setAttribute("opacity", est.graf ? 1 : 0); G.grT.setAttribute("opacity", est.graf ? 1 : 0);
+      G.lineas.forEach(function (l) { l.l.setAttribute("opacity", est[l.a[0]] !== undefined && est[l.a[1]] !== undefined ? 1 : 0); });
+    }
+    let k = 0;
+    function ir(n) {
+      k = RN.limita(n, 0, PASOS.length - 1);
+      const p = PASOS[k];
+      marcaLineas(L1, p.l1); marcaLineas(L2, p.l2);
+      pintaG(G1, p.g1); pintaG(G2, p.g2);
+      $("tf-txt").textContent = p.t;
+      $("tf-n").textContent = (k + 1) + " de " + PASOS.length;
+      [["tf-l1", "c1"], ["tf-l2", "c2"]].forEach(function (q) {
+        const cont = $(q[0]); cont.innerHTML = "";
+        RN.el("span", { class: "vacio" }, cont, "tiempo →");
+        for (let j = 0; j <= k; j++) { const c = PASOS[j][q[1]]; RN.el("span", { class: "chip", style: "background:" + c[1] }, cont, c[0]); }
+      });
+    }
+    $("tf-ant").addEventListener("click", function () { anim.parar(); ir(k - 1); });
+    $("tf-sig").addEventListener("click", function () { anim.parar(); ir(k + 1); });
+    let acum = 0;
+    const anim = RN.anima(function (dt) { acum += dt; if (acum > 3.2) { acum = 0; if (k >= PASOS.length - 1) return false; ir(k + 1); } }, $("tf-g1"));
+    RN.botonPlay($("tf-play"), anim, ["▶ Reproducir", "⏸ Pausa"]);
+    $("tf-play").addEventListener("click", function () { if (anim.activo) { acum = 0; if (k >= PASOS.length - 1) ir(0); } });
+    ir(0);
+  })();
+
+  // ================================================================== 6 · otros frameworks
+  (function () {
+    const FW = [
+      { id: "tf", n: "TensorFlow / Keras", o: "Google · 2015", c: C.s1, d: "Ecosistema completo, de la investigación a la producción (TF Serving, TF Lite). Keras es su API de alto nivel.",
+        code: ["from tensorflow import keras", "model = keras.Sequential([", "    keras.layers.Dense(8, activation=\"relu\", input_shape=(4,)),", "    keras.layers.Dense(1, activation=\"sigmoid\")])", "model.compile(optimizer=\"adam\", loss=\"binary_crossentropy\")", "model.fit(X, y, epochs=50)"],
+        nota: "Lo que usamos en la asignatura: describes la red y fit() hace el bucle." },
+      { id: "pt", n: "PyTorch", o: "Meta (Facebook) · 2016", c: C.s2, d: "Ejecución inmediata y muy cercano a Python; el más usado en los artículos de investigación.",
+        code: ["import torch, torch.nn as nn", "model = nn.Sequential(nn.Linear(4, 8), nn.ReLU(),", "                      nn.Linear(8, 1), nn.Sigmoid())", "opt = torch.optim.Adam(model.parameters())", "for epoch in range(50):          # el bucle lo escribes tú", "    opt.zero_grad()", "    loss = nn.functional.binary_cross_entropy(model(X), y)", "    loss.backward()               # gradientes automáticos", "    opt.step()"],
+        nota: "Las derivadas son automáticas, pero el bucle de entrenamiento se escribe a mano." },
+      { id: "jax", n: "JAX", o: "Google · 2018", c: C.s3, d: "NumPy con derivadas automáticas (grad), compilación (jit) y vectorización (vmap).",
+        code: ["import jax, jax.numpy as jnp", "def modelo(p, X):", "    h = jax.nn.relu(X @ p[\"W1\"] + p[\"b1\"])", "    return jax.nn.sigmoid(h @ p[\"W2\"] + p[\"b2\"])", "def perdida(p, X, y):", "    q = modelo(p, X)", "    return -jnp.mean(y * jnp.log(q) + (1 - y) * jnp.log(1 - q))", "grad = jax.jit(jax.grad(perdida))   # derivada compilada", "for epoch in range(50):", "    g = grad(p, X, y)", "    p = jax.tree_util.tree_map(lambda a, b: a - 0.1 * b, p, g)"],
+        nota: "Muy flexible y rápido, pero de bajo nivel: los parámetros y su actualización son cosa tuya." },
+      { id: "sk", n: "scikit-learn", o: "Proyecto abierto · 2007", c: C.s4, d: "Aprendizaje automático clásico. MLPClassifier y MLPRegressor: redes densas pequeñas, solo en CPU.",
+        code: ["from sklearn.neural_network import MLPClassifier", "clf = MLPClassifier(hidden_layer_sizes=(8,),", "                    activation=\"relu\", max_iter=500)", "clf.fit(X, y)", "clf.predict_proba(X_nuevo)"],
+        nota: "Ideal para probar una red pequeña con datos tabulares junto a otros modelos clásicos." },
+      { id: "onnx", n: "ONNX", o: "Microsoft y Facebook · 2017", c: C.s5, d: "No es un framework sino un formato de intercambio: entrena en uno y ejecuta en otro (ONNX Runtime).",
+        code: ["# exportar desde PyTorch…", "torch.onnx.export(model, X[:1], \"modelo.onnx\", input_names=[\"x\"])", "", "# …y ejecutarlo en cualquier sitio con ONNX Runtime", "import onnxruntime as ort", "sess = ort.InferenceSession(\"modelo.onnx\")", "pred = sess.run(None, {\"x\": X_nuevo})"],
+        nota: "Sirve de puente entre frameworks y hacia producción: el modelo deja de depender de cómo se entrenó." }
+    ];
+    const POS = { tf: [0.27, 0.3], keras: [0.74, 0.44], pt: [0.47, 0.74], jax: [0.17, 0.82], sk: [0.9, 0.6] };
+    const svg = $("ot-svg");
+    flechaDefs(svg, "ot-fl", "#9AA5B1");
+    const X0 = 60, X1 = 520, Y0 = 30, Y1 = 300;
+    const px = function (u) { return X0 + u * (X1 - X0); }, py2 = function (v) { return Y1 - v * (Y1 - Y0); };
+    S("rect", { x: X0, y: Y0, width: X1 - X0, height: Y1 - Y0, fill: "#FCFCFB", stroke: "#E1E0D9" }, svg);
+    S("line", { x1: X0, y1: (Y0 + Y1) / 2, x2: X1, y2: (Y0 + Y1) / 2, stroke: "#E1E0D9" }, svg);
+    S("line", { x1: (X0 + X1) / 2, y1: Y0, x2: (X0 + X1) / 2, y2: Y1, stroke: "#E1E0D9" }, svg);
+
+    T(svg, X0, Y1 + 18, "bajo nivel: control fino", { fs: 12, fw: 700, fill: C.ink2 });
+    T(svg, X1, Y1 + 18, "alto nivel: pocas líneas", { fs: 12, fw: 700, fill: C.ink2, anchor: "end" });
+    T(svg, (X0 + X1) / 2, Y1 + 36, "nivel de abstracción →", { fs: 12.5, fw: 800, fill: C.ink2, anchor: "middle" });
+    const ty1 = T(svg, 34, Y0, "más investigación →", { fs: 12, fw: 700, fill: C.ink2, anchor: "end" });
+    ty1.setAttribute("transform", "rotate(-90 34 " + Y0 + ")");
+    const ty2 = T(svg, 34, Y1, "← más producción", { fs: 12, fw: 700, fill: C.ink2, anchor: "start" });
+    ty2.setAttribute("transform", "rotate(-90 34 " + Y1 + ")");
+    // banda ONNX
+    const gO = S("g", {}, svg);
+    const onnxY = 370;
+    S("rect", { x: X0 + 40, y: onnxY - 17, width: X1 - X0 - 80, height: 34, rx: 17, fill: RN.mezcla("#ffffff", C.s5, 0.18), stroke: C.s5, "stroke-width": 2 }, gO);
+    T(gO, (X0 + X1) / 2, onnxY + 5, "ONNX: formato común → ONNX Runtime", { fs: 13, fw: 800, anchor: "middle" });
+    const gOf = S("g", {}, svg);
+    ["tf", "pt", "sk"].forEach(function (k) { const p = POS[k]; S("line", { x1: px(p[0]), y1: py2(p[1]) + 24, x2: px(p[0]) + (k === "sk" ? -30 : 0), y2: onnxY - 19, stroke: C.s5, "stroke-width": 2, "marker-end": "url(#ot-fl)" }, gOf); });
+    S("line", { x1: px(POS.tf[0]) + 20, y1: py2(POS.tf[1]) - 14, x2: px(POS.keras[0]) - 22, y2: py2(POS.keras[1]) + 8, stroke: C.s1, "stroke-width": 3, opacity: 0.6 }, svg);
+    const burb = {};
+    function burbuja(k, txt, col, idfw) {
+      const p = POS[k], g = S("g", { style: "cursor:pointer" }, svg);
+      const c = S("circle", { cx: px(p[0]), cy: py2(p[1]), r: 22, fill: RN.mezcla("#ffffff", col, 0.3), stroke: col, "stroke-width": 2.5 }, g);
+      T(g, px(p[0]), py2(p[1]) + (p[1] > 0.5 ? -30 : 40), txt, { fs: 13, fw: 800, anchor: "middle" });
+      g.addEventListener("click", function () { elige(idfw); });
+      (burb[idfw] = burb[idfw] || []).push(c);
+    }
+    burbuja("tf", "TensorFlow", C.s1, "tf"); burbuja("keras", "Keras", C.s1, "tf"); burbuja("pt", "PyTorch", C.s2, "pt"); burbuja("jax", "JAX", C.s3, "jax"); burbuja("sk", "scikit-learn", C.s4, "sk");
+    const cont = $("ot-fws");
+    const bts = FW.map(function (f) {
+      const b = RN.el("button", { type: "button", class: "fw", style: "--c:" + f.c, "aria-pressed": "false" }, cont);
+      RN.el("span", { class: "n" }, b, f.n); RN.el("span", { class: "o" }, b, f.o); RN.el("span", { class: "d" }, b, f.d);
+      b.addEventListener("click", function () { elige(f.id); });
+      return b;
+    });
+    function elige(id) {
+      const f = FW.find(function (x) { return x.id === id; });
+      bts.forEach(function (b, k) { b.setAttribute("aria-pressed", FW[k].id === id ? "true" : "false"); });
+      Object.keys(burb).forEach(function (k) { burb[k].forEach(function (c) { c.setAttribute("r", k === id ? 28 : 20); c.setAttribute("stroke-width", k === id ? 4 : 2); }); });
+      gO.setAttribute("opacity", id === "onnx" ? 1 : 0.6);
+      gOf.setAttribute("opacity", id === "onnx" ? 0.85 : 0);
+      $("ot-tit").textContent = "La misma red (4 → 8 → 1) en " + f.n;
+      ponCodigo($("ot-code"), f.code);
+      $("ot-nota").textContent = f.nota;
+    }
+    elige("tf");
+  })();
+
+  // ================================================================== 7 · construir en Keras
+  (function () {
+    const ACTS = ["relu", "tanh", "sigmoid", "linear"];
+    const PRE = [
+      { tipo: "reg", ent: "vec", nin: 8, ocultas: [[32, "relu"], [16, "relu"]], opt: "adam", clases: 3 },
+      { tipo: "multi", ent: "vec", nin: 300, ocultas: [[128, "relu"], [64, "relu"]], opt: "adam", clases: 3 },
+      { tipo: "bin", ent: "vec", nin: 20, ocultas: [[16, "relu"], [8, "relu"]], opt: "adam", clases: 3 },
+      { tipo: "multi", ent: "img", nin: 784, ocultas: [[10, "sigmoid"]], opt: "sgd", clases: 10 }
+    ];
+    const M = JSON.parse(JSON.stringify(PRE[0]));
+    const cont = $("ke-capas");
+    function editor() {
+      cont.innerHTML = "";
+      M.ocultas.forEach(function (c, k) {
+        const d = RN.el("div", { class: "capa-ed" }, cont);
+        RN.el("span", { class: "tit" }, d, "Oculta " + (k + 1) + " · Dense");
+        const l1 = RN.el("label", {}, d, "neuronas");
+        const n = RN.el("input", { type: "number", min: 1, max: 4096, value: c[0], "aria-label": "Neuronas de la capa oculta " + (k + 1) }, l1);
+        const l2 = RN.el("label", {}, d, "activación");
+        const s = RN.el("select", { "aria-label": "Activación de la capa oculta " + (k + 1) }, l2);
+        ACTS.forEach(function (a) { const o = RN.el("option", { value: a }, s, a); if (a === c[1]) o.selected = true; });
+        const q = RN.el("button", { type: "button", class: "btn gris quitar", "aria-label": "Quitar la capa oculta " + (k + 1) }, d, "✕ Quitar");
+        n.addEventListener("input", function () { const v = Math.round(+n.value); if (v >= 1 && v <= 4096) { c[0] = v; pinta(); } });
+        s.addEventListener("change", function () { c[1] = s.value; pinta(); });
+        q.addEventListener("click", function () { M.ocultas.splice(k, 1); editor(); pinta(); });
+      });
+      const sal = salida();
+      const d = RN.el("div", { class: "capa-ed fija" }, cont);
+      RN.el("span", { class: "tit" }, d, "Salida · Dense");
+      RN.el("span", {}, d, sal.n + " neurona" + (sal.n > 1 ? "s" : "") + " · activación " + sal.act + " · pérdida " + sal.loss);
+      $("ke-add").disabled = M.ocultas.length >= 6;
+    }
+    function salida() {
+      if (M.tipo === "bin") return { n: 1, act: "sigmoid", loss: "binary_crossentropy", met: "accuracy" };
+      if (M.tipo === "multi") return { n: M.clases, act: "softmax", loss: "categorical_crossentropy", met: "accuracy" };
+      return { n: 1, act: "linear", loss: "mse", met: "mae" };
+    }
+    function capas() {
+      const L = [];
+      const nin = M.ent === "img" ? 784 : M.nin;
+      if (M.ent === "img") L.push({ tipo: "Flatten", nombre: "flatten", n: 784, p: 0, calc: "sin pesos" });
+      let prev = nin;
+      M.ocultas.concat([[salida().n, salida().act]]).forEach(function (c, k) {
+        L.push({ tipo: "Dense", nombre: k === 0 ? "dense" : "dense_" + k, n: c[0], act: c[1], p: prev * c[0] + c[0], calc: RN.fmtN(prev) + " × " + RN.fmtN(c[0]) + " + " + RN.fmtN(c[0]) });
+        prev = c[0];
+      });
+      return { nin: nin, L: L };
+    }
+    function codigo(info) {
+      const sal = salida();
+      const l = ["from tensorflow.keras.models import Sequential", "from tensorflow.keras.layers import Dense" + (M.ent === "img" ? ", Flatten" : ""), "", "model = Sequential(["];
+      const filas = [];
+      if (M.ent === "img") filas.push("    Flatten(input_shape=(28, 28)),");
+      M.ocultas.forEach(function (c, k) { filas.push("    Dense(" + c[0] + ", activation=\"" + c[1] + "\"" + (k === 0 && M.ent !== "img" ? ", input_shape=(" + M.nin + ",)" : "") + "),"); });
+      filas.push("    Dense(" + sal.n + ", activation=\"" + sal.act + "\"" + (M.ocultas.length === 0 && M.ent !== "img" ? ", input_shape=(" + M.nin + ",)" : "") + ")");
+      const out = l.concat(filas).concat(["])", "model.compile(optimizer=\"" + M.opt + "\",", "              loss=\"" + sal.loss + "\",", "              metrics=[\"" + sal.met + "\"])"]);
+      if (M.tipo === "multi") { out.push("# etiquetas en one-hot; si son enteros,"); out.push("# usa sparse_categorical_crossentropy"); }
+      out.push("model.summary()");
+      void info;
+      return out;
+    }
+    function tabla(info) {
+      const t = $("ke-sum");
+      const total = info.L.reduce(function (s, c) { return s + c.p; }, 0);
+      let h = "<thead><tr><th>Capa (tipo)</th><th>Forma de salida</th><th class=\"n\">Parámetros</th><th>Cálculo</th></tr></thead><tbody>";
+      info.L.forEach(function (c) {
+        h += "<tr><td class=\"mono\">" + c.nombre + " (" + c.tipo + ")</td><td class=\"mono\">(None, " + c.n + ")</td><td class=\"n\">" + RN.fmtN(c.p) +
+          '<div class="barra-p" style="width:' + (total ? Math.max(2, 100 * c.p / total) : 0).toFixed(1) + '%"></div></td><td class="mono" style="font-size:.8rem">' + c.calc + "</td></tr>";
+      });
+      const kb = total * 4 / 1024;
+      h += "</tbody><tfoot><tr><td colspan=\"4\"><b>Total de parámetros: " + RN.fmtN(total) + "</b> (" + (kb >= 1024 ? RN.fmt(kb / 1024, 2) + " MB" : RN.fmt(kb, 2) + " KB") + ") · entrenables: " + RN.fmtN(total) + " · no entrenables: 0</td></tr></tfoot>";
+      t.innerHTML = h;
+    }
+    const svg = $("ke-svg");
+    function red(info) {
+      vaciar(svg);
+      const cols = [{ n: info.nin, et: M.ent === "img" ? "Entrada 28 × 28" : "Entrada (" + info.nin + ",)", img: M.ent === "img" }].concat(info.L.map(function (c, k) {
+        const ult = k === info.L.length - 1;
+        return { n: c.n, et: c.tipo === "Flatten" ? "Flatten · 784" : (ult ? "Salida · " : "Dense · ") + c.n, sub: c.act || "", p: c.p, flat: c.tipo === "Flatten" };
+      }));
+      const n = cols.length, X0 = 80, X1 = 1020, YC = 150, R = 12;
+      const xs = cols.map(function (c, k) { return n === 1 ? (X0 + X1) / 2 : X0 + k * (X1 - X0) / (n - 1); });
+      const gA = S("g", {}, svg), gN = S("g", {}, svg);
+      const pos = cols.map(function (c, k) {
+        if (c.img) return [];
+        const vis = c.n <= 8 ? c.n : 7, sep = Math.min(30, 230 / Math.max(1, vis - 1));
+        const ys = [];
+        for (let j = 0; j < vis; j++) ys.push(YC + (j - (vis - 1) / 2) * sep);
+        return { ys: ys, puntos: c.n > 8 };
+      });
+      cols.forEach(function (c, k) {
+        const x = xs[k];
+        if (c.img) {
+          S("rect", { x: x - 40, y: YC - 40, width: 80, height: 80, fill: "#111", rx: 3 }, gN);
+          for (let i = 1; i < 7; i++) { S("line", { x1: x - 40 + i * 80 / 7, y1: YC - 40, x2: x - 40 + i * 80 / 7, y2: YC + 40, stroke: "#333" }, gN); S("line", { x1: x - 40, y1: YC - 40 + i * 80 / 7, x2: x + 40, y2: YC - 40 + i * 80 / 7, stroke: "#333" }, gN); }
+          T(gN, x, YC + 6, "5", { fs: 44, fw: 800, fill: "#eee", anchor: "middle", base: "middle" });
+        } else {
+          const P = pos[k];
+          P.ys.forEach(function (y, j) {
+            if (P.puntos && j === 4) { T(gN, x, y + 5, "⋮", { fs: 18, fw: 800, fill: C.ink2, anchor: "middle" }); return; }
+            S("circle", { cx: x, cy: y, r: R, fill: k === 0 ? "#F5F7FA" : c.flat ? "#F5F7FA" : RN.mezcla("#ffffff", k === cols.length - 1 ? C.s3 : C.s1, 0.25), stroke: C.ink2, "stroke-width": 1.8 }, gN);
+          });
+        }
+        T(svg, x, 302, c.et, { fs: 13.5, fw: 800, anchor: "middle" });
+        if (c.sub) T(svg, x, 320, c.sub, { fs: 12.5, fill: C.ink2, anchor: "middle", mono: true });
+        if (k > 0) {
+          const A = pos[k - 1], B = pos[k];
+          const ya = cols[k - 1].img ? [YC - 30, YC - 10, YC + 10, YC + 30] : A.ys.filter(function (y, j) { return !(A.puntos && j === 4); });
+          const yb = B.ys.filter(function (y, j) { return !(B.puntos && j === 4); });
+          const xa = xs[k - 1] + (cols[k - 1].img ? 42 : R), xb = xs[k] - R;
+          ya.forEach(function (y1) { yb.forEach(function (y2) { S("line", { x1: xa, y1: y1, x2: xb, y2: y2, stroke: c.flat ? "#B0BEC5" : "#CFD8DC", "stroke-width": 1 }, gA); }); });
+          const pt = c.flat ? "aplana" : RN.fmtN(c.p) + " parámetros";
+          T(svg, (xs[k - 1] + xs[k]) / 2, 28, pt, { fs: 12.5, fw: 800, fill: c.flat ? C.ink2 : C.s1, anchor: "middle" });
+        }
+      });
+    }
+    function pinta() {
+      const info = capas();
+      red(info); tabla(info);
+      ponCodigo($("ke-code"), codigo(info));
+      $("ke-clases-c").style.display = M.tipo === "multi" ? "" : "none";
+      $("ke-nin-c").style.display = M.ent === "vec" ? "" : "none";
+    }
+    function sincroniza() {
+      Array.from($("ke-tipo").querySelectorAll("button")).forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.t === M.tipo ? "true" : "false"); });
+      Array.from($("ke-ent").querySelectorAll("button")).forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.e === M.ent ? "true" : "false"); });
+      $("ke-nin").value = M.nin; $("ke-clases").value = M.clases; $("ke-opt").value = M.opt;
+      editor(); pinta();
+    }
+    segBotones($("ke-tipo"), function (b) { M.tipo = b.dataset.t; editor(); pinta(); });
+    segBotones($("ke-ent"), function (b) { M.ent = b.dataset.e; pinta(); });
+    $("ke-nin").addEventListener("input", function () { const v = Math.round(+this.value); if (v >= 1 && v <= 10000) { M.nin = v; pinta(); } });
+    $("ke-clases").addEventListener("input", function () { const v = Math.round(+this.value); if (v >= 3 && v <= 100) { M.clases = v; editor(); pinta(); } });
+    $("ke-opt").addEventListener("change", function () { M.opt = this.value; pinta(); });
+    $("ke-add").addEventListener("click", function () { if (M.ocultas.length < 6) { M.ocultas.push([16, "relu"]); editor(); pinta(); } });
+    Array.from($("ke-pre").querySelectorAll("button")).forEach(function (b) {
+      b.addEventListener("click", function () { const p = JSON.parse(JSON.stringify(PRE[+b.dataset.p])); Object.keys(p).forEach(function (k) { M[k] = p[k]; }); sincroniza(); });
+    });
+    sincroniza();
+  })();
+
+  // ================================================================== 8 · de compile a fit
+  (function () {
+    const LN = ponCodigo($("fi-code"), [
+      "model = Sequential([",
+      "    Dense(8, activation=\"relu\", input_shape=(2,)),",
+      "    Dense(8, activation=\"relu\"),",
+      "    Dense(1, activation=\"sigmoid\")])",
+      "model.compile(optimizer=Adam(learning_rate=0.01),",
+      "              loss=\"binary_crossentropy\",",
+      "              metrics=[\"accuracy\"])",
+      "history = model.fit(X_train, y_train, epochs=30,",
+      "                    batch_size=32,",
+      "                    validation_data=(X_val, y_val))",
+      "model.evaluate(X_test, y_test)",
+      "model.predict(X_nuevo)"
+    ]);
+    const FASES_L = [[0, 1, 2, 3], [4, 5, 6], [7, 8, 9], [10], [11]];
+    const pasos = Array.from($("fi-pasos").querySelectorAll("li"));
+    const D = RNmlp.datos.clasif("lunas", 300, 0.18, 7);
+    const Xtr = D.X.slice(0, 200), Ytr = D.Y.slice(0, 200), Xva = D.X.slice(200, 250), Yva = D.Y.slice(200, 250), Xte = D.X.slice(250), Yte = D.Y.slice(250);
+    const EPOCAS = 30, LOTE = 32, NL = Math.ceil(200 / LOTE);
+    const VEL = { lenta: 0.9, normal: 0.22, rapida: 0 };
+    let vel = RN.reducirMovimiento ? "rapida" : "normal";
+    // red dibujada
+    const svg = $("fi-red");
+    const red = RN.red(svg, { capas: [2, 8, 8, 1], ancho: 520, alto: 190, radio: 10, margen: 46, etiquetas: [["x₁", "x₂"], null, null, ["ŷ"]] });
+    const gPul = S("g", {}, svg);
+    const pulsos = [];
+    for (let l = 0; l < 3; l++) {
+      const L = [];
+      for (let j = 0; j < red.capas[l + 1]; j++) for (let i = 0; i < red.capas[l]; i++) L.push({ a: red.nodos[l][i], b: red.nodos[l + 1][j], c: S("circle", { r: 3.2, opacity: 0 }, gPul) });
+      pulsos.push(L);
+    }
+    function pintaPulsos(l, t, atras) {
+      pulsos.forEach(function (L, k) {
+        L.forEach(function (p) {
+          if (k !== l) { p.c.setAttribute("opacity", 0); return; }
+          const tt = atras ? 1 - t : t;
+          p.c.setAttribute("cx", RN.lerp(p.a.x, p.b.x, tt)); p.c.setAttribute("cy", RN.lerp(p.a.y, p.b.y, tt));
+          p.c.setAttribute("fill", atras ? C.s2 : C.s1); p.c.setAttribute("opacity", 0.9);
+        });
+      });
+    }
+    // gráficas
+    const vacio = function (ctx, g) {
+      if (hist && hist.loss.length > 1) return;
+      ctx.fillStyle = C.muted; ctx.font = "600 13px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("el historial de fit() aparecerá aquí, época a época", (g.m.l + g.w - g.m.r) / 2, (g.m.t + g.h - g.m.b) / 2);
+    };
+    const gL = RN.grafica($("fi-cl"), { alto: 260, x: { min: 0, max: EPOCAS, titulo: "época" }, y: { min: 0, max: 0.8, titulo: "pérdida" }, extras: vacio });
+    const gAc = RN.grafica($("fi-ca"), { alto: 260, x: { min: 0, max: EPOCAS, titulo: "época" }, y: { min: 0.4, max: 1, titulo: "exactitud" }, extras: vacio });
+    const cvD = $("fi-datos");
+    let m, ep, lote, fase, tf, hist, orden, sub, test, nuevo;
+    function reset() {
+      m = new RNmlp.MLP({ capas: [2, 8, 8, 1], activacion: "relu", salida: "sigmoid", semilla: 8 });
+      ep = 0; lote = 0; fase = 0; tf = 0; sub = 0; test = null; nuevo = null;
+      hist = { loss: [], vloss: [], acc: [], vacc: [] };
+      const e0 = m.evaluar(Xtr, Ytr), v0 = m.evaluar(Xva, Yva);
+      hist.loss.push([0, e0.perdida]); hist.vloss.push([0, v0.perdida]); hist.acc.push([0, e0.precision]); hist.vacc.push([0, v0.precision]);
+      barajar();
+      red.ponerPesos(m.W);
+      svg.style.opacity = 0.35;
+      $("fi-chips").innerHTML = "";
+      marcaFase(-1);
+      kpis(); graficas(); datos();
+    }
+    function barajar() {
+      const r = RN.rng(100 + ep);
+      orden = []; for (let k = 0; k < 200; k++) orden.push(k);
+      for (let k = 199; k > 0; k--) { const j = Math.floor(r() * (k + 1)); const t = orden[k]; orden[k] = orden[j]; orden[j] = t; }
+    }
+    function loteActual() { return orden.slice(lote * LOTE, Math.min(200, (lote + 1) * LOTE)); }
+    function marcaFase(f) {
+      marcaLineas(LN, f >= 0 && f < 5 ? FASES_L[f] : []);
+      pasos.forEach(function (li, k) { li.classList.toggle("activo", k === f); li.classList.toggle("hecho", k < f || f >= 5); });
+    }
+    function kpis() {
+      $("fi-ep").textContent = ep + " / " + EPOCAS;
+      $("fi-lote").textContent = (fase === 2 ? Math.min(NL, lote + 1) : ep > 0 ? NL : 0) + " / " + NL;
+      const L = hist.loss[hist.loss.length - 1][1], A = hist.acc[hist.acc.length - 1][1];
+      $("fi-loss").textContent = ep ? RN.fmt(L, 3) : "—";
+      $("fi-acc").textContent = ep ? RN.fmt(100 * A, 0) + " %" : "—";
+      $("fi-test").textContent = test ? RN.fmt(100 * test.precision, 0) + " % · pérdida " + RN.fmt(test.perdida, 2) : "—";
+    }
+    function graficas() {
+      gL.dibujar([{ nombre: "loss", color: C.s1, puntos: hist.loss }, { nombre: "val_loss", color: C.s2, puntos: hist.vloss }]);
+      gAc.dibujar([{ nombre: "accuracy", color: C.s1, puntos: hist.acc }, { nombre: "val_accuracy", color: C.s2, puntos: hist.vacc }]);
+    }
+    const MIN = -1.25, MAX = 1.25;
+    function datos() {
+      const L = RN.lienzo(cvD, function (w) { return w; }), ctx = L.ctx, Nn = 50, cel = L.w / Nn;
+      const aP = function (v) { return (v - MIN) / (MAX - MIN) * L.w; }, aPy = function (v) { return (MAX - v) / (MAX - MIN) * L.h; };
+      for (let a = 0; a < Nn; a++) for (let b = 0; b < Nn; b++) {
+        const p = m.forward([MIN + (MAX - MIN) * (a + 0.5) / Nn, MAX - (MAX - MIN) * (b + 0.5) / Nn])[0];
+        ctx.fillStyle = RN.mezcla(RN.mezcla("#ffffff", C.clase0, 0.32), RN.mezcla("#ffffff", C.clase1, 0.32), p);
+        ctx.fillRect(a * cel, b * cel, cel + 1, cel + 1);
+      }
+      const lt = fase === 2 ? loteActual() : [];
+      const enLote = {}; lt.forEach(function (k) { enLote[k] = 1; });
+      Xtr.forEach(function (x, k) {
+        ctx.beginPath(); ctx.arc(aP(x[0]), aPy(x[1]), 4.2, 0, 7);
+        ctx.fillStyle = Ytr[k][0] ? C.clase1 : C.clase0; ctx.globalAlpha = fase === 2 && !enLote[k] ? 0.45 : 1; ctx.fill(); ctx.globalAlpha = 1;
+        ctx.lineWidth = 1.3; ctx.strokeStyle = "#fff"; ctx.stroke();
+      });
+      lt.forEach(function (k) { const x = Xtr[k]; ctx.beginPath(); ctx.arc(aP(x[0]), aPy(x[1]), 7.5, 0, 7); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke(); });
+      if (test) Xte.forEach(function (x, k) {
+        const X = aP(x[0]), Y = aPy(x[1]), ok = (m.forward(x)[0] >= 0.5 ? 1 : 0) === Yte[k][0];
+        ctx.fillStyle = Yte[k][0] ? C.clase1 : C.clase0; ctx.fillRect(X - 5, Y - 5, 10, 10);
+        ctx.lineWidth = ok ? 1.5 : 3; ctx.strokeStyle = ok ? "#fff" : C.bad; ctx.strokeRect(X - 5, Y - 5, 10, 10);
+      });
+      if (nuevo) {
+        const X = aP(nuevo[0]), Y = aPy(nuevo[1]), p = m.forward(nuevo)[0];
+        ctx.beginPath();
+        for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 5 : 12; ctx.lineTo(X + r * Math.cos(a), Y + r * Math.sin(a)); }
+        ctx.closePath(); ctx.fillStyle = C.s4; ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.stroke();
+        const txt = "p = " + RN.fmt(p, 2) + " → clase " + (p >= 0.5 ? 1 : 0);
+        ctx.font = "700 13px system-ui, sans-serif"; const w = ctx.measureText(txt).width + 14;
+        const bx = Math.min(L.w - w - 4, X + 14), by = Math.max(4, Y - 30);
+        ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.fillRect(bx, by, w, 22); ctx.strokeStyle = C.ink2; ctx.lineWidth = 1; ctx.strokeRect(bx, by, w, 22);
+        ctx.fillStyle = C.ink; ctx.textBaseline = "middle"; ctx.fillText(txt, bx + 7, by + 11);
+      }
+    }
+    RN.alCambiarTam(cvD, datos);
+    function finEpoca() {
+      const e = m.evaluar(Xtr, Ytr), v = m.evaluar(Xva, Yva);
+      hist.loss.push([ep, e.perdida]); hist.vloss.push([ep, v.perdida]); hist.acc.push([ep, e.precision]); hist.vacc.push([ep, v.precision]);
+      graficas();
+    }
+    function pasoLote() {
+      const idx = loteActual();
+      m.entrenarLote(idx.map(function (k) { return Xtr[k]; }), idx.map(function (k) { return Ytr[k]; }), { lr: 0.01, opt: "adam" });
+      lote++;
+      if (lote >= NL) { lote = 0; ep++; barajar(); finEpoca(); }
+    }
+    const anim = RN.anima(function (dt) {
+      tf += dt;
+      if (fase === 0) { // modelo
+        marcaFase(0);
+        svg.style.opacity = 0.35 + 0.65 * tramo(tf, 0, 0.8);
+        if (tf > 1.2) { fase = 1; tf = 0; marcaFase(1); }
+      } else if (fase === 1) { // compile
+        const ch = $("fi-chips");
+        if (!ch.children.length) ["optimizer: Adam (η = 0,01)", "loss: binary_crossentropy", "metrics: accuracy"].forEach(function (t) { RN.el("span", { class: "chip", style: "opacity:0" }, ch, t); });
+        Array.from(ch.children).forEach(function (c, k) { c.style.opacity = tramo(tf, k * 0.35, k * 0.35 + 0.3); });
+        if (tf > 1.5) { fase = 2; tf = 0; marcaFase(2); }
+      } else if (fase === 2) { // fit
+        const T = VEL[vel];
+        if (T === 0) {
+          pintaPulsos(-1);
+          for (let k = 0; k < NL; k++) pasoLote();
+          red.ponerPesos(m.W);
+        } else {
+          sub += dt / T;
+          if (sub < 0.5) pintaPulsos(Math.min(2, Math.floor(sub / 0.5 * 3)), (sub / 0.5 * 3) % 1, false);
+          else if (sub < 1) { const q = (sub - 0.5) / 0.5 * 3; pintaPulsos(2 - Math.min(2, Math.floor(q)), q % 1, true); }
+          else { sub = 0; pasoLote(); red.ponerPesos(m.W); }
+        }
+        if (ep >= EPOCAS) { fase = 3; tf = 0; pintaPulsos(-1); marcaFase(3); test = m.evaluar(Xte, Yte); }
+        datos(); kpis();
+      } else if (fase === 3) { // evaluate
+        if (tf > 1.8) { fase = 4; tf = 0; marcaFase(4); nuevo = [0.55, 0.62]; datos(); }
+      } else if (fase === 4) { // predict
+        if (tf > 1.8) { fase = 5; marcaFase(5); kpis(); return false; }
+      }
+    }, cvD);
+    RN.botonPlay($("fi-play"), anim, ["▶ Ejecutar", "⏸ Pausa"]);
+    $("fi-play").addEventListener("click", function () { if (anim.activo && fase >= 5) { anim.parar(); reset(); anim.iniciar(); } });
+    $("fi-reset").addEventListener("click", function () { anim.parar(); reset(); });
+    segBotones($("fi-vel"), function (b) { vel = b.dataset.v; });
+    Array.from($("fi-vel").querySelectorAll("button")).forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.v === vel ? "true" : "false"); });
+    cvD.addEventListener("click", function (e) {
+      if (fase < 3) return;
+      const rc = cvD.getBoundingClientRect();
+      nuevo = [MIN + (e.clientX - rc.left) / rc.width * (MAX - MIN), MAX - (e.clientY - rc.top) / rc.height * (MAX - MIN)];
+      marcaLineas(LN, FASES_L[4]);
+      pasos.forEach(function (li, k) { li.classList.toggle("activo", k === 4); });
+      datos();
+    });
+    reset();
+  })();
+})();
+</script>
+</body>
+</html>

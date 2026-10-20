@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 1 · Introducción a las redes neuronales — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .seg.envuelve { flex-wrap: wrap; }
+  .controles .seg { align-self: flex-end; }
+  .ficha2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-top: .9rem; }
+  .ficha2 .box h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink2); margin-bottom: .25rem; }
+  .ficha2 .box .nombre { font-weight: 800; font-size: 1.12rem; color: var(--ink); margin-bottom: .2rem; }
+  .ficha2 .box p { margin: 0; }
+
+  /* 1 · neurona */
+  #n-svg .parte { transition: opacity .25s; cursor: pointer; }
+  #n-svg.foco .parte { opacity: .22; }
+  #n-svg.foco .parte.on { opacity: 1; filter: url(#n-brillo); }
+
+  /* 3 · historia */
+  #h-svg .hito { cursor: pointer; }
+  #h-svg .hito:hover circle.eje { stroke-width: 4; }
+  .hito-det { display: grid; grid-template-columns: 11rem 1fr; gap: 1.2rem; align-items: start; min-height: 7.4rem; }
+  .hito-det .anio { font-size: 2.1rem; font-weight: 800; color: var(--acento); line-height: 1.05; }
+  .hito-det .quien { font-size: .85rem; color: var(--ink2); font-weight: 700; margin-top: .3rem; }
+  .hito-det h3 { margin: 0 0 .3rem !important; font-size: 1.15rem; }
+  .hito-det p { margin-bottom: .35rem; }
+  .hito-det .imp { color: var(--ink); font-weight: 600; }
+  .motor svg { width: 100%; height: auto; display: block; margin-bottom: .4rem; }
+  .motor h3 { margin-top: .2rem !important; }
+  .motor p { margin: 0; font-size: .95rem; }
+  @keyframes nucleo { 0%, 100% { fill: #D6E4F5; } 45%, 55% { fill: #1E88E5; } }
+  .nucleo-gpu { animation: nucleo 1.6s ease-in-out infinite; }
+  @keyframes crece { 0% { transform: scaleY(.35); } 70%, 100% { transform: scaleY(1); } }
+  .crece { transform-box: fill-box; transform-origin: bottom; animation: crece 3.2s ease-out infinite; }
+  @keyframes traza { 0% { stroke-dashoffset: 400; } 60%, 100% { stroke-dashoffset: 0; } }
+  .traza { stroke-dasharray: 400; animation: traza 3.2s ease-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .nucleo-gpu, .crece, .traza { animation: none; } .traza { stroke-dasharray: none; } }
+
+  /* 4 · aplicaciones */
+  .sectores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .9rem; }
+  @media (max-width: 920px) { .sectores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .sector { font: inherit; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: .5rem .5rem .55rem; cursor: pointer; display: flex; flex-direction: column; gap: .35rem; transition: box-shadow .15s, border-color .15s; }
+  .sector:hover { box-shadow: 0 4px 14px rgba(0,0,0,.09); }
+  .sector[aria-pressed="true"] { border-color: var(--acento); box-shadow: 0 0 0 2px var(--acento); }
+  .sector:focus-visible { outline: 3px solid #90CAF9; outline-offset: 2px; }
+  .sector svg { width: 100%; height: auto; display: block; border-radius: 8px; background: var(--surface); }
+  .sector .nom { font-weight: 800; color: var(--ink); padding: 0 .25rem; font-size: .98rem; }
+  .comun { background: var(--dark); color: #fff; border-radius: 12px; padding: 1.1rem 1.25rem; display: flex; flex-direction: column; justify-content: center; gap: .55rem; }
+  .comun .q { color: #9ECBFF; font-weight: 700; font-size: .88rem; }
+  .comun .a { font-size: 1.32rem; font-weight: 800; line-height: 1.25; }
+  .comun .s { color: #B0BEC5; font-size: .85rem; }
+  #a-det ul { margin-bottom: 0; columns: 2; column-gap: 2rem; }
+  #a-det li { break-inside: avoid; }
+  @media (max-width: 760px) { #a-det ul { columns: 1; } }
+
+  /* 5 · reglas */
+  .regla { font-family: var(--mono); font-size: 1rem; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--s7); border-radius: 0 8px 8px 0; padding: .55rem .9rem; margin: .5rem 0 .8rem; }
+  .regla b { color: var(--s7); }
+
+  /* 6 · ¿siempre? */
+  .bal-grid { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(340px, 1.1fr); gap: 1.3rem; align-items: start; }
+  @media (max-width: 860px) { .bal-grid { grid-template-columns: 1fr; } }
+  .crit { display: flex; flex-direction: column; gap: .3rem; padding: .55rem 0; border-bottom: 1px solid var(--line); }
+  .crit:last-child { border-bottom: none; }
+  .crit .etq { font-size: .82rem; font-weight: 800; color: var(--ink2); text-transform: uppercase; letter-spacing: .03em; }
+  .crit .seg button { font-size: .86rem; }
+  .veredicto { font-weight: 700; font-size: 1.05rem; padding: .6rem .9rem; border-radius: 8px; background: var(--soft); border: 1px solid var(--line); margin-top: .5rem; }
+  .presets { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .4rem; }
+
+  /* 7 · regresión */
+  .reg-grid { display: grid; grid-template-columns: minmax(340px, 1.3fr) minmax(320px, 1fr); gap: 1.1rem; align-items: start; }
+  @media (max-width: 900px) { .reg-grid { grid-template-columns: 1fr; } }
+  #l-cv { cursor: crosshair; }
+  #p-regresion input[type=range] { width: 10.5rem; }
+</style>
+</head>
+<body class="bloque-fund" data-pagina="01_introduccion.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 1</span>Introducción a las redes neuronales</h1>
+  <p>Qué es una red neuronal, de dónde viene, para qué se usa y cuándo conviene (y cuándo no) recurrir a ella.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-neurona" aria-controls="p-neurona" aria-selected="true">1 · Dos neuronas</button>
+  <button class="tab" role="tab" id="t-capas" aria-controls="p-capas" aria-selected="false">2 · Capas</button>
+  <button class="tab" role="tab" id="t-historia" aria-controls="p-historia" aria-selected="false">3 · Historia</button>
+  <button class="tab" role="tab" id="t-aplic" aria-controls="p-aplic" aria-selected="false">4 · Aplicaciones</button>
+  <button class="tab" role="tab" id="t-reglas" aria-controls="p-reglas" aria-selected="false">5 · Reglas o ejemplos</button>
+  <button class="tab" role="tab" id="t-siempre" aria-controls="p-siempre" aria-selected="false">6 · ¿Siempre la mejor?</button>
+  <button class="tab" role="tab" id="t-regresion" aria-controls="p-regresion" aria-selected="false">7 · Neurona y regresión</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 -->
+  <section id="p-neurona" class="panel">
+    <div class="card">
+      <h2>De la neurona biológica a la artificial</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Cada pieza de la neurona artificial tiene su pareja en la biológica. Pasa el ratón por una parte (o elige una pareja) para iluminar las dos.</p>
+      <div class="controles">
+        <button class="btn" id="n-play">▶ Enviar un impulso</button>
+        <div class="seg envuelve" id="n-seg" role="group" aria-label="Parejas de partes">
+          <button type="button" data-p="dendritas" aria-pressed="false">Dendritas ↔ entradas</button>
+          <button type="button" data-p="sinapsis" aria-pressed="false">Sinapsis ↔ pesos</button>
+          <button type="button" data-p="soma" aria-pressed="false">Soma ↔ suma</button>
+          <button type="button" data-p="umbral" aria-pressed="false">Umbral ↔ activación</button>
+          <button type="button" data-p="axon" aria-pressed="false">Axón ↔ salida</button>
+        </div>
+      </div>
+      <div class="escena"><svg id="n-svg" viewBox="0 0 1100 482" aria-label="Neurona biológica arriba y neurona artificial abajo, con sus partes equivalentes"></svg></div>
+      <div class="ficha2">
+        <div class="box"><h3>En el cerebro</h3><div class="nombre" id="n-bio-n">Una neurona recibe, integra y transmite</div><p id="n-bio">Recibe señales de miles de neuronas, las combina en el cuerpo celular y, si superan un umbral, dispara un impulso por el axón.</p></div>
+        <div class="box"><h3>En la red</h3><div class="nombre" id="n-art-n">Una neurona artificial calcula</div><p id="n-art">Multiplica cada entrada por su peso, lo suma todo con el sesgo y aplica una función de activación: <span class="mat">y = f(Σ wᵢxᵢ + b)</span>.</p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> la neurona artificial es una simplificación matemática de la biológica: suma las entradas ponderadas por sus pesos y una función de activación decide cuánto «dispara».</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 -->
+  <section id="p-capas" class="panel">
+    <div class="card">
+      <h2>Capas de entrada, ocultas y de salida</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Elige un estímulo: cada uno enciende un patrón distinto de neuronas ocultas y lleva a una conclusión distinta, como en nuestro cerebro.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Estímulo</span>
+          <div class="seg" id="c-seg" role="group" aria-label="Estímulo">
+            <button type="button" data-e="0" aria-pressed="true">Un amigo por la calle</button>
+            <button type="button" data-e="1" aria-pressed="false">Un ruido estridente</button>
+            <button type="button" data-e="2" aria-pressed="false">Un plato de comida</button>
+          </div>
+        </div>
+        <button class="btn" id="c-play">▶ Propagar</button>
+      </div>
+      <div class="escena"><svg id="c-svg" viewBox="0 0 1100 452" aria-label="Red con capa de entrada, dos capas ocultas y capa de salida que se activan según el estímulo"></svg></div>
+      <div class="grid3" style="margin-top:1rem">
+        <div class="box acento"><h3>Capa de entrada</h3><p style="margin:0">La información con la que trabaja la red, por ejemplo los píxeles de una imagen. En nosotros: lo que llega de los ojos al nervio óptico.</p></div>
+        <div class="box acento"><h3>Capas ocultas</h3><p style="margin:0">Neuronas que se activan o no según los patrones que aparecen en la entrada, igual que el cerebro activa zonas distintas ante un amigo o ante un ruido que asusta.</p></div>
+        <div class="box acento"><h3>Capa de salida</h3><p style="margin:0">Adaptada a la tarea: clasificación binaria, multiclase o regresión. En nosotros: la conclusión final, como si la otra persona está cómoda o si tenemos hambre.</p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> nadie le dice a la red qué neurona oculta debe encenderse; el patrón que se activa depende de lo que ha aprendido con ejemplos.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section id="p-historia" class="panel">
+    <div class="card">
+      <h2>Ochenta años de redes neuronales</h2>
+      <div class="meta"><span class="tag illus">Curva de interés orientativa</span></div>
+      <p class="lead">Las redes neuronales no son nuevas: han pasado por euforias e inviernos. Pulsa un hito para ver qué pasó y por qué importa.</p>
+      <div class="controles">
+        <button class="btn gris" id="h-ant" aria-label="Hito anterior">◀ Anterior</button>
+        <button class="btn gris" id="h-sig" aria-label="Hito siguiente">Siguiente ▶</button>
+        <button class="btn" id="h-play">▶ Recorrer la historia</button>
+      </div>
+      <div class="escena"><svg id="h-svg" viewBox="0 0 1100 430" aria-label="Línea del tiempo de las redes neuronales desde 1943 hasta 2025 con una curva orientativa de interés"></svg></div>
+      <p class="pie">La curva no es una medida: solo indica de forma aproximada el interés por las redes en cada época. A partir de 2000 la escala de tiempo se amplía para que quepan los hitos recientes.</p>
+      <div class="box" style="margin-top:.8rem">
+        <div class="hito-det">
+          <div><div class="anio" id="h-anio">1943</div><div class="quien" id="h-quien"></div></div>
+          <div><h3 id="h-tit"></h3><p id="h-txt"></p><p class="imp" id="h-imp"></p></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Los tres motores del renacimiento</h2>
+      <p class="lead">A principios del siglo XXI las redes vuelven con fuerza gracias a tres avances que llegan a la vez.</p>
+      <div class="grid3">
+        <div class="box motor">
+          <svg viewBox="0 0 300 120" aria-label="Rejilla de núcleos de una GPU que trabajan a la vez" id="h-gpu"></svg>
+          <h3>Paralelismo (GPU)</h3><p>Miles de núcleos hacen a la vez las multiplicaciones de matrices que necesita una red.</p>
+        </div>
+        <div class="box motor">
+          <svg viewBox="0 0 300 120" aria-label="Volumen de datos que crece" id="h-datos"></svg>
+          <h3>La era del big data</h3><p>Internet, sensores y móviles generan los millones de ejemplos que las redes necesitan para aprender.</p>
+        </div>
+        <div class="box motor">
+          <svg viewBox="0 0 300 120" aria-label="Curva de error que baja más deprisa con mejores algoritmos" id="h-alg"></svg>
+          <h3>Algoritmos más eficientes</h3><p>Mejores activaciones, inicializaciones y optimizadores hacen que las redes profundas aprendan mucho más deprisa.</p>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> las ideas básicas existían desde los años 40-80; lo que faltaba era potencia de cálculo y datos para entrenarlas.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 -->
+  <section id="p-aplic" class="panel">
+    <div class="card">
+      <h2>¿Dónde se usan las redes neuronales?</h2>
+      <div class="meta"><span class="tag illus">Animaciones ilustrativas</span></div>
+      <p class="lead">Siete sectores donde ya se usan. Pulsa uno para ver sus ejemplos.</p>
+      <div class="sectores" id="a-sectores"></div>
+      <div class="box acento" id="a-det" style="margin-top:1rem"><h3 id="a-det-t"></h3><ul id="a-det-l"></ul></div>
+      <div class="clave"><strong>Idea clave:</strong> en todos estos problemas los rasgos que importan (una cara, un tono, un fraude) son muy difíciles de describir con reglas, pero sobran ejemplos de los que aprender.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 -->
+  <section id="p-reglas" class="panel">
+    <div class="card">
+      <h2>Escribir reglas frente a aprender de ejemplos</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">En la programación tradicional las reglas las escribe una persona. En el aprendizaje automático se dan datos y respuestas, y las reglas salen solas.</p>
+      <div class="escena"><svg id="r-svg" viewBox="0 0 1100 330" aria-label="Programación tradicional: reglas y datos dan respuestas. Aprendizaje: datos y respuestas dan reglas"></svg></div>
+      <div class="leyenda" style="margin-top:.6rem"><span><i style="background:var(--s1)"></i>datos</span><span><i style="background:var(--s7)"></i>reglas</span><span><i style="background:var(--s3)"></i>respuestas</span></div>
+    </div>
+    <div class="card">
+      <h2>¿Qué regla reconoce a un gato?</h2>
+      <div class="meta"><span class="tag illus">Ejemplo ilustrativo</span></div>
+      <p class="lead">Intentamos escribir la regla a mano. Cada vez que la arreglamos para un caso, estropeamos otro.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Versión de la regla</span>
+          <div class="seg" id="r-seg" role="group" aria-label="Versión de la regla">
+            <button type="button" data-r="0" aria-pressed="true">Regla 1</button>
+            <button type="button" data-r="1" aria-pressed="false">+ Arreglo 2</button>
+            <button type="button" data-r="2" aria-pressed="false">+ Arreglo 3</button>
+          </div>
+        </div>
+        <div class="kpis" style="margin:0"><div class="kpi"><div class="t">Aciertos</div><div class="v" id="r-aciertos">5 de 8</div></div></div>
+      </div>
+      <div class="regla" id="r-texto"></div>
+      <div class="escena"><svg id="r-gatos" viewBox="0 0 1100 252" aria-label="Ocho animales y lo que dice la regla escrita a mano para cada uno"></svg></div>
+      <h3>Y con los dígitos pasa lo mismo</h3>
+      <div class="escena"><svg id="r-sietes" viewBox="0 0 1100 176" aria-label="Veintiséis sietes escritos de formas distintas"></svg></div>
+      <p class="pie">Todos son un 7, escritos de mil maneras. Ninguna regla sencilla los cubre a todos sin confundirlos con un 1 o un 4.</p>
+      <div class="clave"><strong>Idea clave:</strong> cuando las características son muy difíciles de describir, en lugar de escribir reglas damos miles de ejemplos etiquetados y dejamos que la red encuentre los rasgos.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 -->
+  <section id="p-siempre" class="panel">
+    <div class="card">
+      <h2>¿Es siempre la mejor opción?</h2>
+      <p class="lead">Describe el problema y la balanza se inclina hacia una red neuronal o hacia un modelo tradicional.</p>
+      <div class="presets">
+        <button class="btn gris" data-pre="0">Ejemplo: clasificar fotos de productos</button>
+        <button class="btn gris" data-pre="1">Ejemplo: precio de 200 pisos en una tabla</button>
+        <button class="btn gris" data-pre="2">Ejemplo: conceder un crédito y explicarlo</button>
+      </div>
+      <div class="bal-grid">
+        <div id="s-crit"></div>
+        <div>
+          <div class="escena"><svg id="s-svg" viewBox="0 0 560 360" aria-label="Balanza entre red neuronal y modelo tradicional"></svg></div>
+          <div class="veredicto" id="s-ver"></div>
+        </div>
+      </div>
+      <div class="clave"><strong>Regla general:</strong> antes de usar una red neuronal, explora los métodos tradicionales que se suelen usar para ese problema. Si existen modelos de probada eficacia, recurre a ellos primero.</div>
+    </div>
+    <div class="card">
+      <h2>Rendimiento frente a cantidad de datos</h2>
+      <div class="meta"><span class="tag illus">Curvas orientativas, no medidas</span></div>
+      <p class="lead">Con pocos datos un modelo tradicional suele ganar; con muchos, las redes siguen mejorando y las más grandes sacan más partido.</p>
+      <div class="controles">
+        <div class="ctl"><label for="s-n">Datos disponibles</label><input id="s-n" type="range" min="0.2" max="10" step="0.1" value="1.5"><output id="s-no">pocos</output></div>
+        <div class="ctl"><span class="etq">Mejor opción con esos datos</span><output id="s-mejor" style="font-family:inherit;font-size:1.05rem"></output></div>
+      </div>
+      <canvas id="s-cv" class="lienzo" aria-label="Curvas orientativas de rendimiento frente a cantidad de datos para un modelo tradicional y redes de tres tamaños"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>modelo tradicional</span><span><i style="background:var(--s2)"></i>red pequeña</span><span><i style="background:var(--s3)"></i>red mediana</span><span><i style="background:var(--s4)"></i>red grande</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 -->
+  <section id="p-regresion" class="panel">
+    <div class="card">
+      <h2>Una neurona es una regresión</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead" id="l-lead">Con activación lineal, una neurona calcula ŷ = w·x + b: la recta de una regresión lineal. Mueve w y b, o pulsa «Ajustar» para que el descenso del gradiente la encuentre.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Activación de la neurona</span>
+          <div class="seg" id="l-modo" role="group" aria-label="Función de activación">
+            <button type="button" data-m="lin" aria-pressed="true">Lineal</button>
+            <button type="button" data-m="sig" aria-pressed="false">Sigmoide</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="l-w">Peso w</label><input id="l-w" type="range" min="0" max="4" step="0.01" value="1"><output id="l-wo"></output></div>
+        <div class="ctl"><label for="l-b">Sesgo b</label><input id="l-b" type="range" min="-150" max="250" step="1" value="60"><output id="l-bo"></output></div>
+        <button class="btn" id="l-ajustar">▶ Ajustar</button>
+        <button class="btn gris" id="l-reset">Reiniciar</button>
+      </div>
+      <div class="reg-grid">
+        <div>
+          <canvas id="l-cv" class="lienzo" aria-label="Viviendas: superficie frente a precio, con la salida de la neurona y los residuos"></canvas>
+          <div class="leyenda"><span><i class="punto" id="l-ley-p" style="background:var(--s1)"></i><span id="l-ley-pt">vivienda (dato)</span></span><span><i style="background:var(--s3)"></i>salida de la neurona ŷ</span><span><i style="background:#9AA5B1"></i>residuo (ŷ − y)</span></div>
+          <p class="pie">Haz clic en una vivienda para ver su cálculo en la neurona.</p>
+        </div>
+        <div>
+          <div class="escena"><svg id="l-svg" viewBox="0 0 470 214" aria-label="La neurona: entrada x, peso w, suma con sesgo b, activación y salida"></svg></div>
+          <div class="formula" id="l-form" style="font-size:1.05rem;white-space:normal"></div>
+          <div class="kpis">
+            <div class="kpi"><div class="t" id="l-k1t">Pérdida (ECM)</div><div class="v" id="l-k1">—</div></div>
+            <div class="kpi"><div class="t">Mínimo posible</div><div class="v" id="l-k2">—</div></div>
+            <div class="kpi"><div class="t">Iteraciones</div><div class="v" id="l-k3">0</div></div>
+          </div>
+          <canvas id="l-cv2" class="lienzo" aria-label="Pérdida en cada iteración del descenso del gradiente"></canvas>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> una neurona sola es un modelo lineal: con activación lineal hace regresión lineal y con sigmoide, regresión logística. La potencia de las redes viene de combinar muchas en capas.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, S = RN.svg;
+  const $ = function (id) { return document.getElementById(id); };
+  const ACENTO = RN.acento();
+  const fx = function (v) { return Math.round(v * 10) / 10; };
+  const F = function (x, d) { return RN.fmt(x, d).replace("-", "−"); };
+
+  // ------------------------------------------------------------------ utilidades de dibujo
+  function T(p, x, y, s, o) {
+    o = o || {};
+    const a = { x: x, y: y, "font-size": o.fs || 13, fill: o.fill || C.ink, "text-anchor": o.anchor || "start" };
+    if (o.fw) a["font-weight"] = o.fw;
+    if (o.base) a["dominant-baseline"] = o.base;
+    if (o.ls) a["letter-spacing"] = o.ls;
+    if (o.op !== undefined) a.opacity = o.op;
+    if (o.estilo) a["font-style"] = o.estilo;
+    const e = S("text", a, p);
+    e.textContent = s;
+    return e;
+  }
+  function segmentos(p, cerrada) {
+    const n = p.length, out = [];
+    const g = function (k) { return cerrada ? p[(k + n) % n] : p[Math.max(0, Math.min(n - 1, k))]; };
+    for (let i = 0; i < (cerrada ? n : n - 1); i++) {
+      const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2);
+      out.push([p1, [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6], p2]);
+    }
+    return out;
+  }
+  function curva(p, cerrada) {
+    let d = "M" + fx(p[0][0]) + " " + fx(p[0][1]);
+    segmentos(p, cerrada).forEach(function (q) { d += " C" + [q[1], q[2], q[3]].map(function (v) { return fx(v[0]) + " " + fx(v[1]); }).join(" "); });
+    return d + (cerrada ? " Z" : "");
+  }
+  function bez(a, b, c, d, t) {
+    const u = 1 - t;
+    return [u * u * u * a[0] + 3 * u * u * t * b[0] + 3 * u * t * t * c[0] + t * t * t * d[0], u * u * u * a[1] + 3 * u * u * t * b[1] + 3 * u * t * t * c[1] + t * t * t * d[1]];
+  }
+  function polilinea(p, porSeg) {
+    const out = [];
+    segmentos(p).forEach(function (q, i) { for (let k = i ? 1 : 0; k <= porSeg; k++) out.push(bez(q[0], q[1], q[2], q[3], k / porSeg)); });
+    return out;
+  }
+  function recorrido(poly) {
+    const L = [0];
+    for (let i = 1; i < poly.length; i++) L.push(L[i - 1] + Math.hypot(poly[i][0] - poly[i - 1][0], poly[i][1] - poly[i - 1][1]));
+    return { p: poly, L: L, total: L[L.length - 1] };
+  }
+  function punto(r, t) {
+    const d = RN.limita(t, 0, 1) * r.total;
+    let i = 1;
+    while (i < r.L.length - 1 && r.L[i] < d) i++;
+    const a = r.p[i - 1], b = r.p[i], s = (d - r.L[i - 1]) / ((r.L[i] - r.L[i - 1]) || 1);
+    return [a[0] + (b[0] - a[0]) * RN.limita(s, 0, 1), a[1] + (b[1] - a[1]) * RN.limita(s, 0, 1)];
+  }
+  const tramo = function (p, a, b) { return RN.limita((p - a) / (b - a), 0, 1); };
+  const sig = function (z) { return 1 / (1 + Math.exp(-z)); };
+  function segBotones(cont, fn) {
+    const bs = Array.from(cont.querySelectorAll("button"));
+    bs.forEach(function (b) { b.addEventListener("click", function () { bs.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); fn(b); }); });
+    return bs;
+  }
+
+  // ================================================================== 1 · neurona biológica y artificial
+  (function () {
+    const svg = $("n-svg");
+    const MEM = "#5B7FA6", CIT = "#E4EEF9", MIE = "#FFF4DD", MIEB = "#D8B57A", BOT = "#F6D7A7", BOTB = "#C99A4B";
+    const defs = S("defs", {}, svg);
+    const fl = S("filter", { id: "n-brillo", x: "-40%", y: "-40%", width: "180%", height: "180%" }, defs);
+    S("feGaussianBlur", { in: "SourceAlpha", stdDeviation: 4, result: "b" }, fl);
+    S("feFlood", { "flood-color": ACENTO, "flood-opacity": 0.8, result: "c" }, fl);
+    S("feComposite", { in: "c", in2: "b", operator: "in", result: "s" }, fl);
+    const mg = S("feMerge", {}, fl); S("feMergeNode", { in: "s" }, mg); S("feMergeNode", { in: "SourceGraphic" }, mg);
+    const flecha = S("marker", { id: "n-fl", viewBox: "0 0 10 10", refX: 8, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" }, defs);
+    S("path", { d: "M0 0 L10 5 L0 10 Z", fill: C.ink2 }, flecha);
+
+    const grupos = {};
+    function grupo(capa, p) {
+      const g = S("g", { class: "parte", "data-p": p }, capa);
+      (grupos[p] = grupos[p] || []).push(g);
+      return g;
+    }
+    // Rótulos de sección y separador
+    T(svg, 20, 24, "NEURONA BIOLÓGICA", { fs: 12.5, fw: 800, fill: C.ink2, ls: 1 });
+    S("line", { x1: 20, y1: 240, x2: 1080, y2: 240, stroke: "#E4E7EB", "stroke-width": 1.5 }, svg);
+    T(svg, 20, 266, "NEURONA ARTIFICIAL", { fs: 12.5, fw: 800, fill: C.ink2, ls: 1 });
+
+    // ---------------- neurona biológica (capas para que las uniones queden limpias)
+    const SC = [372, 122];
+    const rad = [52, 47, 53, 48, 55, 49, 51, 46, 54, 50];
+    const soma = rad.map(function (r, k) { const a = k * Math.PI / 5; return [SC[0] + r * Math.cos(a), SC[1] + r * Math.sin(a)]; });
+    const D = [
+      [[372, 122], [322, 96], [268, 74], [212, 60], [166, 54]],
+      [[372, 122], [300, 124], [236, 128], [166, 126]],
+      [[372, 122], [322, 150], [268, 172], [212, 188], [166, 194]]
+    ];
+    const Dsub = [[[268, 74], [244, 46], [222, 30]], [[212, 60], [190, 38]], [[236, 128], [212, 106], [194, 98]], [[268, 172], [246, 200], [230, 216]], [[212, 188], [188, 210]],
+      [[372, 122], [356, 70], [342, 42], [322, 28]], [[372, 122], [404, 70], [424, 44]], [[372, 122], [352, 176], [340, 206]], [[372, 122], [406, 174], [424, 204]]];
+    const AX = [[440, 122], [560, 119], [680, 125], [790, 120], [872, 122]];
+    const TER = [[[872, 122], [918, 98], [962, 76]], [[872, 122], [926, 123], [976, 124]], [[872, 122], [918, 148], [962, 170]]];
+    const SIG = [[968, 73], [984, 124], [968, 174]];
+    const INC = [[[20, 40], [70, 47], [120, 54], [141, 54]], [[20, 126], [80, 124], [141, 126]], [[20, 212], [70, 203], [120, 195], [141, 194]]];
+    const SIN = [[150, 54], [150, 126], [150, 194]];
+    const hillock = "M414 104 Q430 112 452 117 L452 127 Q430 132 414 142 Z";
+
+    const capaBio = S("g", {}, svg);
+    const L1 = S("g", {}, capaBio), L2 = S("g", {}, capaBio), L3 = S("g", {}, capaBio), L4 = S("g", {}, capaBio), L5 = S("g", {}, capaBio);
+    function tuboExt(g, pts, w) { S("path", { d: curva(pts), fill: "none", stroke: MEM, "stroke-width": w + 3.5, "stroke-linecap": "round", "stroke-linejoin": "round" }, g); }
+    function tuboInt(g, pts, w) { return S("path", { d: curva(pts), fill: "none", stroke: CIT, "stroke-width": w, "stroke-linecap": "round", "stroke-linejoin": "round" }, g); }
+    // axones de otras neuronas que llegan a las sinapsis
+    const gSinIn = grupo(L1, "sinapsis");
+    INC.forEach(function (p) { S("path", { d: curva(p), fill: "none", stroke: "#AFC0D3", "stroke-width": 3.5, "stroke-linecap": "round" }, gSinIn); });
+    // capa 1: exteriores
+    const gDe = grupo(L1, "dendritas");
+    D.forEach(function (p) { tuboExt(gDe, p, 8); });
+    Dsub.forEach(function (p, k) { tuboExt(gDe, p, k < 5 ? 4 : 6); });
+    const gAxE = grupo(L1, "axon");
+    tuboExt(gAxE, AX, 7);
+    TER.forEach(function (p) { tuboExt(gAxE, p, 5); });
+    // capa 2: contornos del soma y del cono axónico
+    const gUmE = grupo(L2, "umbral");
+    S("path", { d: hillock, fill: CIT, stroke: MEM, "stroke-width": 3.5, "stroke-linejoin": "round" }, gUmE);
+    const gSoE = grupo(L2, "soma");
+    S("path", { d: curva(soma, true), fill: CIT, stroke: MEM, "stroke-width": 4 }, gSoE);
+    // capa 3: interiores
+    const gDi = grupo(L3, "dendritas");
+    D.forEach(function (p) { tuboInt(gDi, p, 8); });
+    Dsub.forEach(function (p, k) { tuboInt(gDi, p, k < 5 ? 4 : 6); });
+    const gAxI = grupo(L3, "axon");
+    tuboInt(gAxI, AX, 7);
+    TER.forEach(function (p) { tuboInt(gAxI, p, 5); });
+    // capa 4: rellenos del soma y del cono
+    const gUmI = grupo(L4, "umbral");
+    const conoFill = S("path", { d: hillock, fill: CIT }, gUmI);
+    const gSoI = grupo(L4, "soma");
+    const somaFill = S("path", { d: curva(soma, true), fill: CIT }, gSoI);
+    S("circle", { cx: 364, cy: 114, r: 19, fill: "#C5DAF0", stroke: MEM, "stroke-width": 2 }, gSoI);
+    S("circle", { cx: 360, cy: 110, r: 6, fill: "#93B5DA" }, gSoI);
+    T(gSoI, 376, 158, "Soma", { fs: 13.5, fw: 700, fill: C.ink2, anchor: "middle" });
+    // capa 5: mielina, botones sinápticos, otra neurona
+    const axPoly = polilinea(AX, 20);
+    const yAx = function (x) { let i = 1; while (i < axPoly.length - 1 && axPoly[i][0] < x) i++; const a = axPoly[i - 1], b = axPoly[i]; return a[1] + (b[1] - a[1]) * (x - a[0]) / ((b[0] - a[0]) || 1); };
+    const gMi = grupo(L5, "axon");
+    const NODOS = [452];
+    for (let i = 0; i < 5; i++) {
+      const x0 = 476 + i * 76;
+      S("rect", { x: x0, y: yAx(x0 + 32) - 11, width: 64, height: 22, rx: 11, fill: MIE, stroke: MIEB, "stroke-width": 1.6 }, gMi);
+      NODOS.push(x0 + 70);
+    }
+    NODOS[NODOS.length - 1] = 862;
+    const botTer = SIG.map(function (p) { return S("circle", { cx: p[0], cy: p[1], r: 9, fill: BOT, stroke: BOTB, "stroke-width": 1.6 }, gMi); });
+    const gOtra = S("g", { opacity: 0.35 }, L5);
+    [[[994, 66], [1040, 58], [1086, 46]], [[1000, 124], [1046, 124], [1090, 118]], [[994, 180], [1040, 190], [1086, 206]]].forEach(function (p) { tuboExt(gOtra, p, 5); tuboInt(gOtra, p, 5); });
+    T(L5, 1042, 228, "neuronas siguientes", { fs: 12, fill: C.muted, anchor: "middle" });
+    const gSi = grupo(L5, "sinapsis");
+    const botSin = SIN.map(function (p) {
+      for (let k = -1; k <= 1; k++) S("circle", { cx: p[0] + 11, cy: p[1] + k * 4, r: 1.6, fill: BOTB }, gSi);
+      return S("circle", { cx: p[0], cy: p[1], r: 8, fill: BOT, stroke: BOTB, "stroke-width": 1.6 }, gSi);
+    });
+    // rótulos
+    const rot = S("g", { "pointer-events": "none" }, svg);
+    T(rot, 262, 22, "Dendritas", { fs: 13.5, fw: 700, fill: C.ink2, anchor: "middle" });
+    T(rot, 150, 228, "Sinapsis", { fs: 13.5, fw: 700, fill: C.ink2, anchor: "middle" });
+    T(rot, 22, 158, "axones de otras neuronas", { fs: 12, fill: C.muted });
+    T(rot, 476, 96, "Cono axónico", { fs: 13.5, fw: 700, fill: C.ink2, anchor: "middle" });
+    T(rot, 676, 98, "Axón (con vainas de mielina)", { fs: 13.5, fw: 700, fill: C.ink2, anchor: "middle" });
+    T(rot, 922, 212, "Terminales del axón", { fs: 13.5, fw: 700, fill: C.ink2, anchor: "middle" });
+
+    // ---------------- neurona artificial
+    const YA = 368, XI = 166, XS = 372;
+    const xs = [0.9, 0.4, 0.7], ws = [0.8, -0.5, 0.6], bb = -0.2;
+    const zval = xs[0] * ws[0] + xs[1] * ws[1] + xs[2] * ws[2] + bb, yval = sig(zval);
+    const yIn = [YA - 68, YA, YA + 68];
+    const capaArt = S("g", {}, svg);
+    // salida (axón) primero, para que quede debajo
+    const gOut = grupo(capaArt, "axon");
+    S("line", { x1: 540, y1: YA, x2: 996, y2: YA, stroke: C.ink2, "stroke-width": 2.5, "marker-end": "url(#n-fl)" }, gOut);
+    const nodoY = S("circle", { cx: 1024, cy: YA, r: 21, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, gOut);
+    T(gOut, 1024, YA + 1, "y", { fs: 17, fw: 700, anchor: "middle", base: "middle", estilo: "italic" });
+    [YA - 40, YA, YA + 40].forEach(function (y) { S("line", { x1: 1046, y1: YA, x2: 1090, y2: y, stroke: C.ink2, "stroke-width": 1.5, opacity: 0.35 }, gOut); });
+    T(gOut, 770, YA - 14, "la salida y es la entrada de las neuronas siguientes", { fs: 13, fill: C.ink2, anchor: "middle" });
+    const yTxt = T(gOut, 1024, YA + 44, "", { fs: 13, fw: 700, anchor: "middle" });
+    // pesos (aristas)
+    const gW = grupo(capaArt, "sinapsis");
+    const aristas = yIn.map(function (y, k) {
+      const dx = XS - XI, dy = YA - y, L = Math.hypot(dx, dy);
+      const a = [XI + dx / L * 22, y + dy / L * 22], b = [XS - dx / L * 36, YA - dy / L * 36];
+      S("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: RN.colorPeso(ws[k], 1), "stroke-width": 1.5 + 4 * Math.abs(ws[k]), "stroke-linecap": "round" }, gW);
+      const m = [RN.lerp(a[0], b[0], 0.48), RN.lerp(a[1], b[1], 0.48)];
+      S("rect", { x: m[0] - 34, y: m[1] - 12, width: 68, height: 24, rx: 12, fill: "#fff", stroke: RN.colorPeso(ws[k], 1), "stroke-width": 1.6 }, gW);
+      T(gW, m[0], m[1] + 1, "w" + "₁₂₃"[k] + " = " + F(ws[k], 1), { fs: 13, fw: 700, anchor: "middle", base: "middle" });
+      return recorrido([a, b]);
+    });
+    // entradas
+    const gX = grupo(capaArt, "dendritas");
+    const incArt = yIn.map(function (y) { S("line", { x1: 20, y1: y, x2: XI - 24, y2: y, stroke: "#AFC0D3", "stroke-width": 3, "stroke-linecap": "round" }, gX); return recorrido([[20, y], [XI - 22, y]]); });
+    const nodosX = yIn.map(function (y, k) {
+      const c = S("circle", { cx: XI, cy: y, r: 21, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, gX);
+      T(gX, XI, y + 1, "x" + "₁₂₃"[k], { fs: 15, fw: 700, anchor: "middle", base: "middle", estilo: "italic" });
+      return c;
+    });
+    const xTxt = yIn.map(function (y, k) { return T(gX, 112, y - 9, RN.fmt(xs[k], 1), { fs: 12.5, fw: 700, fill: C.ink2, anchor: "middle", op: 0 }); });
+    T(gX, XI, 474, "Entradas xᵢ", { fs: 13.5, fw: 700, fill: C.ink2, anchor: "middle" });
+    // suma
+    const gS = grupo(capaArt, "soma");
+    S("line", { x1: XS, y1: 296, x2: XS, y2: YA - 38, stroke: C.ink2, "stroke-width": 2, "marker-end": "url(#n-fl)" }, gS);
+    S("circle", { cx: XS, cy: 282, r: 14, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, gS);
+    T(gS, XS, 283, "b", { fs: 14, fw: 700, anchor: "middle", base: "middle", estilo: "italic" });
+    T(gS, XS + 22, 287, "sesgo", { fs: 12.5, fill: C.ink2 });
+    const nodoS = S("circle", { cx: XS, cy: YA, r: 36, fill: "#fff", stroke: C.ink2, "stroke-width": 2.5 }, gS);
+    T(gS, XS, YA + 2, "Σ", { fs: 30, fw: 700, anchor: "middle", base: "middle" });
+    T(gS, XS, YA + 58, "z = Σ wᵢxᵢ + b", { fs: 13.5, fill: C.ink2, anchor: "middle" });
+    const zTxt = T(gS, XS, YA + 76, "", { fs: 13, fw: 700, anchor: "middle" });
+    // activación
+    const gF = grupo(capaArt, "umbral");
+    S("line", { x1: XS + 36, y1: YA, x2: 438, y2: YA, stroke: C.ink2, "stroke-width": 2, "marker-end": "url(#n-fl)" }, gF);
+    const cajaF = S("rect", { x: 440, y: YA - 36, width: 100, height: 72, rx: 10, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, gF);
+    const fPts = [];
+    for (let k = 0; k <= 40; k++) { const x = 450 + 80 * k / 40; fPts.push([x, YA + 26 - 52 * sig((x - 490) / 9)]); }
+    S("path", { d: "M" + fPts.map(function (p) { return fx(p[0]) + " " + fx(p[1]); }).join(" L"), fill: "none", stroke: C.s1, "stroke-width": 2.5 }, gF);
+    T(gF, 449, YA - 20, "f", { fs: 15, fw: 700, estilo: "italic", fill: C.ink2 });
+    T(gF, 490, YA + 58, "y = f(z)", { fs: 13.5, fill: C.ink2, anchor: "middle" });
+    const puntoF = S("circle", { r: 5.5, fill: C.s4, stroke: "#fff", "stroke-width": 1.5, opacity: 0 }, gF);
+
+    // ---------------- conectores entre parejas
+    const ANC = {
+      dendritas: [[236, 132], [XI, yIn[0] - 23]], sinapsis: [[150, 134], [262, 330]], soma: [[372, 176], [XS, 266]],
+      umbral: [[450, 132], [490, YA - 38]], axon: [[700, 134], [700, YA - 30]]
+    };
+    const capaCon = S("g", { "pointer-events": "none" }, svg);
+    // ---------------- pulsos
+    const capaPul = S("g", { "pointer-events": "none" }, svg);
+    const pul = function (r, col) { return S("circle", { r: r, fill: col, stroke: "#fff", "stroke-width": 1.5, opacity: 0 }, capaPul); };
+    const recBio = INC.map(function (p, k) { return { inc: recorrido(polilinea(p, 10)), den: recorrido(polilinea(D[k].slice().reverse(), 10)) }; });
+    const pBio = recBio.map(function () { return pul(5.5, C.s4); });
+    const pArt = ws.map(function (w) { return pul(3 + 4 * Math.abs(w), w >= 0 ? C.pos : C.neg); });
+    const pAx = pul(7, C.s4), pOut = pul(7, C.s4);
+
+    function pinta(p) {
+      const on = p >= 0;
+      // entradas
+      for (let k = 0; k < 3; k++) {
+        let pos = null, posA = null;
+        if (on && p < 0.28) { pos = punto(recBio[k].inc, tramo(p, 0, 0.28)); posA = punto(incArt[k], tramo(p, 0, 0.28)); }
+        else if (on && p >= 0.34 && p < 0.56) { pos = punto(recBio[k].den, tramo(p, 0.34, 0.56) * 0.82); posA = punto(aristas[k], tramo(p, 0.34, 0.56)); }
+        pBio[k].setAttribute("opacity", pos ? 1 : 0); if (pos) { pBio[k].setAttribute("cx", pos[0]); pBio[k].setAttribute("cy", pos[1]); }
+        pArt[k].setAttribute("opacity", posA && p >= 0.34 ? 1 : 0);
+        if (posA && p >= 0.34) { pArt[k].setAttribute("cx", posA[0]); pArt[k].setAttribute("cy", posA[1]); }
+        const syn = on && p >= 0.26 && p < 0.4;
+        botSin[k].setAttribute("fill", syn ? C.s4 : BOT);
+        const xOn = on && p >= 0.26;
+        nodosX[k].setAttribute("fill", xOn ? RN.mezcla("#ffffff", C.pos, 0.25 + 0.6 * xs[k]) : "#fff");
+        xTxt[k].setAttribute("opacity", xOn ? 1 : 0);
+      }
+      // la señal de entrada artificial viaja como un pulso gris por la línea de entrada
+      for (let k = 0; k < 3; k++) if (on && p < 0.28) { const q = punto(incArt[k], tramo(p, 0, 0.28)); pArt[k].setAttribute("opacity", 1); pArt[k].setAttribute("cx", q[0]); pArt[k].setAttribute("cy", q[1]); }
+      // integración
+      const integ = on ? Math.sin(Math.PI * tramo(p, 0.54, 0.72)) : 0;
+      somaFill.setAttribute("fill", RN.mezcla(CIT, "#FFD98A", integ));
+      nodoS.setAttribute("fill", RN.mezcla("#ffffff", "#FFD98A", integ));
+      zTxt.textContent = on && p >= 0.56 ? "z = " + RN.fmt(zval, 2) : "";
+      // disparo
+      const disp = on ? Math.sin(Math.PI * tramo(p, 0.64, 0.76)) : 0;
+      conoFill.setAttribute("fill", RN.mezcla(CIT, "#FFD98A", disp));
+      cajaF.setAttribute("fill", RN.mezcla("#ffffff", "#FFE9B8", disp));
+      if (on && p >= 0.64) {
+        const t = tramo(p, 0.64, 0.74), zx = 490 + 9 * zval, x = RN.lerp(450, zx, t);
+        puntoF.setAttribute("cx", x); puntoF.setAttribute("cy", YA + 26 - 52 * sig((x - 490) / 9)); puntoF.setAttribute("opacity", 1);
+      } else puntoF.setAttribute("opacity", 0);
+      // axón: conducción saltatoria de nodo en nodo
+      if (on && p >= 0.72 && p < 0.94) {
+        const t = tramo(p, 0.72, 0.94) * (NODOS.length - 1), i = Math.min(NODOS.length - 1, Math.floor(t)), f = t - i;
+        const x = f < 0.55 ? NODOS[i] : RN.lerp(NODOS[i], NODOS[Math.min(NODOS.length - 1, i + 1)], (f - 0.55) / 0.45);
+        pAx.setAttribute("cx", x); pAx.setAttribute("cy", yAx(x)); pAx.setAttribute("opacity", 1);
+        const xo = RN.lerp(540, 1000, tramo(p, 0.72, 0.94));
+        pOut.setAttribute("cx", xo); pOut.setAttribute("cy", YA); pOut.setAttribute("opacity", 1);
+      } else { pAx.setAttribute("opacity", 0); pOut.setAttribute("opacity", 0); }
+      const fin = on && p >= 0.92;
+      botTer.forEach(function (c) { c.setAttribute("fill", fin ? C.s4 : BOT); });
+      nodoY.setAttribute("fill", fin ? RN.mezcla("#ffffff", C.pos, 0.2 + 0.6 * yval) : "#fff");
+      yTxt.textContent = fin ? "y = " + RN.fmt(yval, 2) : "";
+    }
+    pinta(-1);
+
+    const anim = RN.anima(function (dt, t) { pinta((Math.max(0, t) / 3.6) % 1); }, svg);
+    const btn = $("n-play");
+    RN.botonPlay(btn, anim, ["▶ Enviar un impulso", "⏸ Pausa"]);
+    if (RN.reducirMovimiento) { btn.addEventListener("click", function () { anim.parar(); pinta(0.97); }); }
+
+    // ---------------- parejas
+    const PAR = {
+      dendritas: ["Dendritas", "Ramificaciones que reciben las señales que llegan de otras neuronas.", "Entradas xᵢ", "Los datos que recibe la neurona: píxeles, medidas o las salidas de las neuronas de la capa anterior."],
+      sinapsis: ["Sinapsis", "Puntos de contacto entre neuronas. Unas conexiones son más fuertes que otras; unas excitan y otras inhiben.", "Pesos wᵢ", "Cada entrada se multiplica por su peso: un peso positivo refuerza, uno negativo inhibe y uno cercano a 0 la ignora. Aprender es ajustar los pesos."],
+      soma: ["Soma (cuerpo celular)", "Integra todas las señales que le llegan por las dendritas.", "Suma ponderada Σ", "Suma todas las entradas multiplicadas por sus pesos y el sesgo b: z = w₁x₁ + w₂x₂ + w₃x₃ + b."],
+      umbral: ["Cono axónico (umbral de disparo)", "Si la señal integrada supera un umbral, la neurona dispara un impulso; si no, no.", "Función de activación f", "Decide cuánto se activa la neurona a partir de z (aquí, una sigmoide entre 0 y 1)."],
+      axon: ["Axón y terminales", "Conduce el impulso y lo transmite a las neuronas siguientes a través de nuevas sinapsis.", "Salida y", "El valor y = f(z) que sale de la neurona y se convierte en entrada de las neuronas de la capa siguiente."]
+    };
+    const defecto = [$("n-bio-n").textContent, $("n-bio").textContent, $("n-art-n").textContent, $("n-art").innerHTML];
+    let fijo = null;
+    const segBs = Array.from($("n-seg").querySelectorAll("button"));
+    function activa(p) {
+      svg.classList.toggle("foco", !!p);
+      Object.keys(grupos).forEach(function (k) { grupos[k].forEach(function (g) { g.classList.toggle("on", k === p); }); });
+      while (capaCon.firstChild) capaCon.removeChild(capaCon.firstChild);
+      if (p) {
+        const a = ANC[p][0], b = ANC[p][1];
+        S("path", { d: "M" + a[0] + " " + a[1] + " C" + a[0] + " " + (a[1] + 60) + " " + b[0] + " " + (b[1] - 60) + " " + b[0] + " " + b[1], fill: "none", stroke: ACENTO, "stroke-width": 2.5, opacity: 0.8 }, capaCon);
+        S("circle", { cx: a[0], cy: a[1], r: 4.5, fill: ACENTO }, capaCon);
+        S("circle", { cx: b[0], cy: b[1], r: 4.5, fill: ACENTO }, capaCon);
+        $("n-bio-n").textContent = PAR[p][0]; $("n-bio").textContent = PAR[p][1];
+        $("n-art-n").textContent = PAR[p][2]; $("n-art").textContent = PAR[p][3];
+      } else {
+        $("n-bio-n").textContent = defecto[0]; $("n-bio").textContent = defecto[1];
+        $("n-art-n").textContent = defecto[2]; $("n-art").innerHTML = defecto[3];
+      }
+    }
+    function fijar(p) {
+      fijo = fijo === p ? null : p;
+      segBs.forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.p === fijo ? "true" : "false"); });
+      activa(fijo);
+    }
+    segBs.forEach(function (b) { b.addEventListener("click", function () { fijar(b.dataset.p); }); });
+    Object.keys(grupos).forEach(function (k) {
+      grupos[k].forEach(function (g) {
+        g.addEventListener("pointerenter", function () { activa(k); });
+        g.addEventListener("pointerleave", function () { activa(fijo); });
+        g.addEventListener("click", function () { fijar(k); });
+      });
+    });
+  })();
+
+  // ================================================================== 2 · capas
+  (function () {
+    const svg = $("c-svg");
+    const XL = [296, 500, 690, 868];
+    const N = [6, 5, 4, 3];
+    const R = 18;
+    const ys = [
+      [92, 146, 200, 272, 326, 380],
+      [112, 174, 236, 298, 360],
+      [131, 199, 267, 335],
+      [140, 236, 332]
+    ];
+    const PAT = [
+      [[0.9, 0.85, 0.7, 0.45, 0.55, 0.1], [0.9, 0.08, 0.8, 0.05, 0.35], [0.95, 0.05, 0.1, 0.4], [0.92, 0.05, 0.1]],
+      [[0.1, 0.2, 0.15, 1.0, 0.9, 0.95], [0.05, 0.9, 0.1, 1.0, 0.2], [0.02, 1.0, 0.2, 0.1], [0.03, 0.96, 0.03]],
+      [[0.65, 0.9, 0.55, 0.1, 0.05, 0.2], [0.2, 0.1, 0.35, 0.02, 0.95], [0.1, 0.02, 0.92, 0.3], [0.05, 0.03, 0.88]]
+    ];
+    const SAL = ["¿Está cómodo conmigo?", "¡Peligro! Me asusto", "Tengo hambre"];
+    // títulos
+    T(svg, XL[0], 26, "Capa de entrada", { fs: 14.5, fw: 800, anchor: "middle" });
+    T(svg, XL[0], 44, "ojos y oídos → nervio", { fs: 12.5, fill: C.ink2, anchor: "middle" });
+    T(svg, (XL[1] + XL[2]) / 2, 26, "Capas ocultas", { fs: 14.5, fw: 800, anchor: "middle" });
+    T(svg, (XL[1] + XL[2]) / 2, 44, "zonas del cerebro que se activan", { fs: 12.5, fill: C.ink2, anchor: "middle" });
+    T(svg, XL[3], 26, "Capa de salida", { fs: 14.5, fw: 800, anchor: "middle" });
+    T(svg, XL[3], 44, "la conclusión", { fs: 12.5, fill: C.ink2, anchor: "middle" });
+    // estímulo
+    const gE = S("g", {}, svg);
+    T(svg, 105, 116, "Estímulo", { fs: 13.5, fw: 800, fill: C.ink2, anchor: "middle" });
+    S("rect", { x: 20, y: 126, width: 170, height: 200, rx: 14, fill: "#fff", stroke: "#D5DCE3", "stroke-width": 1.5 }, svg);
+    svg.appendChild(gE);
+    // iconos de sentidos y nervios
+    const gSent = S("g", {}, svg);
+    function ojo(g, x, y) {
+      S("path", { d: "M" + (x - 15) + " " + y + " Q" + x + " " + (y - 13) + " " + (x + 15) + " " + y + " Q" + x + " " + (y + 13) + " " + (x - 15) + " " + y + " Z", fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, g);
+      S("circle", { cx: x, cy: y, r: 5.5, fill: C.s1 }, g); S("circle", { cx: x, cy: y, r: 2.3, fill: C.ink }, g);
+    }
+    function oreja(g, x, y) {
+      S("path", { d: "M" + (x - 6) + " " + (y + 14) + " C" + (x - 16) + " " + (y + 2) + " " + (x - 14) + " " + (y - 16) + " " + (x + 1) + " " + (y - 16) + " C" + (x + 14) + " " + (y - 16) + " " + (x + 14) + " " + (y - 2) + " " + (x + 6) + " " + (y + 5) + " C" + (x + 1) + " " + (y + 10) + " " + (x + 2) + " " + (y + 16) + " " + (x - 6) + " " + (y + 14), fill: "#F6D5BE", stroke: C.ink2, "stroke-width": 2 }, g);
+      S("path", { d: "M" + (x - 4) + " " + (y + 4) + " C" + (x - 8) + " " + (y - 6) + " " + (x + 4) + " " + (y - 10) + " " + (x + 5) + " " + (y - 2), fill: "none", stroke: C.ink2, "stroke-width": 1.6 }, g);
+    }
+    ojo(gSent, 236, 146); oreja(gSent, 236, 326);
+    const flechasE = [];
+    [[146], [326]].forEach(function (a, k) {
+      flechasE.push(S("line", { x1: 192, y1: 226, x2: 218, y2: a[0], stroke: "#C3CCD6", "stroke-width": 2.5 }, gSent));
+      ys[0].slice(k * 3, k * 3 + 3).forEach(function (y) { S("line", { x1: 252, y1: a[0], x2: XL[0] - R, y2: y, stroke: "#C3CCD6", "stroke-width": 2 }, gSent); });
+    });
+    // aristas
+    const gA = S("g", {}, svg), gP = S("g", {}, svg), gN = S("g", {}, svg);
+    const ar = [];
+    for (let l = 0; l < 3; l++) {
+      const L = [];
+      for (let j = 0; j < N[l + 1]; j++) for (let i = 0; i < N[l]; i++) L.push({ i: i, j: j, e: S("line", { x1: XL[l] + R, y1: ys[l][i], x2: XL[l + 1] - R, y2: ys[l + 1][j], stroke: "#DCE3EA", "stroke-width": 1.3 }, gA) });
+      ar.push(L);
+    }
+    const nodos = N.map(function (n, l) { return ys[l].map(function (y) { return S("circle", { cx: XL[l], cy: y, r: R, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, gN); }); });
+    // salidas
+    const barras = SAL.map(function (s, k) {
+      const y = ys[3][k];
+      T(svg, XL[3] + 30, y - 6, s, { fs: 14, fw: 700 });
+      S("rect", { x: XL[3] + 30, y: y + 4, width: 130, height: 9, rx: 4.5, fill: "#E6EAEE" }, svg);
+      const b = S("rect", { x: XL[3] + 30, y: y + 4, width: 0, height: 9, rx: 4.5, fill: ACENTO }, svg);
+      const t = T(svg, XL[3] + 168, y + 13, "", { fs: 12.5, fw: 700, fill: C.ink2 });
+      return { b: b, t: t };
+    });
+    T(svg, (XL[1] + XL[2]) / 2, 432, "Cada estímulo enciende un patrón distinto", { fs: 13, fill: C.ink2, anchor: "middle" });
+    const pulsos = [];
+
+    // dibujos de los estímulos
+    function dibujaEstimulo(e) {
+      while (gE.firstChild) gE.removeChild(gE.firstChild);
+      const ox = 20, oy = 126;
+      const g = S("g", { transform: "translate(" + ox + " " + oy + ")" }, gE);
+      if (e === 0) {
+        S("path", { d: "M52 168 L58 112 Q85 98 112 112 L118 168 Z", fill: C.s1 }, g);
+        S("path", { d: "M110 116 Q128 100 134 72", fill: "none", stroke: C.s1, "stroke-width": 11, "stroke-linecap": "round" }, g);
+        S("circle", { cx: 135, cy: 66, r: 8, fill: "#F2C9A0" }, g);
+        S("circle", { cx: 85, cy: 76, r: 24, fill: "#F2C9A0" }, g);
+        S("path", { d: "M61 72 Q64 48 85 50 Q108 48 110 72 Q100 60 85 62 Q70 60 61 72 Z", fill: "#6B4A33" }, g);
+        S("circle", { cx: 77, cy: 78, r: 2.6, fill: C.ink }, g); S("circle", { cx: 93, cy: 78, r: 2.6, fill: C.ink }, g);
+        S("path", { d: "M75 87 Q85 96 95 87", fill: "none", stroke: C.ink, "stroke-width": 2.2, "stroke-linecap": "round" }, g);
+        S("rect", { x: 104, y: 20, width: 58, height: 26, rx: 12, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 }, g);
+        T(g, 133, 37, "¡Hola!", { fs: 13, fw: 700, anchor: "middle" });
+      } else if (e === 1) {
+        S("path", { d: "M34 74 L52 74 L76 52 L76 128 L52 106 L34 106 Z", fill: "#52606D" }, g);
+        [24, 40, 56].forEach(function (r, k) { S("path", { d: "M" + (86 + k * 2) + " " + (90 - r) + " A" + r + " " + r + " 0 0 1 " + (86 + k * 2) + " " + (90 + r), fill: "none", stroke: C.s2, "stroke-width": 4, "stroke-linecap": "round", opacity: 1 - k * 0.2 }, g); });
+        const pts = []; for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 15 : 30; pts.push((132 + r * Math.cos(a)) + "," + (36 + r * Math.sin(a))); }
+        S("polygon", { points: pts.join(" "), fill: "#FFE08A", stroke: C.s2, "stroke-width": 2 }, g);
+        T(g, 132, 41, "¡BUM!", { fs: 12.5, fw: 800, anchor: "middle", fill: "#9A3A0E" });
+      } else {
+        S("ellipse", { cx: 85, cy: 140, rx: 66, ry: 12, fill: "#E8EDF2", stroke: "#C3CCD6", "stroke-width": 1.5 }, g);
+        S("path", { d: "M33 104 Q36 150 85 150 Q134 150 137 104 Z", fill: "#E9A86B", stroke: "#B8733A", "stroke-width": 2 }, g);
+        S("ellipse", { cx: 85, cy: 104, rx: 52, ry: 11, fill: "#F7E2C4", stroke: "#B8733A", "stroke-width": 2 }, g);
+        [[66, 101], [86, 98], [104, 102], [76, 106], [96, 106]].forEach(function (p, k) { S("circle", { cx: p[0], cy: p[1], r: 6, fill: k % 2 ? "#D9534F" : "#7CB342" }, g); });
+        [62, 85, 108].forEach(function (x) { S("path", { d: "M" + x + " 86 C" + (x - 8) + " 74 " + (x + 8) + " 66 " + x + " 52", fill: "none", stroke: "#9AA5B1", "stroke-width": 3, "stroke-linecap": "round", class: "vapor" }, g); });
+      }
+      T(g, 85, 188, ["Un amigo por la calle", "Un ruido estridente", "Un plato de comida"][e], { fs: 13, fw: 700, anchor: "middle" });
+    }
+
+    let est = 0;
+    function pinta(p) {
+      const P = PAT[est];
+      // nodos
+      const etapa = [tramo(p, 0.05, 0.2), tramo(p, 0.38, 0.5), tramo(p, 0.6, 0.72), tramo(p, 0.82, 0.94)];
+      nodos.forEach(function (col, l) {
+        col.forEach(function (c, j) {
+          const a = P[l][j] * etapa[l];
+          c.setAttribute("fill", RN.mezcla("#ffffff", ACENTO, a * 0.9));
+          c.setAttribute("stroke", a > 0.5 ? RN.mezcla(C.ink2, ACENTO, 0.6) : C.ink2);
+        });
+      });
+      flechasE.forEach(function (f, k) { const v = k === 0 ? (P[0][0] + P[0][1] + P[0][2]) / 3 : (P[0][3] + P[0][4] + P[0][5]) / 3; f.setAttribute("stroke", RN.mezcla("#C3CCD6", ACENTO, v * tramo(p, 0, 0.1))); });
+      // aristas
+      const tr = [tramo(p, 0.2, 0.42), tramo(p, 0.5, 0.64), tramo(p, 0.72, 0.86)];
+      ar.forEach(function (L, l) {
+        L.forEach(function (a) {
+          const f = P[l][a.i] * P[l + 1][a.j] * (tr[l] > 0 ? 1 : 0) * Math.min(1, tr[l] * 2);
+          a.e.setAttribute("stroke", f > 0.05 ? RN.mezcla("#DCE3EA", ACENTO, Math.min(1, f * 1.1)) : "#DCE3EA");
+          a.e.setAttribute("stroke-width", (1.3 + 3 * f).toFixed(2));
+        });
+      });
+      // pulsos por las aristas activas
+      while (gP.firstChild) gP.removeChild(gP.firstChild);
+      ar.forEach(function (L, l) {
+        const t = tr[l];
+        if (t <= 0 || t >= 1) return;
+        L.forEach(function (a) {
+          const f = P[l][a.i] * P[l + 1][a.j];
+          if (f < 0.25) return;
+          const x = RN.lerp(XL[l] + R, XL[l + 1] - R, t), y = RN.lerp(ys[l][a.i], ys[l + 1][a.j], t);
+          S("circle", { cx: x, cy: y, r: 3 + 2.5 * f, fill: ACENTO, stroke: "#fff", "stroke-width": 1.2 }, gP);
+        });
+      });
+      // barras de salida
+      barras.forEach(function (b, k) {
+        const v = P[3][k] * etapa[3];
+        b.b.setAttribute("width", (130 * v).toFixed(1));
+        b.t.textContent = etapa[3] > 0 ? RN.fmt(100 * v, 0) + " %" : "";
+      });
+    }
+    const anim = RN.anima(function (dt) {
+      progreso = Math.min(1, progreso + dt / 2.6);
+      pinta(progreso);
+      if (progreso >= 1) return false;
+    }, svg);
+    let progreso = 1;
+    function lanza() {
+      dibujaEstimulo(est);
+      if (RN.reducirMovimiento) { progreso = 1; pinta(1); return; }
+      progreso = 0; anim.iniciar();
+    }
+    segBotones($("c-seg"), function (b) { est = +b.dataset.e; lanza(); });
+    $("c-play").addEventListener("click", lanza);
+    dibujaEstimulo(0);
+    pinta(1);
+  })();
+
+  // ================================================================== 3 · historia
+  (function () {
+    const svg = $("h-svg");
+    const X0 = 50, X2000 = 600, X1 = 1068, YB = 272, ALTO = 222;
+    const xA = function (a) { return a <= 2000 ? X0 + (a - 1940) / 60 * (X2000 - X0) : X2000 + (a - 2000) / 26 * (X1 - X2000); };
+    const yV = function (v) { return YB - v * ALTO; };
+    const HITOS = [
+      { a: 1943, n: "McCulloch y Pitts", q: "Warren McCulloch y Walter Pitts", t: "La primera neurona artificial", d: "Proponen un modelo matemático de neurona que imita al cerebro: suma sus entradas y se activa si superan un umbral. Con estas neuronas se pueden construir funciones lógicas.", i: "Es la idea que seguimos usando: una neurona es una suma con un umbral." },
+      { a: 1949, n: "Hebb", q: "Donald Hebb", t: "La regla de Hebb", d: "En «The Organization of Behavior» propone que, cuando dos neuronas se activan a la vez, la conexión entre ellas se refuerza.", i: "Primera idea de aprendizaje: aprender es cambiar la fuerza de las conexiones, es decir, los pesos." },
+      { a: 1958, n: "Perceptrón", q: "Frank Rosenblatt", t: "El perceptrón", d: "Una neurona que aprende sus pesos a partir de ejemplos etiquetados. Se construyó también en hardware (Mark I Perceptron) para reconocer patrones visuales sencillos.", i: "Por primera vez una máquina aprende de ejemplos en lugar de seguir reglas escritas." },
+      { a: 1969, n: "Minsky y Papert", q: "Marvin Minsky y Seymour Papert", t: "El libro «Perceptrons»", d: "Demuestran que un perceptrón simple no puede resolver problemas que no son linealmente separables, como la función XOR.", i: "Cae el entusiasmo y, con él, la financiación de la investigación en redes." },
+      { a: 1970, a1: 1986, sombra: true, n: "Invierno de la IA", txt: "años 70 y 80", big: "1970-1980", q: "Décadas de 1970 y 1980", t: "El invierno de la IA", d: "El avance se frena por las limitaciones computacionales: las redes necesitan un entrenamiento costoso que la tecnología de la época no puede soportar.", i: "Sin potencia de cálculo ni datos, las ideas no se pueden poner a prueba." },
+      { a: 1986, n: "Retropropagación", q: "Rumelhart, Hinton y Williams", t: "Retropropagación (backpropagation)", d: "Publican en Nature cómo entrenar redes con capas ocultas propagando el error hacia atrás, capa a capa.", i: "Las redes multicapa ya se pueden entrenar: el XOR deja de ser un problema." },
+      { a: 1989, a1: 1998, n: "LeNet", txt: "1989-1998", q: "Yann LeCun y su equipo", t: "LeNet: redes convolucionales", d: "Redes convolucionales que leen dígitos escritos a mano: primero códigos postales (1989) y, con LeNet-5 (1998), cheques bancarios.", i: "Una de las primeras redes neuronales en producción resolviendo un problema real." },
+      { a: 2006, n: "Aprendizaje profundo", q: "Geoffrey Hinton y colaboradores", t: "Nace el aprendizaje profundo", d: "Muestran cómo entrenar redes con muchas capas preentrenándolas capa a capa. Se populariza el término aprendizaje profundo (deep learning).", i: "Las redes profundas vuelven al centro de la investigación." },
+      { a: 2012, n: "AlexNet", q: "Krizhevsky, Sutskever y Hinton", t: "AlexNet gana ImageNet", d: "Una red convolucional entrenada con dos GPU gana el concurso ImageNet con un 15,3 % de error top-5, frente al 26,2 % del segundo clasificado.", i: "GPU + muchos datos + redes profundas: arranca la revolución actual." },
+      { a: 2017, n: "Transformer", q: "Vaswani y otros (Google)", t: "El Transformer", d: "El artículo «Attention Is All You Need» presenta una arquitectura basada solo en el mecanismo de atención.", i: "Es la base de los grandes modelos de lenguaje actuales." },
+      { a: 2020, n: "GPT-3", q: "OpenAI", t: "GPT-3", d: "Un modelo de lenguaje con 175.000 millones de parámetros que resuelve tareas nuevas a partir de unos pocos ejemplos escritos en el propio texto.", i: "Escalar modelos y datos da capacidades que nadie había programado explícitamente." },
+      { a: 2022, n: "ChatGPT", q: "OpenAI", t: "ChatGPT", d: "Se lanza en noviembre de 2022 y la IA conversacional llega al gran público en pocas semanas.", i: "Las redes neuronales pasan a ser una herramienta de uso diario." },
+      { a: 2023, a1: 2025, n: "IA generativa", txt: "2023-2025", q: "Actualidad", t: "Explosión de la IA generativa", d: "Modelos que generan texto, imágenes, audio y código, con aplicación masiva en industrias como salud, transporte, finanzas y creatividad.", i: "La pregunta ya no es si funcionan, sino cuándo y cómo usarlas bien." }
+    ];
+    const CURVA = [[1940, .02], [1943, .06], [1949, .09], [1954, .13], [1958, .3], [1962, .38], [1966, .33], [1969, .22], [1972, .1], [1976, .06], [1980, .07], [1983, .11], [1986, .25], [1989, .34], [1992, .31], [1995, .23], [1999, .17], [2003, .16], [2006, .2], [2009, .27], [2012, .41], [2015, .55], [2017, .63], [2020, .71], [2022, .86], [2024, .97], [2026, 1]];
+    // sombreados
+    const gSom = S("g", {}, svg);
+    const somb = S("rect", { x: xA(1970), y: 30, width: xA(1986) - xA(1970), height: YB - 30, fill: "#E9EEF4", stroke: "none" }, gSom);
+    T(gSom, (xA(1970) + xA(1986)) / 2, 50, "Invierno de la IA", { fs: 13, fw: 800, fill: C.ink2, anchor: "middle" });
+    S("rect", { x: xA(1995), y: 30, width: xA(2005) - xA(1995), height: YB - 30, fill: "#F2F4F7" }, gSom);
+    T(gSom, (xA(1995) + xA(2005)) / 2, 50, "Las redes, en", { fs: 12, fw: 700, fill: C.muted, anchor: "middle" });
+    T(gSom, (xA(1995) + xA(2005)) / 2, 65, "segundo plano", { fs: 12, fw: 700, fill: C.muted, anchor: "middle" });
+    T(gSom, (xA(2006) + xA(2012)) / 2 + 6, 50, "Renacimiento", { fs: 13, fw: 800, fill: ACENTO, anchor: "middle" });
+    // curva
+    const pts = CURVA.map(function (c) { return [xA(c[0]), yV(c[1])]; });
+    const dC = curva(pts);
+    const grad = S("linearGradient", { id: "h-grad", x1: 0, y1: 0, x2: 0, y2: 1 }, S("defs", {}, svg));
+    S("stop", { offset: "0%", "stop-color": ACENTO, "stop-opacity": 0.28 }, grad);
+    S("stop", { offset: "100%", "stop-color": ACENTO, "stop-opacity": 0.03 }, grad);
+    S("path", { d: dC + " L" + xA(2026) + " " + YB + " L" + xA(1940) + " " + YB + " Z", fill: "url(#h-grad)" }, svg);
+    S("path", { d: dC, fill: "none", stroke: ACENTO, "stroke-width": 2.5 }, svg);
+    T(svg, xA(2026) - 4, 26, "interés (orientativo)", { fs: 12, fill: C.ink2, anchor: "end", estilo: "italic" });
+    const polyC = polilinea(pts, 14);
+    const yCurva = function (x) { let i = 1; while (i < polyC.length - 1 && polyC[i][0] < x) i++; const a = polyC[i - 1], b = polyC[i]; return a[1] + (b[1] - a[1]) * (x - a[0]) / ((b[0] - a[0]) || 1); };
+    // eje
+    S("line", { x1: X0 - 10, y1: YB, x2: X1 + 6, y2: YB, stroke: C.axis, "stroke-width": 1.5 }, svg);
+    [1940, 1950, 1960, 1970, 1980, 1990, 2000, 2005, 2010, 2015, 2020, 2025].forEach(function (a) {
+      S("line", { x1: xA(a), y1: YB, x2: xA(a), y2: YB + 5, stroke: C.axis, "stroke-width": 1.5 }, svg);
+      T(svg, xA(a), YB + 19, String(a), { fs: 12, fill: C.muted, anchor: "middle" });
+    });
+    // hitos: etiquetas en filas sin solaparse
+    const FILAS = [314, 350, 386];
+    const ocup = [[], [], []], tallos = [];
+    const gH = S("g", {}, svg);
+    HITOS.forEach(function (h, k) {
+      const xm = h.a1 ? (xA(h.a) + xA(h.a1)) / 2 : xA(h.a);
+      const ancho = Math.max(h.n.length, (h.txt || "").length) * 7.2 + 8;
+      let fila = 0;
+      for (; fila < 3; fila++) {
+        const a0 = xm - ancho / 2, a1 = xm + ancho / 2;
+        const libre = ocup[fila].every(function (o) { return a1 < o[0] - 6 || a0 > o[1] + 6; });
+        const sinTallo = tallos.every(function (t) { return t.fila <= fila || t.x < a0 - 4 || t.x > a1 + 4; });
+        const noCorta = ocup.slice(0, fila).every(function (f) { return f.every(function (o) { return xm < o[0] - 4 || xm > o[1] + 4; }); });
+        if (libre && sinTallo && noCorta) break;
+      }
+      fila = Math.min(fila, 2);
+      ocup[fila].push([xm - ancho / 2, xm + ancho / 2]);
+      tallos.push({ x: xm, fila: fila });
+      const g = S("g", { class: "hito", tabindex: 0, role: "button", "aria-label": (h.txt || h.a) + " " + h.n }, gH);
+      S("rect", { x: xm - ancho / 2, y: YB + 26, width: ancho, height: FILAS[fila] - YB - 2, fill: "transparent" }, g);
+      S("line", { x1: xm, y1: YB + 26, x2: xm, y2: FILAS[fila] - 14, stroke: "#C9D2DC", "stroke-width": 1.2 }, g);
+      if (h.a1 && !h.sombra) S("line", { x1: xA(h.a), y1: YB, x2: xA(h.a1), y2: YB, stroke: ACENTO, "stroke-width": 6, "stroke-linecap": "round", opacity: 0.45 }, g);
+      const vline = S("line", { x1: xm, y1: YB, x2: xm, y2: yCurva(xm), stroke: ACENTO, "stroke-width": 1.5, opacity: 0 }, g);
+      const mk = S("circle", { cx: xm, cy: yCurva(xm), r: 4, fill: ACENTO, stroke: "#fff", "stroke-width": 1.5, opacity: 0.7 }, g);
+      const dot = S("circle", { class: "eje", cx: xm, cy: YB, r: 7, fill: "#fff", stroke: ACENTO, "stroke-width": 2.5 }, g);
+      const t1 = T(g, xm, FILAS[fila], h.txt || String(h.a), { fs: 12.5, fw: 800, fill: C.ink2, anchor: "middle" });
+      const t2 = T(g, xm, FILAS[fila] + 15, h.n, { fs: 12.5, fw: 600, fill: C.ink, anchor: "middle" });
+      h.el = { dot: dot, mk: mk, vline: vline, t1: t1, t2: t2 };
+      g.addEventListener("click", function () { anim.parar(); elige(k); });
+      g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); anim.parar(); elige(k); } });
+    });
+    let actual = 0;
+    function elige(k) {
+      actual = (k + HITOS.length) % HITOS.length;
+      HITOS.forEach(function (h, j) {
+        const on = j === actual;
+        h.el.dot.setAttribute("fill", on ? ACENTO : "#fff");
+        h.el.dot.setAttribute("r", on ? 9 : 7);
+        h.el.vline.setAttribute("opacity", on ? 0.8 : 0);
+        h.el.mk.setAttribute("r", on ? 6 : 4);
+        h.el.mk.setAttribute("opacity", on ? 1 : 0.7);
+        h.el.t1.setAttribute("fill", on ? ACENTO : C.ink2);
+        h.el.t2.setAttribute("font-weight", on ? 800 : 600);
+      });
+      somb.setAttribute("stroke", HITOS[actual].sombra ? ACENTO : "none");
+      somb.setAttribute("stroke-width", 2);
+      const h = HITOS[actual];
+      const an = h.big || h.txt || String(h.a);
+      $("h-anio").textContent = an;
+      $("h-anio").style.fontSize = an.length > 5 ? "1.55rem" : "";
+      $("h-quien").textContent = h.q;
+      $("h-tit").textContent = h.t;
+      $("h-txt").textContent = h.d;
+      $("h-imp").textContent = "Por qué importa: " + h.i;
+    }
+    let acum = 0;
+    const anim = RN.anima(function (dt) {
+      acum += dt;
+      if (acum > 3.4) { acum = 0; if (actual === HITOS.length - 1) return false; elige(actual + 1); }
+    }, svg);
+    const bp = $("h-play");
+    RN.botonPlay(bp, anim, ["▶ Recorrer la historia", "⏸ Pausa"]);
+    bp.addEventListener("click", function () { if (anim.activo && actual === HITOS.length - 1) elige(0); acum = 0; });
+    $("h-ant").addEventListener("click", function () { anim.parar(); elige(actual - 1); });
+    $("h-sig").addEventListener("click", function () { anim.parar(); elige(actual + 1); });
+    elige(0);
+
+    // tres motores
+    const gpu = $("h-gpu");
+    S("rect", { x: 40, y: 8, width: 220, height: 104, rx: 10, fill: "#253447" }, gpu);
+    for (let f = 0; f < 5; f++) for (let c = 0; c < 12; c++) {
+      S("rect", { x: 52 + c * 17, y: 18 + f * 18, width: 13, height: 13, rx: 2.5, class: "nucleo-gpu", style: "animation-delay:" + ((c + f) * 0.06).toFixed(2) + "s", fill: "#D6E4F5" }, gpu);
+    }
+    const dat = $("h-datos");
+    [0, 1, 2, 3, 4].forEach(function (k) {
+      const x = 30 + k * 52, h = 22 + k * 17;
+      const g = S("g", { class: "crece", style: "animation-delay:" + (k * 0.25) + "s" }, dat);
+      S("rect", { x: x, y: 110 - h, width: 38, height: h, fill: RN.mezcla("#BBDEFB", ACENTO, k / 5) }, g);
+      S("ellipse", { cx: x + 19, cy: 110 - h, rx: 19, ry: 6, fill: RN.mezcla("#E3F2FD", ACENTO, k / 6) }, g);
+      S("ellipse", { cx: x + 19, cy: 110, rx: 19, ry: 6, fill: RN.mezcla("#BBDEFB", ACENTO, k / 5) }, g);
+    });
+    const alg = $("h-alg");
+    S("line", { x1: 30, y1: 104, x2: 290, y2: 104, stroke: C.axis, "stroke-width": 1.5 }, alg);
+    S("line", { x1: 30, y1: 10, x2: 30, y2: 104, stroke: C.axis, "stroke-width": 1.5 }, alg);
+    const lento = [], rapido = [];
+    for (let k = 0; k <= 40; k++) { const x = 30 + k * 6.5; lento.push([x, 16 + 50 * (1 - Math.exp(-k / 30))]); rapido.push([x, 16 + 72 * (1 - Math.exp(-k / 6))]); }
+    const lin = function (p) { return "M" + p.map(function (q) { return fx(q[0]) + " " + fx(q[1]); }).join(" L"); };
+    S("path", { d: lin(lento), fill: "none", stroke: "#9AA5B1", "stroke-width": 2.5, class: "traza" }, alg);
+    S("path", { d: lin(rapido), fill: "none", stroke: ACENTO, "stroke-width": 3, class: "traza" }, alg);
+    T(alg, 288, 46, "antes", { fs: 12.5, fill: C.ink2, anchor: "end" });
+    T(alg, 288, 80, "ahora", { fs: 12.5, fw: 700, fill: ACENTO, anchor: "end" });
+    T(alg, 25, 20, "error", { fs: 12, fill: C.muted, anchor: "end" });
+    T(alg, 288, 118, "entrenamiento →", { fs: 12, fill: C.muted, anchor: "end" });
+  })();
+
+  // ================================================================== 4 · aplicaciones
+  (function () {
+    const SECT = [
+      { id: "vision", n: "Visión artificial", ej: [["Reconocimiento facial", "identifica rostros incluso con poca luz o desde otros ángulos."], ["Detección de objetos", "localiza y clasifica varios objetos en imágenes o vídeo en tiempo real."], ["OCR", "convierte texto manuscrito o impreso en texto digital editable."], ["Biometría por la forma de andar", "reconoce a una persona por su manera de caminar, a distancia y sin contacto."]] },
+      { id: "pln", n: "Lenguaje natural", ej: [["Asistentes virtuales", "Siri, Alexa o Google Assistant entienden lo que dices y responden."], ["Traducción automática", "capta matices, expresiones idiomáticas y contexto cultural."], ["Análisis de sentimientos", "clasifica las emociones de reseñas, comentarios o encuestas."], ["Chatbots", "conversan, resuelven dudas, gestionan pedidos y dan soporte las 24 horas."]] },
+      { id: "salud", n: "Salud", ej: [["Diagnóstico por imagen", "rayos X, resonancias, TAC y ecografías para detectar tumores, fracturas o lesiones."], ["Detección temprana", "identifica pacientes con alto riesgo de diabetes, cáncer o enfermedades cardiovasculares."], ["Análisis clínico automatizado", "resultados de laboratorio, biopsias y datos genómicos."], ["Telemedicina", "analiza síntomas a distancia y ayuda a atender a más pacientes."]] },
+      { id: "transporte", n: "Transporte", ej: [["Vehículos autónomos", "procesan cámaras, radares y lidar para entender el entorno."], ["Decisiones en tiempo real", "frenar, acelerar o cambiar de carril en milisegundos."], ["Señales de tráfico", "reconocen límites de velocidad, stop o ceda el paso."], ["Fatiga y distracciones", "cámaras que detectan cansancio o el uso del móvil."], ["Rutas", "predicen atascos y proponen rutas más rápidas."]] },
+      { id: "finanzas", n: "Finanzas", ej: [["Detección de fraude", "patrones de comportamiento sospechosos en tiempo real."], ["Pagos con tarjeta", "importe, ubicación, hora, tipo de comercio y frecuencia de cada pago."], ["Riesgo crediticio", "probabilidad de que un cliente devuelva lo que debe."], ["Mercados", "tendencias a corto plazo, aunque los mercados son muy impredecibles."], ["Asistentes bancarios", "chatbots para saldos, transferencias y cargos inusuales."]] },
+      { id: "creatividad", n: "Creatividad", ej: [["Música original", "melodías, armonías y ritmos en distintos estilos."], ["Arte visual", "DALL·E, Midjourney o Stable Diffusion crean imágenes a partir de texto."], ["Textos creativos", "historias, poemas, guiones y publicidad."], ["Imágenes realistas", "personas, lugares u objetos que no existen."], ["Restauración", "colorear fotos antiguas, quitar ruido del audio, recuperar vídeos históricos."]] },
+      { id: "logistica", n: "Logística", ej: [["Cadena de suministro", "detecta cuellos de botella entre proveedores, inventario y transporte."], ["Previsión de demanda", "ventas pasadas, estacionalidad, rebajas, clima o economía."], ["Reducción de costes", "rutas optimizadas y envíos consolidados."], ["Inventario inteligente", "alertas y recomendaciones de cuándo y cuánto reponer."], ["Almacenes automatizados", "robots que recogen, clasifican y empaquetan."]] }
+    ];
+    const cont = $("a-sectores");
+    const escenas = [];
+    SECT.forEach(function (s, k) {
+      const b = RN.el("button", { type: "button", class: "sector", "aria-pressed": k === 0 ? "true" : "false", "data-s": s.id }, cont);
+      const svg = S("svg", { viewBox: "0 0 240 150", role: "img", "aria-label": "Animación: " + s.n }, b);
+      RN.el("span", { class: "nom" }, b, s.n);
+      escenas.push(construye(s.id, svg));
+      b.addEventListener("click", function () {
+        Array.from(cont.querySelectorAll(".sector")).forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        detalle(k);
+      });
+    });
+    const com = RN.el("div", { class: "comun" }, cont);
+    RN.el("div", { class: "q" }, com, "¿Qué tienen en común todas estas aplicaciones?");
+    RN.el("div", { class: "a" }, com, "Sus características son muy difíciles de describir por los humanos.");
+    function detalle(k) {
+      $("a-det-t").textContent = SECT[k].n + ": ejemplos";
+      const ul = $("a-det-l");
+      ul.innerHTML = "";
+      SECT[k].ej.forEach(function (e) { const li = RN.el("li", {}, ul); RN.el("strong", {}, li, e[0] + ": "); li.appendChild(document.createTextNode(e[1])); });
+    }
+    detalle(0);
+
+    function construye(id, svg) {
+      const g = S("g", {}, svg);
+      const r = RN.rng(id.length * 7 + 3);
+      if (id === "vision") {
+        S("rect", { x: 0, y: 0, width: 240, height: 108, fill: "#E8F1FB" }, g);
+        S("rect", { x: 0, y: 108, width: 240, height: 42, fill: "#D9DEE4" }, g);
+        S("circle", { cx: 200, cy: 28, r: 12, fill: "#FFE08A" }, g);
+        // persona
+        S("circle", { cx: 52, cy: 58, r: 9, fill: "#F2C9A0" }, g);
+        S("rect", { x: 43, y: 68, width: 18, height: 30, rx: 6, fill: C.s7 }, g);
+        S("rect", { x: 45, y: 96, width: 6, height: 22, fill: "#37474F" }, g); S("rect", { x: 53, y: 96, width: 6, height: 22, fill: "#37474F" }, g);
+        // coche
+        S("path", { d: "M118 112 L120 96 Q124 86 136 84 L170 84 Q180 86 186 96 L196 100 Q202 102 202 112 Z", fill: C.s2 }, g);
+        S("rect", { x: 132, y: 89, width: 18, height: 9, rx: 2, fill: "#E8F1FB" }, g); S("rect", { x: 154, y: 89, width: 18, height: 9, rx: 2, fill: "#E8F1FB" }, g);
+        S("circle", { cx: 138, cy: 114, r: 7, fill: "#263238" }, g); S("circle", { cx: 184, cy: 114, r: 7, fill: "#263238" }, g);
+        const cajas = [
+          { x: 36, y: 44, w: 32, h: 78, lab: "persona 0,97", col: C.s1, cx: 52 },
+          { x: 113, y: 78, w: 93, h: 46, lab: "coche 0,94", col: C.s3, cx: 160 }
+        ].map(function (c) {
+          const gg = S("g", { opacity: 0 }, g);
+          S("rect", { x: c.x, y: c.y, width: c.w, height: c.h, fill: "none", stroke: c.col, "stroke-width": 2.5, rx: 2 }, gg);
+          S("rect", { x: c.x - 1, y: c.y - 16, width: c.lab.length * 6.3 + 8, height: 16, fill: c.col, rx: 2 }, gg);
+          T(gg, c.x + 3, c.y - 4, c.lab, { fs: 11.5, fw: 700, fill: "#fff" });
+          c.g = gg; return c;
+        });
+        const scan = S("rect", { x: 0, y: 0, width: 3, height: 150, fill: ACENTO, opacity: 0.6 }, g);
+        return function (t) {
+          const c = t % 4.5, x = c / 3.2 * 260 - 10;
+          scan.setAttribute("x", x); scan.setAttribute("opacity", c < 3.2 ? 0.6 : 0);
+          cajas.forEach(function (b) { b.g.setAttribute("opacity", x > b.cx ? 1 : 0); });
+        };
+      }
+      if (id === "pln") {
+        S("rect", { x: 0, y: 0, width: 240, height: 150, fill: "#F5F7FA" }, g);
+        const u = S("g", {}, g);
+        S("rect", { x: 96, y: 14, width: 132, height: 30, rx: 14, fill: ACENTO }, u);
+        T(u, 162, 34, "¿Lloverá mañana?", { fs: 12.5, fw: 600, fill: "#fff", anchor: "middle" });
+        const ondas = [];
+        for (let k = 0; k < 9; k++) ondas.push(S("rect", { x: 22 + k * 7, y: 26, width: 4, height: 4, rx: 2, fill: C.ink2 }, g));
+        const pts = S("g", {}, g);
+        for (let k = 0; k < 3; k++) S("circle", { cx: 30 + k * 12, cy: 80, r: 4, fill: C.muted }, pts);
+        const resp = S("g", {}, g);
+        S("rect", { x: 12, y: 62, width: 176, height: 34, rx: 15, fill: "#fff", stroke: "#D5DCE3" }, resp);
+        const rt = T(resp, 24, 84, "", { fs: 12.5, fw: 600 });
+        const sol = S("g", {}, g);
+        S("circle", { cx: 214, cy: 79, r: 11, fill: "#FFC94D" }, sol);
+        for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; S("line", { x1: 214 + 14 * Math.cos(a), y1: 79 + 14 * Math.sin(a), x2: 214 + 19 * Math.cos(a), y2: 79 + 19 * Math.sin(a), stroke: "#FFB300", "stroke-width": 2.5, "stroke-linecap": "round" }, sol); }
+        T(g, 12, 128, "entiende la intención y responde", { fs: 12, fill: C.ink2 });
+        const frase = "No: soleado y 24 °C";
+        return function (t) {
+          const c = t % 7;
+          u.setAttribute("opacity", c > 0.9 ? 1 : 0);
+          ondas.forEach(function (o, k) { const h = c < 1 ? 4 + 14 * Math.abs(Math.sin(t * 9 + k)) : 4; o.setAttribute("height", h); o.setAttribute("y", 28 - h / 2); o.setAttribute("opacity", c < 1 ? 1 : 0); });
+          pts.setAttribute("opacity", c > 1.4 && c < 2.6 ? 1 : 0);
+          Array.from(pts.children).forEach(function (p, k) { p.setAttribute("cy", 80 - 4 * Math.max(0, Math.sin(t * 8 - k))); });
+          resp.setAttribute("opacity", c > 2.6 ? 1 : 0);
+          rt.textContent = frase.slice(0, Math.max(0, Math.floor((c - 2.6) * 14)));
+          sol.setAttribute("opacity", c > 4.6 ? 1 : 0);
+        };
+      }
+      if (id === "salud") {
+        S("rect", { x: 0, y: 0, width: 240, height: 150, fill: "#1D2733" }, g);
+        S("rect", { x: 116, y: 18, width: 8, height: 118, rx: 3, fill: "#5C6B7A" }, g);
+        S("path", { d: "M108 26 C78 22 54 60 56 104 C58 128 84 132 108 120 Z", fill: "#7E8D9C", opacity: 0.85 }, g);
+        S("path", { d: "M132 26 C162 22 186 60 184 104 C182 128 156 132 132 120 Z", fill: "#7E8D9C", opacity: 0.85 }, g);
+        for (let k = 0; k < 5; k++) { S("path", { d: "M116 " + (36 + k * 18) + " Q84 " + (30 + k * 18) + " 60 " + (48 + k * 18), fill: "none", stroke: "#A9B6C2", "stroke-width": 2.2, opacity: 0.55 }, g); S("path", { d: "M124 " + (36 + k * 18) + " Q156 " + (30 + k * 18) + " 180 " + (48 + k * 18), fill: "none", stroke: "#A9B6C2", "stroke-width": 2.2, opacity: 0.55 }, g); }
+        S("circle", { cx: 156, cy: 84, r: 6, fill: "#D7DEE5" }, g);
+        const scan = S("rect", { x: 0, y: 0, width: 240, height: 3, fill: "#4FC3F7", opacity: 0.8 }, g);
+        const marca = S("g", { opacity: 0 }, g);
+        S("circle", { cx: 156, cy: 84, r: 15, fill: "none", stroke: C.s4, "stroke-width": 3 }, marca);
+        S("rect", { x: 150, y: 102, width: 82, height: 18, rx: 4, fill: C.s4 }, marca);
+        T(marca, 191, 115, "posible nódulo", { fs: 11.5, fw: 800, fill: "#3E2C00", anchor: "middle" });
+        return function (t) {
+          const c = t % 5, y = c / 3 * 160 - 5;
+          scan.setAttribute("y", y); scan.setAttribute("opacity", c < 3 ? 0.8 : 0);
+          marca.setAttribute("opacity", y > 84 || c >= 3 ? 1 : 0);
+        };
+      }
+      if (id === "transporte") {
+        S("rect", { x: 0, y: 0, width: 240, height: 150, fill: "#CFE3C8" }, g);
+        S("rect", { x: 70, y: 0, width: 100, height: 150, fill: "#5E6B78" }, g);
+        const lineas = [];
+        for (let k = 0; k < 6; k++) lineas.push(S("rect", { x: 118, y: 0, width: 4, height: 14, fill: "#fff", opacity: 0.8 }, g));
+        for (let k = 0; k < 6; k++) S("rect", { x: 74 + k * 16, y: 68, width: 10, height: 18, fill: "#fff", opacity: 0.85 }, g);
+        const coche2 = S("rect", { x: 132, y: 22, width: 22, height: 34, rx: 6, fill: C.s2 }, g);
+        const peaton = S("circle", { cx: 44, cy: 77, r: 7, fill: C.s7 }, g);
+        const barrido = S("path", { d: "", fill: ACENTO, opacity: 0.18 }, g);
+        S("rect", { x: 84, y: 100, width: 24, height: 38, rx: 7, fill: C.s1 }, g);
+        S("rect", { x: 88, y: 106, width: 16, height: 9, rx: 2, fill: "#CFE3F7" }, g);
+        const objs = [{ el: peaton, x: 44, y: 77, w: 22, h: 22, lab: "peatón" }, { el: coche2, x: 143, y: 39, w: 30, h: 42, lab: "coche" }].map(function (o) {
+          const gg = S("g", { opacity: 0 }, g);
+          S("rect", { x: o.x - o.w / 2, y: o.y - o.h / 2, width: o.w, height: o.h, fill: "none", stroke: C.s4, "stroke-width": 2.5 }, gg);
+          T(gg, o.x, o.y - o.h / 2 - 4, o.lab, { fs: 11.5, fw: 800, fill: C.ink, anchor: "middle" });
+          o.g = gg; o.ang = Math.atan2(o.y - 119, o.x - 96); o.visto = -9; return o;
+        });
+        return function (t) {
+          lineas.forEach(function (l, k) { l.setAttribute("y", ((k * 28 + t * 60) % 168) - 14); });
+          const a = t * 2.4, R = 170, a0 = a - 0.5;
+          barrido.setAttribute("d", "M96 119 L" + (96 + R * Math.cos(a0)) + " " + (119 + R * Math.sin(a0)) + " A" + R + " " + R + " 0 0 1 " + (96 + R * Math.cos(a)) + " " + (119 + R * Math.sin(a)) + " Z");
+          objs.forEach(function (o) {
+            const d = ((a - o.ang) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+            if (d < 0.5) o.visto = t;
+            o.g.setAttribute("opacity", t - o.visto < 1.6 ? 1 : 0.15);
+          });
+        };
+      }
+      if (id === "finanzas") {
+        S("rect", { x: 0, y: 0, width: 240, height: 150, fill: "#F5F7FA" }, g);
+        const clip = S("clipPath", { id: "a-clip-fin" }, S("defs", {}, svg));
+        S("rect", { x: 0, y: 0, width: 240, height: 150 }, clip);
+        const lista = S("g", { "clip-path": "url(#a-clip-fin)" }, g);
+        const filas = [["12,40 €", "Madrid", "10:02"], ["35,00 €", "Madrid", "10:47"], ["2.950,00 €", "Singapur", "03:14"], ["8,90 €", "Getafe", "12:30"], ["64,20 €", "Madrid", "18:05"], ["21,75 €", "Toledo", "19:41"]];
+        const els = filas.map(function (f, k) {
+          const gg = S("g", {}, lista);
+          const sosp = k === 2;
+          S("rect", { x: 8, y: 0, width: 224, height: 30, rx: 6, fill: sosp ? "#FFEBEE" : "#fff", stroke: sosp ? C.bad : "#E0E6EA", "stroke-width": sosp ? 2 : 1 }, gg);
+          S("rect", { x: 16, y: 9, width: 18, height: 12, rx: 2, fill: sosp ? C.bad : "#90A4AE" }, gg);
+          T(gg, 42, 20, f[0], { fs: 12.5, fw: 800 });
+          T(gg, 118, 20, f[1] + " · " + f[2], { fs: 12, fill: C.ink2 });
+          if (sosp) { S("rect", { x: 160, y: -8, width: 68, height: 15, rx: 7, fill: C.bad }, gg); T(gg, 194, 3, "sospechosa", { fs: 11, fw: 800, fill: "#fff", anchor: "middle" }); }
+          return gg;
+        });
+        return function (t) {
+          els.forEach(function (e, k) { const y = ((k * 36 - t * 18) % 216 + 216) % 216 - 30; e.setAttribute("transform", "translate(0 " + y.toFixed(1) + ")"); });
+        };
+      }
+      if (id === "creatividad") {
+        S("rect", { x: 0, y: 0, width: 240, height: 150, fill: "#F5F7FA" }, g);
+        T(g, 120, 18, "«montañas al atardecer»", { fs: 12.5, fw: 700, fill: C.ink2, anchor: "middle", estilo: "italic" });
+        const NX = 18, NY = 10, cw = 200 / NX, ch = 112 / NY;
+        const celdas = [];
+        function objetivo(x, y) {
+          const u = x / NX, v = y / NY;
+          const dS = Math.hypot(u - 0.68, v - 0.38);
+          const m1 = 0.62 + 0.18 * Math.sin(u * 7.5) - 0.12 * u, m2 = 0.8 + 0.08 * Math.sin(u * 11 + 1);
+          if (v > m2) return "#4A3B6B";
+          if (v > m1) return "#6D4C8A";
+          if (dS < 0.13) return "#FFD24D";
+          return RN.mezcla("#F7A35C", "#E86A8E", RN.limita(v * 1.6, 0, 1));
+        }
+        for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
+          const ruido = RN.mezcla("#888888", ["#E57373", "#64B5F6", "#81C784", "#FFD54F", "#BA68C8"][Math.floor(r() * 5)], 0.6 + 0.4 * r());
+          celdas.push({ el: S("rect", { x: 20 + x * cw, y: 28 + y * ch, width: cw + 0.3, height: ch + 0.3 }, g), a: ruido, b: objetivo(x + 0.5, y + 0.5), d: r() * 0.5 });
+        }
+        return function (t) {
+          const c = t % 6.5, p = RN.limita(c / 4, 0, 1);
+          celdas.forEach(function (q) { q.el.setAttribute("fill", RN.mezcla(q.a, q.b, RN.limita((p - q.d * 0.6) / 0.6, 0, 1))); });
+        };
+      }
+      // logística
+      S("rect", { x: 0, y: 0, width: 240, height: 150, fill: "#F3F6F0" }, g);
+      for (let k = 1; k < 8; k++) S("line", { x1: k * 30, y1: 0, x2: k * 30, y2: 150, stroke: "#E2E8DC", "stroke-width": 1 }, g);
+      for (let k = 1; k < 5; k++) S("line", { x1: 0, y1: k * 30, x2: 240, y2: k * 30, stroke: "#E2E8DC", "stroke-width": 1 }, g);
+      const alm = [30, 76];
+      const P = [[78, 28], [150, 22], [206, 52], [196, 118], [120, 128], [70, 112]];
+      const malo = [alm, P[2], P[5], P[1], P[4], P[0], P[3], alm], bueno = [alm, P[0], P[1], P[2], P[3], P[4], P[5], alm];
+      const lon = function (q) { let s = 0; for (let k = 1; k < q.length; k++) s += Math.hypot(q[k][0] - q[k - 1][0], q[k][1] - q[k - 1][1]); return s; };
+      const ruta = S("path", { fill: "none", stroke: C.s2, "stroke-width": 2.5, "stroke-linejoin": "round" }, g);
+      S("rect", { x: alm[0] - 11, y: alm[1] - 11, width: 22, height: 22, rx: 3, fill: C.ink2 }, g);
+      P.forEach(function (p) { S("circle", { cx: p[0], cy: p[1], r: 6.5, fill: "#fff", stroke: C.s1, "stroke-width": 2.5 }, g); });
+      const cam = S("rect", { width: 12, height: 9, rx: 2, fill: C.s4, stroke: "#fff", "stroke-width": 1.2 }, g);
+      const etq = S("g", {}, g);
+      S("rect", { x: 128, y: 62, width: 108, height: 22, rx: 6, fill: "#fff", stroke: "#D5DCE3" }, etq);
+      const et = T(etq, 182, 77, "", { fs: 12, fw: 800, anchor: "middle" });
+      const kmM = lon(malo) / 8, kmB = lon(bueno) / 8;
+      return function (t) {
+        const c = t % 8, m = RN.suave(RN.limita((c - 2.5) / 1.5, 0, 1));
+        const q = malo.map(function (p, k) { return [RN.lerp(p[0], bueno[k][0], m), RN.lerp(p[1], bueno[k][1], m)]; });
+        ruta.setAttribute("d", "M" + q.map(function (p) { return fx(p[0]) + " " + fx(p[1]); }).join(" L"));
+        ruta.setAttribute("stroke", m > 0.98 ? C.s3 : C.s2);
+        const rc = recorrido(q), pos = punto(rc, (c % 2.5) / 2.5);
+        cam.setAttribute("x", pos[0] - 6); cam.setAttribute("y", pos[1] - 4.5);
+        et.textContent = "ruta: " + RN.fmt(RN.lerp(kmM, kmB, m), 0) + " km";
+      };
+    }
+    const anim = RN.anima(function (dt, t) { escenas.forEach(function (f) { f(Math.max(0, t)); }); }, cont);
+    escenas.forEach(function (f) { f(RN.reducirMovimiento ? 3.4 : 0.01); });
+    if (!RN.reducirMovimiento) anim.iniciar();
+  })();
+
+  // ================================================================== 5 · reglas o ejemplos
+  (function () {
+    const svg = $("r-svg");
+    const COL = { datos: C.s1, reglas: C.s7, resp: C.s3 };
+    function caja(g, x, y, w, h, tit, sub, col, central) {
+      S("rect", { x: x, y: y, width: w, height: h, rx: 10, fill: central ? "#F5F7FA" : RN.mezcla("#ffffff", col, 0.1), stroke: central ? C.ink2 : col, "stroke-width": central ? 2 : 2 }, g);
+      T(g, x + w / 2, y + (sub ? h / 2 - 3 : h / 2 + 5), tit, { fs: 15, fw: 800, anchor: "middle" });
+      if (sub) T(g, x + w / 2, y + h / 2 + 15, sub, { fs: 12.5, fill: C.ink2, anchor: "middle" });
+    }
+    function flecha(g, x1, y1, x2, y2) {
+      S("path", { d: "M" + x1 + " " + y1 + " C" + (x1 + 60) + " " + y1 + " " + (x2 - 60) + " " + y2 + " " + x2 + " " + y2, fill: "none", stroke: "#C3CCD6", "stroke-width": 2.5 }, g);
+      S("path", { d: "M" + (x2 - 9) + " " + (y2 - 5) + " L" + x2 + " " + y2 + " L" + (x2 - 9) + " " + (y2 + 5), fill: "none", stroke: "#C3CCD6", "stroke-width": 2.5 }, g);
+    }
+    function red(g, cx, cy) {
+      const L = [[-36, [-16, 16]], [0, [-24, 0, 24]], [36, [0]]];
+      for (let a = 0; a < 2; a++) L[a][1].forEach(function (y1) { L[a + 1][1].forEach(function (y2) { S("line", { x1: cx + L[a][0], y1: cy + y1, x2: cx + L[a + 1][0], y2: cy + y2, stroke: "#B0BEC5", "stroke-width": 1.5, class: "r-ar" }, g); }); });
+      const ns = [];
+      L.forEach(function (c) { c[1].forEach(function (y) { ns.push(S("circle", { cx: cx + c[0], cy: cy + y, r: 7, fill: "#fff", stroke: C.ink2, "stroke-width": 1.8 }, g)); }); });
+      return ns;
+    }
+    function engr(g, cx, cy) {
+      const gg = S("g", {}, g);
+      let d = "";
+      for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 13 : 17; d += (k ? "L" : "M") + fx(cx + r * Math.cos(a)) + " " + fx(cy + r * Math.sin(a)); }
+      S("path", { d: d + "Z", fill: "#90A4AE" }, gg);
+      S("circle", { cx: cx, cy: cy, r: 6, fill: "#F5F7FA" }, gg);
+      return gg;
+    }
+    // fila A
+    T(svg, 20, 28, "PROGRAMACIÓN TRADICIONAL", { fs: 12.5, fw: 800, fill: C.ink2, ls: 1 });
+    caja(svg, 40, 40, 220, 48, "Reglas", "las escribe una persona", COL.reglas);
+    caja(svg, 40, 98, 220, 48, "Datos", "una foto nueva", COL.datos);
+    caja(svg, 420, 58, 260, 70, "", null, null, true);
+    T(svg, 570, 98, "Programa", { fs: 15, fw: 800, anchor: "middle" });
+    const eA = engr(svg, 466, 93);
+    caja(svg, 840, 69, 220, 48, "Respuestas", "«es un gato»", COL.resp);
+    flecha(svg, 262, 64, 418, 84); flecha(svg, 262, 122, 418, 102); flecha(svg, 682, 93, 838, 93);
+    // fila B
+    S("line", { x1: 20, y1: 166, x2: 1080, y2: 166, stroke: "#E4E7EB", "stroke-width": 1.5 }, svg);
+    T(svg, 20, 194, "APRENDIZAJE AUTOMÁTICO (REDES NEURONALES)", { fs: 12.5, fw: 800, fill: C.ink2, ls: 1 });
+    caja(svg, 40, 206, 220, 48, "Datos", "miles de fotos", COL.datos);
+    caja(svg, 40, 264, 220, 48, "Respuestas", "la etiqueta de cada foto", COL.resp);
+    caja(svg, 420, 224, 260, 70, "", null, null, true);
+    T(svg, 604, 264, "Entrenamiento", { fs: 15, fw: 800, anchor: "middle" });
+    const nsB = red(svg, 476, 259);
+    caja(svg, 840, 235, 220, 48, "Reglas", "aprendidas: el modelo", COL.reglas);
+    flecha(svg, 262, 230, 418, 250); flecha(svg, 262, 288, 418, 268); flecha(svg, 682, 259, 838, 259);
+    // fichas que viajan
+    const gF = S("g", { "pointer-events": "none" }, svg);
+    function ficha(col) { return S("rect", { width: 22, height: 16, rx: 4, fill: col, stroke: "#fff", "stroke-width": 1.5, opacity: 0 }, gF); }
+    const fA = [ficha(COL.reglas), ficha(COL.datos), ficha(COL.resp)];
+    const fB = [ficha(COL.datos), ficha(COL.resp), ficha(COL.reglas)];
+    const rutas = {
+      a0: recorrido(polilinea([[262, 64], [340, 64], [418, 84]], 8)), a1: recorrido(polilinea([[262, 122], [340, 122], [418, 102]], 8)), a2: recorrido([[682, 93], [838, 93]]),
+      b0: recorrido(polilinea([[262, 230], [340, 230], [418, 250]], 8)), b1: recorrido(polilinea([[262, 288], [340, 288], [418, 268]], 8)), b2: recorrido([[682, 259], [838, 259]])
+    };
+    function pon(f, r, t) { const p = punto(r, t); f.setAttribute("x", p[0] - 11); f.setAttribute("y", p[1] - 8); f.setAttribute("opacity", 1); }
+    function pinta(t) {
+      const c = t % 7;
+      [fA, fB].forEach(function (L) { L.forEach(function (f) { f.setAttribute("opacity", 0); }); });
+      if (c < 1.2) { pon(fA[0], rutas.a0, c / 1.2); pon(fA[1], rutas.a1, c / 1.2); }
+      eA.setAttribute("transform", "rotate(" + (c >= 1.2 && c < 2 ? (c - 1.2) * 300 : 0) + " 466 93)");
+      if (c >= 2 && c < 3.2) pon(fA[2], rutas.a2, (c - 2) / 1.2);
+      if (c >= 3.5 && c < 4.7) { pon(fB[0], rutas.b0, (c - 3.5) / 1.2); pon(fB[1], rutas.b1, (c - 3.5) / 1.2); }
+      const act = c >= 4.7 && c < 5.6 ? Math.sin(Math.PI * (c - 4.7) / 0.9) : 0;
+      nsB.forEach(function (n, k) { n.setAttribute("fill", RN.mezcla("#ffffff", ACENTO, act * (0.4 + 0.6 * ((k * 37) % 10) / 10))); });
+      if (c >= 5.6 && c < 6.8) pon(fB[2], rutas.b2, (c - 5.6) / 1.2);
+    }
+    const anim = RN.anima(function (dt, t) { pinta(Math.max(0, t)); }, svg);
+    pinta(2.6);
+    if (!RN.reducirMovimiento) anim.iniciar();
+
+    // ---------------- gatos
+    const g2 = $("r-gatos");
+    const AN = [
+      { n: "atigrado", gato: 1, tri: 1, big: 1, nar: 0, dob: 0, tipo: "gato", col: "#9AA3AD", ray: "#5F6B76" },
+      { n: "negro", gato: 1, tri: 1, big: 1, nar: 0, dob: 0, tipo: "gato", col: "#2E3035", ojos: "#F2C14E" },
+      { n: "naranja", gato: 1, tri: 1, big: 1, nar: 1, dob: 0, tipo: "gato", col: "#E8913A", ray: "#C46A1C" },
+      { n: "orejas dobladas", gato: 1, tri: 0, big: 1, nar: 0, dob: 1, tipo: "fold", col: "#D9CBB5" },
+      { n: "de espaldas", gato: 1, tri: 1, big: 0, nar: 0, dob: 0, tipo: "espalda", col: "#8E99A6" },
+      { n: "zorro", gato: 0, tri: 1, big: 1, nar: 1, dob: 0, tipo: "zorro", col: "#D9692B" },
+      { n: "perro", gato: 0, tri: 0, big: 1, nar: 0, dob: 1, tipo: "perro", col: "#C89A63" },
+      { n: "conejo", gato: 0, tri: 0, big: 1, nar: 0, dob: 0, tipo: "conejo", col: "#ECECEC" }
+    ];
+    const REGLAS = [
+      { txt: "es gato <b>SI</b> orejas triangulares <b>Y</b> bigotes", f: function (a) { return a.tri && a.big; } },
+      { txt: "es gato <b>SI</b> orejas triangulares <b>Y</b> bigotes <b>Y NO</b> es naranja <span style=\"color:var(--ink2)\">(para descartar al zorro)</span>", f: function (a) { return a.tri && a.big && !a.nar; } },
+      { txt: "… <b>O</b> (orejas dobladas <b>Y</b> bigotes) <span style=\"color:var(--ink2)\">(para el gato de orejas dobladas)</span>", f: function (a) { return (a.tri && a.big && !a.nar) || (a.dob && a.big); } }
+    ];
+    function bigotes(g, cx, cy, col) {
+      [-1, 1].forEach(function (s) { [-6, 0, 6].forEach(function (d) { S("line", { x1: cx + s * 10, y1: cy + 12, x2: cx + s * 44, y2: cy + 6 + d * 1.4, stroke: col || "#4A4A4A", "stroke-width": 1.3, "stroke-linecap": "round" }, g); }); });
+    }
+    function ojosGato(g, cx, cy, col) {
+      [-15, 15].forEach(function (d) { S("ellipse", { cx: cx + d, cy: cy - 4, rx: 6.5, ry: 7.5, fill: col || "#9BCB5A" }, g); S("ellipse", { cx: cx + d, cy: cy - 4, rx: 2, ry: 6, fill: "#1B1B1B" }, g); });
+    }
+    function animal(g, a, cx, cy) {
+      if (a.tipo === "gato" || a.tipo === "fold") {
+        if (a.tipo === "gato") [-1, 1].forEach(function (s) {
+          S("path", { d: "M" + (cx + s * 36) + " " + (cy - 14) + " L" + (cx + s * 28) + " " + (cy - 58) + " L" + (cx + s * 6) + " " + (cy - 32) + " Z", fill: a.col }, g);
+          S("path", { d: "M" + (cx + s * 31) + " " + (cy - 20) + " L" + (cx + s * 27) + " " + (cy - 48) + " L" + (cx + s * 13) + " " + (cy - 31) + " Z", fill: "#F4B6C2" }, g);
+        });
+        S("ellipse", { cx: cx, cy: cy, rx: 41, ry: 35, fill: a.col }, g);
+        if (a.tipo === "fold") [-1, 1].forEach(function (s) { S("ellipse", { cx: cx + s * 22, cy: cy - 30, rx: 13, ry: 7, fill: RN.mezcla(a.col, "#7a6a55", 0.25), transform: "rotate(" + (s * 18) + " " + (cx + s * 22) + " " + (cy - 30) + ")" }, g); });
+        if (a.ray) [-10, 0, 10].forEach(function (d) { S("path", { d: "M" + (cx + d) + " " + (cy - 34) + " L" + (cx + d * 0.8) + " " + (cy - 20), stroke: a.ray, "stroke-width": 4, "stroke-linecap": "round" }, g); });
+        ojosGato(g, cx, cy, a.ojos);
+        S("path", { d: "M" + (cx - 5) + " " + (cy + 7) + " L" + (cx + 5) + " " + (cy + 7) + " L" + cx + " " + (cy + 12) + " Z", fill: "#E58A9A" }, g);
+        S("path", { d: "M" + (cx - 8) + " " + (cy + 17) + " Q" + (cx - 4) + " " + (cy + 21) + " " + cx + " " + (cy + 13) + " Q" + (cx + 4) + " " + (cy + 21) + " " + (cx + 8) + " " + (cy + 17), fill: "none", stroke: a.tipo === "gato" && a.col === "#2E3035" ? "#bbb" : "#4A4A4A", "stroke-width": 1.5 }, g);
+        bigotes(g, cx, cy, a.col === "#2E3035" ? "#D0D0D0" : null);
+      } else if (a.tipo === "espalda") {
+        S("ellipse", { cx: cx, cy: cy + 38, rx: 34, ry: 18, fill: RN.mezcla(a.col, "#ffffff", 0.1) }, g);
+        [-1, 1].forEach(function (s) { S("path", { d: "M" + (cx + s * 34) + " " + (cy - 12) + " L" + (cx + s * 27) + " " + (cy - 56) + " L" + (cx + s * 6) + " " + (cy - 30) + " Z", fill: RN.mezcla(a.col, "#000000", 0.12) }, g); });
+        S("ellipse", { cx: cx, cy: cy, rx: 39, ry: 34, fill: a.col }, g);
+        [-12, 0, 12].forEach(function (d) { S("path", { d: "M" + (cx + d) + " " + (cy - 30) + " Q" + (cx + d * 1.3) + " " + cy + " " + (cx + d) + " " + (cy + 26), fill: "none", stroke: "#6E7883", "stroke-width": 3.5, "stroke-linecap": "round" }, g); });
+        S("path", { d: "M" + (cx + 30) + " " + (cy + 46) + " Q" + (cx + 58) + " " + (cy + 40) + " " + (cx + 52) + " " + (cy + 10), fill: "none", stroke: a.col, "stroke-width": 7, "stroke-linecap": "round" }, g);
+      } else if (a.tipo === "zorro") {
+        [-1, 1].forEach(function (s) {
+          S("path", { d: "M" + (cx + s * 38) + " " + (cy - 12) + " L" + (cx + s * 32) + " " + (cy - 62) + " L" + (cx + s * 8) + " " + (cy - 30) + " Z", fill: a.col }, g);
+          S("path", { d: "M" + (cx + s * 35) + " " + (cy - 46) + " L" + (cx + s * 32) + " " + (cy - 62) + " L" + (cx + s * 25) + " " + (cy - 53) + " Z", fill: "#2B2B2B" }, g);
+        });
+        S("path", { d: "M" + (cx - 44) + " " + (cy - 16) + " Q" + (cx - 40) + " " + (cy + 14) + " " + cx + " " + (cy + 36) + " Q" + (cx + 40) + " " + (cy + 14) + " " + (cx + 44) + " " + (cy - 16) + " Q" + cx + " " + (cy - 40) + " " + (cx - 44) + " " + (cy - 16) + " Z", fill: a.col }, g);
+        S("path", { d: "M" + (cx - 40) + " " + (cy - 4) + " Q" + (cx - 20) + " " + (cy + 6) + " " + cx + " " + (cy + 36) + " Q" + (cx + 20) + " " + (cy + 6) + " " + (cx + 40) + " " + (cy - 4) + " Q" + (cx + 26) + " " + (cy + 26) + " " + cx + " " + (cy + 36) + " Q" + (cx - 26) + " " + (cy + 26) + " " + (cx - 40) + " " + (cy - 4) + " Z", fill: "#FFF3E6" }, g);
+        [-15, 15].forEach(function (d) { S("ellipse", { cx: cx + d, cy: cy - 8, rx: 5, ry: 4, fill: "#3A2A1A" }, g); });
+        S("ellipse", { cx: cx, cy: cy + 31, rx: 5, ry: 4, fill: "#1B1B1B" }, g);
+        bigotes(g, cx, cy + 10);
+      } else if (a.tipo === "perro") {
+        S("ellipse", { cx: cx, cy: cy, rx: 37, ry: 37, fill: a.col }, g);
+        [-1, 1].forEach(function (s) { S("ellipse", { cx: cx + s * 36, cy: cy + 4, rx: 12, ry: 29, fill: "#8B5E34", transform: "rotate(" + (s * -12) + " " + (cx + s * 36) + " " + (cy + 4) + ")" }, g); });
+        S("ellipse", { cx: cx, cy: cy + 16, rx: 19, ry: 14, fill: "#EBD3B0" }, g);
+        [-14, 14].forEach(function (d) { S("circle", { cx: cx + d, cy: cy - 8, r: 5, fill: "#2B1B0E" }, g); });
+        S("ellipse", { cx: cx, cy: cy + 9, rx: 7, ry: 5, fill: "#1B1B1B" }, g);
+        [-1, 1].forEach(function (s) { [0, 6].forEach(function (d) { S("line", { x1: cx + s * 12, y1: cy + 18 + d, x2: cx + s * 30, y2: cy + 15 + d * 1.5, stroke: "#4A3A2A", "stroke-width": 1.2 }, g); }); });
+      } else {
+        [-1, 1].forEach(function (s) {
+          S("ellipse", { cx: cx + s * 13, cy: cy - 52, rx: 10, ry: 30, fill: a.col, stroke: "#C9C9C9", "stroke-width": 1.2 }, g);
+          S("ellipse", { cx: cx + s * 13, cy: cy - 50, rx: 4.5, ry: 22, fill: "#F4B6C2" }, g);
+        });
+        S("ellipse", { cx: cx, cy: cy, rx: 34, ry: 31, fill: a.col, stroke: "#C9C9C9", "stroke-width": 1.2 }, g);
+        [-13, 13].forEach(function (d) { S("circle", { cx: cx + d, cy: cy - 6, r: 4.5, fill: "#3A2A1A" }, g); });
+        S("path", { d: "M" + (cx - 4) + " " + (cy + 5) + " L" + (cx + 4) + " " + (cy + 5) + " L" + cx + " " + (cy + 10) + " Z", fill: "#E58A9A" }, g);
+        S("rect", { x: cx - 4, y: cy + 14, width: 8, height: 7, rx: 1, fill: "#fff", stroke: "#C9C9C9" }, g);
+        bigotes(g, cx, cy + 2);
+      }
+    }
+    const celdas = AN.map(function (a, k) {
+      const cx = 66 + k * 138, cy = 100;
+      const g = S("g", {}, g2);
+      S("rect", { x: cx - 64, y: 4, width: 128, height: 244, rx: 10, fill: "#fff", stroke: "#E4E7EB" }, g);
+      const verdad = S("g", {}, g);
+      S("rect", { x: cx - 44, y: 12, width: 88, height: 20, rx: 10, fill: a.gato ? RN.mezcla("#ffffff", C.s7, 0.14) : "#EEF1F4" }, verdad);
+      T(verdad, cx, 26, a.gato ? "GATO" : "NO ES GATO", { fs: 11.5, fw: 800, fill: a.gato ? C.s7 : C.ink2, anchor: "middle", ls: 0.5 });
+      animal(S("g", {}, g), a, cx, cy + 10);
+      T(g, cx, 176, a.n, { fs: 13, fw: 700, anchor: "middle" });
+      const pill = S("rect", { x: cx - 56, y: 186, width: 112, height: 24, rx: 12 }, g);
+      const pt = T(g, cx, 202, "", { fs: 12.5, fw: 700, anchor: "middle" });
+      const mt = T(g, cx, 234, "", { fs: 13.5, fw: 800, anchor: "middle" });
+      return { pill: pill, pt: pt, mt: mt, a: a, g: g, prev: null };
+    });
+    function aplica(k) {
+      $("r-texto").innerHTML = (k === 2 ? REGLAS[1].txt.replace(/ <span[\s\S]*<\/span>/, "") + " " : "") + REGLAS[k].txt;
+      let ok = 0;
+      celdas.forEach(function (c) {
+        const dice = !!REGLAS[k].f(c.a), bien = dice === !!c.a.gato;
+        if (bien) ok++;
+        c.pill.setAttribute("fill", dice ? RN.mezcla("#ffffff", C.s7, 0.16) : "#EEF1F4");
+        c.pill.setAttribute("stroke", dice ? C.s7 : "#CFD8DC");
+        c.pt.textContent = "regla: " + (dice ? "gato" : "no gato");
+        c.mt.textContent = bien ? "✓ acierto" : "✗ fallo";
+        c.mt.setAttribute("fill", bien ? C.ok : C.bad);
+        if (c.prev !== null && c.prev !== dice && !RN.reducirMovimiento) {
+          RN.tween(700, function (t) { c.pill.setAttribute("stroke-width", (1 + 3 * Math.sin(Math.PI * t)).toFixed(2)); });
+        } else c.pill.setAttribute("stroke-width", 1);
+        c.prev = dice;
+      });
+      $("r-aciertos").textContent = ok + " de 8";
+    }
+    segBotones($("r-seg"), function (b) { aplica(+b.dataset.r); });
+    aplica(0);
+
+    // ---------------- sietes
+    const g3 = $("r-sietes");
+    const rs = RN.rng(77);
+    for (let k = 0; k < 26; k++) {
+      const col = k % 13, fila = Math.floor(k / 13);
+      const ox = 22 + col * 82, oy = 8 + fila * 84;
+      S("rect", { x: ox, y: oy, width: 74, height: 76, rx: 8, fill: "#fff", stroke: "#E4E7EB" }, g3);
+      const sl = (rs() - 0.5) * 0.5, sc = 0.8 + rs() * 0.3, w = 2.6 + rs() * 3.2;
+      const cx = ox + 37, cy = oy + 38;
+      const tr = function (x, y) { return [fx(cx + (x + sl * -y) * sc), fx(cy + y * sc)]; };
+      const x0 = -20 + rs() * 6, y0 = -24 + rs() * 6, x1 = 16 + rs() * 8, y1 = -26 + (rs() - 0.5) * 10;
+      const x2 = -10 + rs() * 14, y2 = 26 + rs() * 4;
+      const curv = (rs() - 0.5) * 22;
+      const a = tr(x0, y0), b = tr(x1, y1), c = tr((x1 + x2) / 2 + curv, (y1 + y2) / 2), d = tr(x2, y2);
+      let path = "M" + a.join(" ");
+      if (rs() < 0.3) { const s0 = tr(x0 - 1, y0 + 9); path = "M" + s0.join(" ") + " L" + a.join(" "); }
+      const esquina = rs() < 0.3;
+      if (esquina) { const q = tr(x1 + 5, y1 + 2); path += " Q" + q.join(" ") + " " + tr(x1, y1 + 7).join(" "); }
+      else path += " L" + b.join(" ");
+      path += " Q" + c.join(" ") + " " + d.join(" ");
+      if (rs() < 0.35) { const m1 = tr(-12 + (x1 + x2) / 2 - 6, 1), m2 = tr(10 + (x1 + x2) / 2 - 2, 0); path += " M" + m1.join(" ") + " L" + m2.join(" "); }
+      S("path", { d: path, fill: "none", stroke: C.ink, "stroke-width": w.toFixed(1), "stroke-linecap": "round", "stroke-linejoin": "round" }, g3);
+    }
+  })();
+
+  // ================================================================== 6 · ¿es siempre la mejor opción?
+  (function () {
+    const CRIT = [
+      { n: "Tipo de datos", o: [["No estructurados (imagen, audio, texto)", "red", 2, "imágenes/audio/texto"], ["Tabulares sencillos", "trad", 2, "tabla sencilla"]] },
+      { n: "Patrones", o: [["Difíciles de definir con reglas", "red", 1, "patrón difícil"], ["Fáciles de describir", "trad", 1, "patrón sencillo"]] },
+      { n: "Volumen de datos", o: [["Grande", "red", 2, "muchos datos"], ["Pequeño", "trad", 2, "pocos datos"]] },
+      { n: "Interpretabilidad", o: [["No es crítica", "red", 1, "no hace falta explicar"], ["Es crítica (hay que explicar)", "trad", 2, "hay que explicar"]] },
+      { n: "Recursos de cómputo", o: [["Suficientes (GPU)", "red", 1, "hay GPU"], ["Limitados", "trad", 1, "pocos recursos"]] },
+      { n: "¿Hay métodos ya probados?", o: [["No existen", "red", 1, "nada probado"], ["Sí, con eficacia probada", "trad", 2, "hay método probado"]] }
+    ];
+    const PRE = [[0, 0, 0, 0, 0, 0], [1, 1, 1, 0, 1, 1], [1, 1, 0, 1, 1, 1]];
+    const sel = PRE[0].slice();
+    const cont = $("s-crit");
+    const segs = CRIT.map(function (c, k) {
+      const d = RN.el("div", { class: "crit" }, cont);
+      RN.el("span", { class: "etq" }, d, c.n);
+      const s = RN.el("div", { class: "seg", role: "group", "aria-label": c.n }, d);
+      return c.o.map(function (o, j) {
+        const b = RN.el("button", { type: "button", "aria-pressed": sel[k] === j ? "true" : "false" }, s, o[0]);
+        b.addEventListener("click", function () { sel[k] = j; actualiza(); });
+        return b;
+      });
+    });
+    Array.from(document.querySelectorAll("#p-siempre [data-pre]")).forEach(function (b) {
+      b.addEventListener("click", function () { PRE[+b.dataset.pre].forEach(function (v, k) { sel[k] = v; }); actualiza(); });
+    });
+    const svg = $("s-svg");
+    const PX = 280, PY = 66, LB = 180;
+    S("path", { d: "M" + (PX - 70) + " 338 L" + (PX + 70) + " 338 L" + (PX + 46) + " 322 L" + (PX - 46) + " 322 Z", fill: "#B0BEC5" }, svg);
+    S("rect", { x: PX - 5, y: PY, width: 10, height: 258, fill: "#90A4AE" }, svg);
+    const viga = S("g", {}, svg);
+    S("rect", { x: PX - LB - 6, y: PY - 5, width: 2 * LB + 12, height: 10, rx: 5, fill: "#607D8B" }, viga);
+    S("circle", { cx: PX, cy: PY, r: 9, fill: "#455A64" }, svg);
+    const platos = [0, 1].map(function (k) {
+      const g = S("g", {}, svg);
+      const cuerdas = [S("line", { stroke: "#90A4AE", "stroke-width": 2 }, g), S("line", { stroke: "#90A4AE", "stroke-width": 2 }, g)];
+      const bloques = S("g", {}, g);
+      const plato = S("path", { fill: k ? RN.mezcla("#ffffff", C.s7, 0.25) : RN.mezcla("#ffffff", ACENTO, 0.25), stroke: k ? C.s7 : ACENTO, "stroke-width": 2 }, g);
+      const t1 = T(g, 0, 0, k ? "Modelo tradicional" : "Red neuronal", { fs: 14, fw: 800, anchor: "middle" });
+      const t2 = T(g, 0, 0, k ? "regresión, SVM, árboles…" : "", { fs: 12, fill: C.ink2, anchor: "middle" });
+      return { g: g, cuerdas: cuerdas, bloques: bloques, plato: plato, t1: t1, t2: t2 };
+    });
+    let ang = 0;
+    function colocar(a) {
+      ang = a;
+      viga.setAttribute("transform", "rotate(" + a + " " + PX + " " + PY + ")");
+      const r = a * Math.PI / 180;
+      platos.forEach(function (p, k) {
+        const s = k ? 1 : -1;
+        const ex = PX + s * LB * Math.cos(r), ey = PY + s * LB * Math.sin(r);
+        const yb = ey + 190;
+        p.cuerdas[0].setAttribute("x1", ex); p.cuerdas[0].setAttribute("y1", ey); p.cuerdas[0].setAttribute("x2", ex - 74); p.cuerdas[0].setAttribute("y2", yb);
+        p.cuerdas[1].setAttribute("x1", ex); p.cuerdas[1].setAttribute("y1", ey); p.cuerdas[1].setAttribute("x2", ex + 74); p.cuerdas[1].setAttribute("y2", yb);
+        p.plato.setAttribute("d", "M" + (ex - 84) + " " + yb + " L" + (ex + 84) + " " + yb + " Q" + (ex + 70) + " " + (yb + 16) + " " + ex + " " + (yb + 16) + " Q" + (ex - 70) + " " + (yb + 16) + " " + (ex - 84) + " " + yb + " Z");
+        p.bloques.setAttribute("transform", "translate(" + ex + " " + yb + ")");
+        p.t1.setAttribute("x", ex); p.t1.setAttribute("y", yb + 36);
+        p.t2.setAttribute("x", ex); p.t2.setAttribute("y", yb + 52);
+      });
+    }
+    function actualiza() {
+      segs.forEach(function (bs, k) { bs.forEach(function (b, j) { b.setAttribute("aria-pressed", sel[k] === j ? "true" : "false"); }); });
+      const lados = { red: [], trad: [] };
+      CRIT.forEach(function (c, k) { const o = c.o[sel[k]]; lados[o[1]].push(o); });
+      const pr = lados.red.reduce(function (s, o) { return s + o[2]; }, 0), pt = lados.trad.reduce(function (s, o) { return s + o[2]; }, 0);
+      platos.forEach(function (p, k) {
+        while (p.bloques.firstChild) p.bloques.removeChild(p.bloques.firstChild);
+        let y = 0;
+        (k ? lados.trad : lados.red).forEach(function (o) {
+          const h = 14 + 8 * o[2];
+          y -= h + 3;
+          const col = k ? C.s7 : ACENTO;
+          S("rect", { x: -76, y: y, width: 152, height: h, rx: 5, fill: RN.mezcla("#ffffff", col, 0.18 + 0.16 * o[2]), stroke: col, "stroke-width": 1.2 }, p.bloques);
+          T(p.bloques, 0, y + h / 2 + 4.5, o[3], { fs: 12.5, fw: 700, anchor: "middle" });
+        });
+      });
+      const objetivo = RN.limita((pt - pr) * 2.6, -15, 15);
+      const a0 = ang;
+      if (RN.reducirMovimiento) colocar(objetivo); else RN.tween(600, function (t) { colocar(RN.lerp(a0, objetivo, t)); });
+      const v = $("s-ver");
+      if (pr > pt) v.textContent = "La balanza se inclina hacia una red neuronal (" + pr + " frente a " + pt + ").";
+      else if (pt > pr) v.textContent = "Mejor empezar por un modelo tradicional (" + pt + " frente a " + pr + ").";
+      else v.textContent = "Empate: prueba primero el método tradicional y compáralo con una red.";
+    }
+    colocar(0);
+    actualiza();
+
+    // curvas orientativas
+    const M = [[0.62, 1.1], [0.75, 2.2], [0.86, 3.2], [0.95, 4.6]];
+    const NOM = ["Modelo tradicional", "Red pequeña", "Red mediana", "Red grande"];
+    const f = function (m, x) { return m[0] * (1 - Math.exp(-x / m[1])); };
+    const sl = $("s-n");
+    const g = RN.grafica($("s-cv"), {
+      alto: 330, x: { min: 0, max: 10, titulo: "cantidad de datos (orientativo) →", fmt: function () { return ""; } }, y: { min: 0, max: 1, titulo: "rendimiento (orientativo)", fmt: function () { return ""; } },
+      extras: function (ctx, g) {
+        const x = +sl.value, X = g.sx(x);
+        ctx.strokeStyle = C.ink2; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X, g.m.t); ctx.lineTo(X, g.h - g.m.b); ctx.stroke();
+        M.forEach(function (m, k) { ctx.beginPath(); ctx.arc(X, g.sy(f(m, x)), 6, 0, 7); ctx.fillStyle = RN.serie[k]; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); });
+        ctx.fillStyle = C.ink2; ctx.font = "600 12.5px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+        ctx.fillText("pocos datos", g.m.l, g.h - g.m.b + 6); ctx.textAlign = "right"; ctx.fillText("muchos datos", g.w - g.m.r, g.h - g.m.b + 6);
+        ctx.save(); ctx.translate(g.m.l - 8, g.m.t); ctx.textAlign = "right"; ctx.fillText("alto", 0, 0); ctx.restore();
+        ctx.textAlign = "right"; ctx.textBaseline = "bottom"; ctx.fillText("bajo", g.m.l - 8, g.h - g.m.b);
+      }
+    });
+    function pinta() {
+      const x = +sl.value;
+      $("s-no").textContent = x < 2 ? "pocos" : x < 5 ? "bastantes" : x < 8 ? "muchos" : "muchísimos";
+      let mejor = 0; M.forEach(function (m, k) { if (f(m, x) > f(M[mejor], x)) mejor = k; });
+      $("s-mejor").textContent = NOM[mejor];
+      g.dibujar(M.map(function (m, k) { const p = []; for (let i = 0; i <= 100; i++) p.push([i / 10, f(m, i / 10)]); return { nombre: NOM[k], color: RN.serie[k], puntos: p, hover: false }; }));
+    }
+    sl.addEventListener("input", pinta);
+    pinta();
+  })();
+
+  // ================================================================== 7 · neurona frente a regresión
+  (function () {
+    const r = RN.rng(3);
+    const casas = [];
+    for (let k = 0; k < 24; k++) { const m = 45 + 105 * r(); const p = 1.9 * m + 35 + 25 * RN.normal(r); casas.push({ m: m, p: p, c: p > 220 ? 1 : 0 }); }
+    const n = casas.length;
+    const mu = casas.reduce(function (s, c) { return s + c.m; }, 0) / n;
+    const sd = Math.sqrt(casas.reduce(function (s, c) { return s + (c.m - mu) * (c.m - mu); }, 0) / n);
+    const CFG = {
+      lin: { w: [0, 4, 0.01, 1.0], b: [-150, 250, 1, 60], dw: 2, db: 1, lr: 0.08, max: 45, intervalo: 0.075, ymin: 60, ymax: 380, ytit: "precio (miles de €)", log: [100, 1e6] },
+      sig: { w: [0, 0.3, 0.002, 0.03], b: [-30, 5, 0.1, -2], dw: 3, db: 1, lr: 2, max: 160, intervalo: 0.02, ymin: -0.08, ymax: 1.08, ytit: "¿precio > 220.000 €? (1 = sí)", log: [0.1, 10] }
+    };
+    let modo = "lin", sel = 0;
+    const P = { lin: { w: 1.0, b: 60 }, sig: { w: 0.03, b: -2 } };
+    let hist = [], it = 0;
+    // casa seleccionada por defecto: la más cercana a 110 m²
+    casas.forEach(function (c, k) { if (Math.abs(c.m - 110) < Math.abs(casas[sel].m - 110)) sel = k; });
+    const pred = function (m, w, b) { const z = w * m + b; return modo === "lin" ? z : sig(z); };
+    function perdida(w, b) {
+      let s = 0;
+      casas.forEach(function (c) {
+        const q = pred(c.m, w, b);
+        if (modo === "lin") s += (q - c.p) * (q - c.p);
+        else s += -(c.c * Math.log(q + 1e-12) + (1 - c.c) * Math.log(1 - q + 1e-12));
+      });
+      return s / n;
+    }
+    // óptimos de referencia
+    function optimoLin() {
+      let sxy = 0, sxx = 0; const mp = casas.reduce(function (s, c) { return s + c.p; }, 0) / n;
+      casas.forEach(function (c) { sxy += (c.m - mu) * (c.p - mp); sxx += (c.m - mu) * (c.m - mu); });
+      const w = sxy / sxx; return { w: w, b: mp - w * mu };
+    }
+    function optimoSig() { // Newton sobre la entrada estandarizada
+      let a = 0, c0 = 0;
+      for (let k = 0; k < 50; k++) {
+        let gw = 0, gb = 0, hww = 0, hwb = 0, hbb = 0;
+        casas.forEach(function (c) { const x = (c.m - mu) / sd, q = sig(a * x + c0), v = q * (1 - q); gw += (q - c.c) * x; gb += q - c.c; hww += v * x * x; hwb += v * x; hbb += v; });
+        const det = hww * hbb - hwb * hwb; if (det < 1e-12) break;
+        a -= (hbb * gw - hwb * gb) / det; c0 -= (-hwb * gw + hww * gb) / det;
+      }
+      return { w: a / sd, b: c0 - a * mu / sd };
+    }
+    const OPT = { lin: optimoLin(), sig: null };
+    modo = "sig"; OPT.sig = optimoSig(); const minSig = perdida(OPT.sig.w, OPT.sig.b);
+    modo = "lin"; const minLin = perdida(OPT.lin.w, OPT.lin.b);
+
+    const sw = $("l-w"), sb = $("l-b");
+    const cv = $("l-cv");
+    const g = RN.grafica(cv, {
+      alto: 380, x: { min: 40, max: 155, titulo: "superficie (m²)" }, y: { min: 60, max: 380, titulo: "precio (miles de €)" },
+      extras: function (ctx, g) {
+        const p = P[modo];
+        casas.forEach(function (c, k) {
+          const y = modo === "lin" ? c.p : c.c, q = pred(c.m, p.w, p.b);
+          ctx.strokeStyle = k === sel ? C.ink : "rgba(82,96,109,.5)"; ctx.lineWidth = k === sel ? 2.5 : 1.5;
+          ctx.beginPath(); ctx.moveTo(g.sx(c.m), g.sy(y)); ctx.lineTo(g.sx(c.m), g.sy(q)); ctx.stroke();
+        });
+        // repinta los puntos encima de los residuos
+        casas.forEach(function (c, k) {
+          const y = modo === "lin" ? c.p : c.c;
+          ctx.beginPath(); ctx.arc(g.sx(c.m), g.sy(y), k === sel ? 7 : 5.5, 0, 7);
+          ctx.fillStyle = modo === "lin" ? C.s1 : (c.c ? C.clase1 : C.clase0); ctx.fill();
+          ctx.lineWidth = 1.5; ctx.strokeStyle = "#fff"; ctx.stroke();
+          if (k === sel) { ctx.beginPath(); ctx.arc(g.sx(c.m), g.sy(y), 11, 0, 7); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.stroke(); }
+        });
+      }
+    });
+    const SUP = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+    const pot = function (v) { const e = Math.round(Math.log10(v)); return v >= 1000 ? "10" + String(e).split("").map(function (c) { return SUP[c]; }).join("") : RN.fmt(v, v < 1 ? 1 : 0); };
+    const g2 = RN.grafica($("l-cv2"), { alto: 210, x: { min: 0, max: 45, titulo: "iteración" }, y: { min: 100, max: 1e6, log: true, titulo: "ECM (log)", fmt: pot } });
+
+    // dibujo de la neurona
+    const svg = $("l-svg");
+    const YN = 104;
+    S("circle", { cx: 52, cy: YN, r: 27, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, svg);
+    T(svg, 52, YN + 1, "x", { fs: 19, fw: 700, anchor: "middle", base: "middle", estilo: "italic" });
+    const xv = T(svg, 52, YN + 48, "", { fs: 13, fw: 700, anchor: "middle" });
+    const arW = S("line", { x1: 80, y1: YN, x2: 194, y2: YN, "stroke-linecap": "round" }, svg);
+    const pilW = S("rect", { x: 92, y: YN - 13, width: 90, height: 26, rx: 13, fill: "#fff", "stroke-width": 1.6 }, svg);
+    const wv = T(svg, 137, YN + 1, "", { fs: 13, fw: 700, anchor: "middle", base: "middle" });
+    S("circle", { cx: 226, cy: 26, r: 14, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, svg);
+    T(svg, 226, 27, "b", { fs: 14, fw: 700, anchor: "middle", base: "middle", estilo: "italic" });
+    const bv = T(svg, 246, 31, "", { fs: 13, fw: 700 });
+    S("line", { x1: 226, y1: 40, x2: 226, y2: YN - 32, stroke: C.ink2, "stroke-width": 2 }, svg);
+    S("circle", { cx: 226, cy: YN, r: 31, fill: "#fff", stroke: C.ink2, "stroke-width": 2.5 }, svg);
+    T(svg, 226, YN + 2, "Σ", { fs: 26, fw: 700, anchor: "middle", base: "middle" });
+    const zv = T(svg, 226, YN + 52, "", { fs: 13, fw: 700, anchor: "middle" });
+    S("line", { x1: 257, y1: YN, x2: 290, y2: YN, stroke: C.ink2, "stroke-width": 2 }, svg);
+    S("rect", { x: 290, y: YN - 30, width: 80, height: 60, rx: 9, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, svg);
+    const fCurva = S("path", { fill: "none", stroke: C.s3, "stroke-width": 2.5 }, svg);
+    const fv = T(svg, 330, YN + 52, "", { fs: 13, fw: 700, anchor: "middle" });
+    S("line", { x1: 370, y1: YN, x2: 400, y2: YN, stroke: C.ink2, "stroke-width": 2 }, svg);
+    S("circle", { cx: 428, cy: YN, r: 27, fill: "#fff", stroke: C.s3, "stroke-width": 2.5 }, svg);
+    T(svg, 428, YN + 1, "ŷ", { fs: 19, fw: 700, anchor: "middle", base: "middle", estilo: "italic" });
+    const yv = T(svg, 428, YN + 48, "", { fs: 13, fw: 700, anchor: "middle" });
+    T(svg, 52, 200, "entrada", { fs: 12, fill: C.muted, anchor: "middle" });
+    T(svg, 226, 200, "suma", { fs: 12, fill: C.muted, anchor: "middle" });
+    T(svg, 330, 200, "activación", { fs: 12, fill: C.muted, anchor: "middle" });
+    T(svg, 428, 200, "salida", { fs: 12, fill: C.muted, anchor: "middle" });
+
+    function fmtW(v) { return modo === "lin" ? F(v, 2) : F(v, 3); }
+    function fmtB(v) { return modo === "lin" ? F(v, 0) : F(v, 1); }
+    function pinta() {
+      const p = P[modo], cf = CFG[modo], c = casas[sel];
+      $("l-wo").textContent = fmtW(p.w); $("l-bo").textContent = fmtB(p.b);
+      const L = perdida(p.w, p.b);
+      $("l-k1").textContent = modo === "lin" ? RN.fmtN(L) : RN.fmt(L, 3);
+      $("l-k2").textContent = modo === "lin" ? RN.fmtN(minLin) : RN.fmt(minSig, 3);
+      $("l-k3").textContent = it;
+      const lin = [];
+      for (let x = 40; x <= 155.01; x += 1) lin.push([x, pred(x, p.w, p.b)]);
+      g.dibujar([{ nombre: modo === "lin" ? "ŷ (miles de €)" : "ŷ (probabilidad)", color: C.s3, puntos: lin, ancho: 3 }]);
+      g2.dibujar([{ nombre: modo === "lin" ? "ECM" : "entropía cruzada", color: C.s1, puntos: hist }, { color: C.s1, tipo: "puntos", radio: 5, puntos: [hist[hist.length - 1]] }]);
+      // neurona
+      const z = p.w * c.m + p.b, q = modo === "lin" ? z : sig(z);
+      xv.textContent = RN.fmt(c.m, 0) + " m²";
+      const wmax = cf.w[1];
+      arW.setAttribute("stroke", RN.colorPeso(p.w, wmax)); arW.setAttribute("stroke-width", (1.5 + 5 * Math.min(1, Math.abs(p.w) / wmax)).toFixed(2));
+      pilW.setAttribute("stroke", RN.colorPeso(p.w, wmax));
+      wv.textContent = "w = " + fmtW(p.w);
+      bv.textContent = "b = " + fmtB(p.b);
+      zv.textContent = "z = " + F(z, modo === "lin" ? 1 : 2);
+      fv.textContent = modo === "lin" ? "lineal" : "sigmoide";
+      yv.textContent = modo === "lin" ? RN.fmt(q, 0) + " mil €" : RN.fmt(100 * q, 0) + " %";
+      const fp = [];
+      for (let k = 0; k <= 30; k++) { const u = k / 30; fp.push([298 + 64 * u, modo === "lin" ? YN + 22 - 44 * u : YN + 22 - 44 * sig((u - 0.5) * 10)]); }
+      fCurva.setAttribute("d", "M" + fp.map(function (q) { return fx(q[0]) + " " + fx(q[1]); }).join(" L"));
+      const real = modo === "lin" ? "real: " + RN.fmt(c.p, 0) + " mil €" : "real: " + (c.c ? "sí (1)" : "no (0)");
+      $("l-form").innerHTML = modo === "lin"
+        ? "ŷ = w·x + b = " + fmtW(p.w) + " · " + RN.fmt(c.m, 0) + " " + (p.b < 0 ? "− " : "+ ") + RN.fmt(Math.abs(p.b), 0) + " = <b>" + F(q, 1) + "</b> mil € <span class=\"com\">(" + real + ")</span>"
+        : "ŷ = σ(w·x + b) = σ(" + fmtW(p.w) + " · " + RN.fmt(c.m, 0) + " " + (p.b < 0 ? "− " : "+ ") + RN.fmt(Math.abs(p.b), 1) + ") = σ(" + F(z, 2) + ") = <b>" + RN.fmt(q, 2) + "</b> <span class=\"com\">(" + real + ")</span>";
+    }
+    function reinicioHist() { it = 0; hist = [[0, perdida(P[modo].w, P[modo].b)]]; }
+    function ponSliders() {
+      const cf = CFG[modo];
+      sw.min = cf.w[0]; sw.max = cf.w[1]; sw.step = cf.w[2]; sb.min = cf.b[0]; sb.max = cf.b[1]; sb.step = cf.b[2];
+      sw.value = P[modo].w; sb.value = P[modo].b;
+    }
+    function cambiaModo(m) {
+      anim.parar();
+      modo = m;
+      const cf = CFG[m];
+      g.op.y.min = cf.ymin; g.op.y.max = cf.ymax; g.op.y.titulo = cf.ytit; g.op.y.marcas = m === "sig" ? [0, 0.25, 0.5, 0.75, 1] : undefined;
+      g.op.y.fmt = m === "sig" ? function (v) { return v === 0 || v === 1 ? String(v) : RN.fmt(v, 2); } : undefined;
+      g2.op.y.min = cf.log[0]; g2.op.y.max = cf.log[1]; g2.op.y.titulo = m === "lin" ? "ECM (log)" : "entropía cruzada (log)"; g2.op.x.max = cf.max;
+      $("l-k1t").textContent = m === "lin" ? "Pérdida (ECM)" : "Pérdida";
+      $("l-ley-pt").textContent = m === "lin" ? "vivienda (dato)" : "vivienda: sí (azul) / no (naranja)";
+      $("l-ley-p").style.background = m === "lin" ? "var(--s1)" : "linear-gradient(90deg, var(--s1) 50%, var(--s2) 50%)";
+      $("l-lead").textContent = m === "lin"
+        ? "Con activación lineal, una neurona calcula ŷ = w·x + b: la recta de una regresión lineal. Mueve w y b, o pulsa «Ajustar» para que el descenso del gradiente la encuentre."
+        : "Con activación sigmoide, la misma neurona calcula ŷ = σ(w·x + b), un valor entre 0 y 1: es una regresión logística que estima la probabilidad de «sí».";
+      ponSliders();
+      reinicioHist();
+      pinta();
+    }
+    // descenso del gradiente real (con la entrada estandarizada, como se hace en la práctica)
+    function pasoGD() {
+      const p = P[modo], cf = CFG[modo];
+      let a = p.w * sd, c0 = p.b + p.w * mu, ga = 0, gc = 0;
+      casas.forEach(function (c) {
+        const x = (c.m - mu) / sd, z = a * x + c0;
+        const e = modo === "lin" ? 2 * (z - c.p) : sig(z) - c.c;
+        ga += e * x; gc += e;
+      });
+      a -= cf.lr * ga / n; c0 -= cf.lr * gc / n;
+      p.w = a / sd; p.b = c0 - a * mu / sd;
+      it++;
+      hist.push([it, perdida(p.w, p.b)]);
+      return Math.abs(ga / n) + Math.abs(gc / n);
+    }
+    let acum = 0;
+    const anim = RN.anima(function (dt) {
+      const cf = CFG[modo];
+      let g = 1;
+      acum += dt;
+      while (acum >= cf.intervalo && it < cf.max) { g = pasoGD(); acum -= cf.intervalo; }
+      sw.value = P[modo].w; sb.value = P[modo].b;
+      pinta();
+      if (it >= cf.max || g < 1e-5) return false;
+    }, cv);
+    RN.botonPlay($("l-ajustar"), anim, ["▶ Ajustar", "⏸ Pausa"]);
+    $("l-ajustar").addEventListener("click", function () {
+      if (anim.activo && it >= CFG[modo].max) reinicioHist();
+      acum = 0;
+      if (RN.reducirMovimiento && anim.activo) { anim.parar(); while (it < CFG[modo].max) pasoGD(); ponSliders(); pinta(); }
+    });
+    $("l-reset").addEventListener("click", function () {
+      anim.parar();
+      P[modo].w = CFG[modo].w[3]; P[modo].b = CFG[modo].b[3];
+      ponSliders(); reinicioHist(); pinta();
+    });
+    [sw, sb].forEach(function (s) { s.addEventListener("input", function () { anim.parar(); P[modo].w = +sw.value; P[modo].b = +sb.value; reinicioHist(); pinta(); }); });
+    segBotones($("l-modo"), function (b) { cambiaModo(b.dataset.m); });
+    cv.addEventListener("click", function (e) {
+      const rc = cv.getBoundingClientRect(), px = e.clientX - rc.left, py = e.clientY - rc.top;
+      let best = 0, bd = Infinity;
+      casas.forEach(function (c, k) { const d = Math.hypot(g.sx(c.m) - px, g.sy(modo === "lin" ? c.p : c.c) - py); if (d < bd) { bd = d; best = k; } });
+      sel = best; pinta();
+    });
+    ponSliders(); reinicioHist(); pinta();
+  })();
+})();
+</script>
+</body>
+</html>

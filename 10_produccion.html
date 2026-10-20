@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 10 · I · Puesta en producción — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .fila { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 1rem; align-items: start; }
+  .fila.ancha { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+  @media (max-width: 900px) { .fila, .fila.ancha { grid-template-columns: 1fr; } }
+  .detalle { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: .9rem 1rem; margin-top: .9rem; }
+  .detalle h3 { margin: 0 0 .35rem; font-size: 1.08rem; }
+  .detalle p { margin-bottom: .5rem; }
+  .registro { font-family: var(--mono); font-size: .8rem; background: #0F1B2D; color: #DDE6F0; border-radius: 10px; padding: .5rem .8rem; height: 5.4rem; overflow: auto; line-height: 1.5; margin: .6rem 0; }
+  .registro .r-ok { color: #A5D6A7; } .registro .r-mal { color: #EF9A9A; } .registro .r-av { color: #FFCB6B; } .registro .r-t { color: #7F8EA3; }
+  pre.code .ln { display: block; min-height: 1.3em; }
+  pre.code .ln.hl { display: block; background: rgba(255,203,107,.22); }
+  pre.code.compacto { font-size: .8rem; line-height: 1.45; }
+  .card h3.mini { font-size: .9rem; text-transform: uppercase; letter-spacing: .03em; color: var(--ink2); margin: .2rem 0 .2rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 .8rem; }
+  .chip.s { background: var(--soft); border: 1px solid var(--line); color: var(--ink2); font-weight: 600; }
+  .kpi.alerta { border-color: #EF9A9A; background: #FFF5F5; }
+  .kpi.alerta .v { color: var(--bad); }
+  .kpis.centro { justify-content: flex-start; }
+  .bien ul, .mal ul { margin: .2rem 0 0 1.1rem; }
+  .grid3 > .bien, .grid3 > .mal, .grid3 > .box { margin: 0; }
+  .bien h3, .mal h3, .box h3 { margin: 0 0 .3rem; font-size: 1rem; }
+  .preguntas { display: flex; flex-direction: column; gap: .55rem; }
+  .preguntas .q { display: grid; grid-template-columns: 7.2rem 1fr; gap: .5rem; align-items: center; }
+  .preguntas .q .etq { font-weight: 700; font-size: .9rem; color: var(--ink); }
+  .preguntas .q .etq small { display: block; font-weight: 400; color: var(--ink2); font-size: .78rem; line-height: 1.25; }
+  .preguntas .seg button { padding: .38rem .6rem; font-size: .84rem; }
+  .razones { list-style: none; margin: .3rem 0 0 !important; padding: 0; }
+  .razones li { padding: .15rem 0 .15rem 1.5rem; position: relative; }
+  .razones li::before { position: absolute; left: .1rem; font-weight: 800; }
+  .razones li.mas::before { content: "+"; color: var(--ok); }
+  .razones li.menos::before { content: "−"; color: var(--bad); }
+  .tabla tr.sel td { font-weight: 600; }
+  .controles .ctl.ancho { min-width: 14rem; }
+  label.inline { font-size: .88rem; }
+</style>
+</head>
+<body class="bloque-esc" data-pagina="10_produccion.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 10 · I</span>Puesta en producción</h1>
+  <p>Del modelo que funciona en el notebook al servicio que responde a usuarios reales: servidores de modelos, versiones, carga, seguridad y tipos de arquitectura.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-real" aria-controls="p-real" aria-selected="true">1 · Del notebook</button>
+  <button class="tab" role="tab" id="t-ciclo" aria-controls="p-ciclo" aria-selected="false">2 · Ciclo de vida</button>
+  <button class="tab" role="tab" id="t-servidor" aria-controls="p-servidor" aria-selected="false">3 · Servidor de modelos</button>
+  <button class="tab" role="tab" id="t-versiones" aria-controls="p-versiones" aria-selected="false">4 · Versiones</button>
+  <button class="tab" role="tab" id="t-carga" aria-controls="p-carga" aria-selected="false">5 · Carga y colas</button>
+  <button class="tab" role="tab" id="t-seguridad" aria-controls="p-seguridad" aria-selected="false">6 · Integración y seguridad</button>
+  <button class="tab" role="tab" id="t-tipos" aria-controls="p-tipos" aria-selected="false">7 · Tipos de servidor</button>
+  <button class="tab" role="tab" id="t-serverless" aria-controls="p-serverless" aria-selected="false">8 · Serverless</button>
+  <button class="tab" role="tab" id="t-elegir" aria-controls="p-elegir" aria-selected="false">9 · Decidir</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 -->
+  <section id="p-real" class="panel">
+    <div class="card">
+      <h2>Del notebook a un sistema que lo usa de verdad</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Tres meses de trabajo y un 99 % de exactitud en el notebook… y el modelo de fraude todavía no puede analizar ni una transacción del banco.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Situación</span><div id="r-modo"></div></div>
+      </div>
+      <div class="escena"><svg id="r-svg"></svg></div>
+      <ul>
+        <li>El modelo funciona en el laboratorio, pero el banco no puede <strong>llamarlo</strong> (otro lenguaje), <strong>instalarlo</strong> (paquetes prohibidos) ni <strong>esperarlo</strong> (200 ms cuando se exigen menos de 50).</li>
+        <li>Analogía: un prototipo de coche en un garaje frente a la fábrica, la distribución y el taller que lo llevan a miles de conductores.</li>
+        <li>Según estimaciones de la industria citadas en clase, solo entre un 10 % y un 20 % de los modelos llega a producción.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> producción exige fiabilidad, no solo precisión. Un modelo que se cae, tarda un minuto o no aguanta diez peticiones a la vez es inútil.</div>
+    </div>
+
+    <div class="card">
+      <h2>El código de ML es la parte pequeña</h2>
+      <div class="meta"><span class="tag illus">Tamaños orientativos</span></div>
+      <p class="lead">El famoso diagrama de <em>Hidden Technical Debt in Machine Learning Systems</em> (Sculley et al., Google, 2015): el modelo es una cajita rodeada de infraestructura.</p>
+      <div class="controles"><button class="btn" id="d-play">▶ Construir alrededor del modelo</button></div>
+      <div class="escena"><svg id="d-svg"></svg></div>
+      <p>Entrenar es quizá un 20-30 % del trabajo; el resto es integrar, servir, vigilar y mantener. De ahí nace <strong>MLOps</strong>: aprendizaje automático + operaciones.</p>
+      <div class="clave"><strong>Idea clave:</strong> no basta con entregar un fichero <code>.pkl</code> y desentenderse: el científico de datos también tiene que entender la producción.</div>
+    </div>
+
+    <div class="card">
+      <h2>Seis consideraciones en producción</h2>
+      <div class="meta"><span class="tag real">Cálculo real (SLA y coste)</span></div>
+      <p class="lead">Pulsa cada consideración para verla en números.</p>
+      <div class="escena"><svg id="c6-svg"></svg></div>
+      <div class="detalle fila ancha">
+        <div class="escena"><svg id="c6-mini"></svg></div>
+        <div id="c6-txt"></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> las seis tiran en direcciones distintas: bajar la latencia suele subir el coste. Encontrar el equilibrio es un arte de ingeniería.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 -->
+  <section id="p-ciclo" class="panel">
+    <div class="card">
+      <h2>Ciclo de vida del modelo: un círculo que no se cierra</h2>
+      <div class="meta"><span class="tag illus">Simulación ilustrativa</span></div>
+      <p class="lead">El mundo cambia y los datos de producción se alejan de los de entrenamiento (deriva de datos). Cuando el acierto cae bajo el umbral, el ciclo vuelve a empezar.</p>
+      <div class="controles">
+        <button class="btn" id="ci-play">▶ Avanzar el tiempo</button>
+        <button class="btn gris" id="ci-reset">Reiniciar</button>
+        <div class="ctl"><label for="ci-vel">Velocidad de la deriva</label><input id="ci-vel" type="range" min="0.04" max="0.3" step="0.01" value="0.12"><output id="ci-velo">0,12 σ por semana</output></div>
+        <div class="ctl"><label for="ci-umb">Umbral de alerta</label><input id="ci-umb" type="range" min="0.8" max="0.92" step="0.01" value="0.85"><output id="ci-umbo">85 %</output></div>
+      </div>
+      <div class="escena"><svg id="ci-svg"></svg></div>
+      <div class="grid2">
+        <ul>
+          <li><strong>Preparación:</strong> pipelines de datos automáticos (Apache Airflow, Prefect, Dagster).</li>
+          <li><strong>Entrenamiento:</strong> reentrenos periódicos y registro de experimentos (MLflow, Weights &amp; Biases, Neptune).</li>
+          <li><strong>Despliegue:</strong> cada versión nueva sale sin cortar el servicio (<em>zero-downtime</em>).</li>
+        </ul>
+        <ul>
+          <li><strong>Monitorización:</strong> CPU, memoria y latencia… y también si las predicciones siguen siendo buenas.</li>
+          <li><strong>Deriva de datos (<em>data drift</em>):</strong> cambian los hábitos de compra o los usuarios; el modelo se queda viejo sin que nadie lo note.</li>
+          <li><strong>Mantenimiento:</strong> datos nuevos → reentrenar → validar → desplegar otra vez.</li>
+        </ul>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> el despliegue no es el final del proyecto. Es una fase de un ciclo que se repite mientras el modelo vive: por eso hablamos de operaciones continuas.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 -->
+  <section id="p-servidor" class="panel">
+    <div class="card">
+      <h2>Servidor de modelos: de la petición a la predicción</h2>
+      <div class="meta"><span class="tag illus">Modelo de juguete y tiempos orientativos</span></div>
+      <p class="lead">Cualquier aplicación envía datos al mismo punto de acceso; el servidor valida, preprocesa, infiere, posprocesa y responde. Ejemplo: riesgo de impago de un préstamo.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Origen</span><div id="s-origen"></div></div>
+        <div class="ctl"><span class="etq">Datos enviados</span><div id="s-cliente"></div></div>
+        <button class="btn" id="s-enviar">▶ Enviar petición</button>
+        <button class="btn gris" id="s-rafaga">Ráfaga desde las tres apps</button>
+        <label class="inline"><input type="checkbox" id="s-skew"> Preproceso distinto al del entrenamiento</label>
+      </div>
+      <div class="escena"><svg id="s-svg"></svg></div>
+      <div class="escena" style="margin-top:.6rem"><svg id="s-lat"></svg></div>
+      <div class="leyenda" id="s-ley"></div>
+      <div class="grid2">
+        <div><h3 class="mini">Petición</h3><pre class="code compacto" id="s-req"></pre></div>
+        <div><h3 class="mini">Respuesta</h3><pre class="code compacto" id="s-res"></pre></div>
+      </div>
+      <ul>
+        <li>El servidor <strong>centraliza la inferencia</strong>: web, móvil y otras aplicaciones llaman al mismo punto (<em>endpoint</em>) y obtienen las mismas predicciones.</li>
+        <li>El preproceso de producción debe ser <strong>idéntico</strong> al del entrenamiento: mismas medias, mismo tokenizador, misma división entre 255.</li>
+        <li>El cliente no sabe si detrás hay una CNN, un Transformer o un bosque aleatorio, ni si corre en CPU o GPU.</li>
+      </ul>
+      <div class="chips"><span class="chip s">TensorFlow Serving</span><span class="chip s">NVIDIA Triton</span><span class="chip s">TorchServe</span><span class="chip s">Seldon Core</span><span class="chip s">BentoML</span><span class="chip s">vLLM y TGI (modelos de lenguaje)</span></div>
+      <div class="clave"><strong>Idea clave:</strong> si el preproceso de producción no coincide con el del entrenamiento (<em>training-serving skew</em>), la API responde «200 OK»… con predicciones equivocadas. Ninguna métrica técnica lo detecta.</div>
+    </div>
+    <div class="card">
+      <h2>Por qué merece la pena un servidor de modelos</h2>
+      <div class="grid3">
+        <div class="box acento"><h3>Integración</h3><ul><li>Componente <em>plug-and-play</em>: no hay que duplicar ni reentrenar el modelo para cada aplicación.</li><li>Desacopla la vida de la aplicación y la del modelo: cada equipo va a su ritmo.</li><li>Del modelo entrenado a producción en minutos u horas, no semanas.</li></ul></div>
+        <div class="box acento"><h3>Entorno y disponibilidad</h3><ul><li>Entorno controlado y optimizado (CPU, GPU o TPU).</li><li>Réplicas, balanceo de carga, comprobaciones de salud (<em>health checks</em>) y autoescalado.</li><li>Tiempos predecibles: se vigilan p50, p95 y p99 (pestaña 5).</li></ul></div>
+        <div class="box acento"><h3>Gestión de versiones</h3><ul><li>Registro de cada versión (MLflow Model Registry, DVC, W&amp;B).</li><li>Actualizar sin cortes y volver atrás si algo falla.</li><li>Base de las pruebas A/B en producción (pestaña 4).</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 -->
+  <section id="p-versiones" class="panel">
+    <div class="card">
+      <h2>Versiones en producción: canary, A/B y blue-green</h2>
+      <div class="meta"><span class="tag illus">Simulación con tasas orientativas</span></div>
+      <p class="lead">La versión nueva no sustituye a la vieja de golpe: se reparte el tráfico, se vigila y, si algo falla, se vuelve atrás en segundos.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Estrategia</span><div id="v-modo"></div></div>
+        <div class="ctl" id="v-pctl"><label for="v-p">Tráfico a v2</label><input id="v-p" type="range" min="0" max="100" step="1" value="5"><output id="v-po">5 %</output></div>
+        <button class="btn" id="v-paso">Siguiente paso del canary</button>
+        <button class="btn" id="v-conm">Conmutar a v2</button>
+        <label class="inline"><input type="checkbox" id="v-fallo"> v2 tiene un fallo</label>
+        <label class="inline"><input type="checkbox" id="v-auto" checked> Rollback automático si errores &gt; 2 %</label>
+        <button class="btn" id="v-rb">↩ Rollback</button>
+        <button class="btn gris" id="v-reset">Reiniciar</button>
+      </div>
+      <div class="escena"><svg id="v-svg"></svg></div>
+      <div class="registro" id="v-log" aria-live="polite"></div>
+      <div class="kpis" id="v-kpis"></div>
+      <canvas id="v-graf" class="lienzo" aria-label="Tasa de errores de v1 y v2 en los últimos 60 segundos"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>v1 (en producción)</span><span><i style="background:var(--s3)"></i>v2 (candidata)</span><span><i style="background:var(--bad)"></i>umbral de rollback (2 %)</span></div>
+      <div class="grid3" style="margin-top:.6rem">
+        <div class="box"><h3>Canary</h3><p>Un poco de tráfico (1 %, 5 %…) a la versión nueva y se sube por pasos si todo va bien.</p></div>
+        <div class="box"><h3>A/B</h3><p>Dos versiones a la vez para medir el impacto en negocio. Mejor exactitud en el test no garantiza más ventas.</p></div>
+        <div class="box"><h3>Blue-green</h3><p>Dos entornos idénticos: se cambia todo el tráfico de golpe y se puede volver igual de rápido.</p></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> versionar permite actualizar sin cortes y deshacer en segundos: el rollback es cambiar un puntero.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 -->
+  <section id="p-carga" class="panel">
+    <div class="card">
+      <h2>Carga y concurrencia: cuando la cola se dispara</h2>
+      <div class="meta"><span class="tag real">Simulación de colas real en el navegador</span><span class="tag illus">Tiempos orientativos</span></div>
+      <p class="lead">Cada réplica atiende una petición a la vez; si llegan más de las que puede servir, esperan en cola. Sube la carga y mira qué pasa con el p95.</p>
+      <div class="controles">
+        <div class="ctl"><label for="q-lam">Peticiones por segundo (λ)</label><input id="q-lam" type="range" min="5" max="150" step="5" value="20"><output id="q-lamo">20/s</output></div>
+        <div class="ctl"><label for="q-c">Réplicas del servidor</label><input id="q-c" type="range" min="1" max="8" step="1" value="2"><output id="q-co">2</output></div>
+        <div class="ctl"><label for="q-s">Tiempo medio de inferencia</label><input id="q-s" type="range" min="20" max="200" step="10" value="50"><output id="q-so">50 ms</output></div>
+        <button class="btn" id="q-pico">Pico ×3 durante 10 s</button>
+        <button class="btn gris" id="q-play">⏸ Pausa</button>
+        <button class="btn gris" id="q-reset">Reiniciar</button>
+      </div>
+      <canvas id="q-cv" class="lienzo" aria-label="Animación de la cola: peticiones que llegan, esperan y son atendidas por las réplicas"></canvas>
+      <div class="kpis" id="q-kpis"></div>
+      <div class="grid2">
+        <div>
+          <canvas id="q-g1" class="lienzo" aria-label="Latencia observada p50 y p95 en la simulación"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>p50 observado (mediana)</span><span><i style="background:var(--s2)"></i>p95 observado</span></div>
+        </div>
+        <div>
+          <canvas id="q-g2" class="lienzo" aria-label="Latencia teórica de una cola M/M/c frente a la carga"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>media teórica</span><span><i style="background:var(--s2)"></i>p95 teórico</span><span><i style="background:var(--ink2)"></i>capacidad (réplicas × μ)</span></div>
+        </div>
+      </div>
+      <ul>
+        <li><strong>Utilización</strong> ρ = λ / (réplicas × μ), donde μ = 1 / tiempo de inferencia. Por encima del ~80 % la cola y el p95 se disparan; al pasar del 100 %, la cola crece sin límite.</li>
+        <li>Mirad el <strong>p95</strong>, no la media: es lo que sufre 1 de cada 20 usuarios. El p99, 1 de cada 100.</li>
+        <li>Escalar en horizontal (más réplicas) devuelve la latencia a su sitio: es lo que hace un autoescalado ante un Black Friday.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> la latencia no crece en línea recta con la carga. Cerca de la saturación, un poco más de tráfico dispara la cola y los tiempos de respuesta.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 -->
+  <section id="p-seguridad" class="panel">
+    <div class="card">
+      <h2>Integrar con lo que ya existe</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Las empresas no son una hoja en blanco: sistemas heredados (<em>legacy</em>), bases de datos que nadie se atreve a tocar y formatos que no son tensores.</p>
+      <div class="escena"><svg id="g-svg"></svg></div>
+      <div class="escena" style="margin-top:.6rem"><svg id="g-svg2"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> integrar es como conectar un coche eléctrico a una gasolinera: hacen falta adaptadores. Y el reto más subestimado no es técnico, sino la coordinación entre equipos (MLOps).</div>
+    </div>
+    <div class="card">
+      <h2>Seguridad: capas de defensa… y ataques propios de la IA</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Pulsa un tipo de petición y mira en qué capa se detiene. Algunos ataques a modelos de IA atraviesan todas las defensas clásicas.</p>
+      <div class="controles">
+        <button class="btn" id="k-legit">Cliente legítimo</button>
+        <button class="btn gris" id="k-puertos">Escaneo de puertos</button>
+        <button class="btn gris" id="k-sincred">Petición sin credenciales</button>
+        <button class="btn gris" id="k-extrac">Extracción del modelo</button>
+        <button class="btn gris" id="k-advers">Ataque adversario</button>
+        <button class="btn gris" id="k-veneno">Envenenamiento de datos</button>
+      </div>
+      <div class="escena"><svg id="k-svg"></svg></div>
+      <div class="registro" id="k-log" aria-live="polite"></div>
+      <div class="chips"><span class="chip s">RGPD (GDPR): datos personales en Europa</span><span class="chip s">HIPAA: datos de salud en EE. UU.</span><span class="chip s">PCI DSS: datos de tarjetas</span></div>
+      <div class="clave"><strong>Idea clave:</strong> una petición perfectamente autenticada puede ser un ataque. La seguridad en IA añade dimensiones que el software tradicional no tenía, y exige vigilancia continua.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 -->
+  <section id="p-tipos" class="panel">
+    <div class="card">
+      <h2>Cinco tipos de servidor de modelos</h2>
+      <div class="meta"><span class="tag illus">Animaciones ilustrativas</span></div>
+      <p class="lead">La elección condiciona escalabilidad, coste y complejidad. Elige un tipo y pulsa la acción para ver cómo se comporta.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Tipo</span><div id="t-tipo"></div></div>
+        <button class="btn" id="t-accion">Acción</button>
+      </div>
+      <div class="escena"><svg id="t-svg"></svg></div>
+      <p class="pie" id="t-pie"></p>
+      <div class="grid3" style="margin-top:.6rem">
+        <div class="bien" id="t-ven"></div>
+        <div class="mal" id="t-des"></div>
+        <div class="box" id="t-enc"></div>
+      </div>
+      <table class="tabla" id="t-tabla">
+        <thead><tr><th>Tipo</th><th>Escalabilidad</th><th>Complejidad</th><th>Uso ideal</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="clave"><strong>Idea clave:</strong> la tabla simplifica. En la práctica se combinan: contenedores en Kubernetes, unos con GPU y otros con CPU, funciones serverless para los picos y todo unido como microservicios.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 -->
+  <section id="p-serverless" class="panel">
+    <div class="card">
+      <h2>Serverless: pagar por uso… y el arranque en frío</h2>
+      <div class="meta"><span class="tag real">Simulación real en el navegador</span><span class="tag illus">Costes unitarios orientativos</span></div>
+      <p class="lead">Un día de tráfico simulado petición a petición: cuántas veces hay que arrancar una instancia en frío y cuánto cuesta frente a un servidor siempre encendido.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Patrón de tráfico</span><div id="sl-patron"></div></div>
+        <div class="ctl"><label for="sl-vol">Peticiones al día</label><input id="sl-vol" type="range" min="0" max="12" step="1" value="6"><output id="sl-volo">20.000</output></div>
+        <div class="ctl"><label for="sl-frio">Arranque en frío</label><input id="sl-frio" type="range" min="0.5" max="10" step="0.5" value="3"><output id="sl-frioo">3,0 s</output></div>
+        <div class="ctl"><label for="sl-srv">Alternativa siempre encendida</label><select id="sl-srv"><option value="0.1">Servidor CPU · 0,10 €/h</option><option value="1">Servidor con GPU · 1,00 €/h</option></select></div>
+        <label class="inline"><input type="checkbox" id="sl-prov"> 1 instancia siempre caliente</label>
+      </div>
+      <div class="kpis" id="sl-kpis"></div>
+      <canvas id="sl-g1" class="lienzo" aria-label="Peticiones a lo largo del día y arranques en frío"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>peticiones por cada 10 minutos</span><span><i class="punto" style="background:var(--s2)"></i>arranque en frío</span></div>
+      <div class="grid2" style="margin-top:.6rem">
+        <div>
+          <canvas id="sl-g2" class="lienzo" aria-label="Latencia de cada petición a lo largo del día, en escala logarítmica"></canvas>
+          <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>instancia caliente</span><span><i class="punto" style="background:var(--s2)"></i>arranque en frío</span></div>
+        </div>
+        <div>
+          <canvas id="sl-g3" class="lienzo" aria-label="Coste diario frente al volumen de peticiones: serverless frente a servidor siempre encendido"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>serverless (pago por uso)</span><span><i style="background:var(--s2)"></i>servidor siempre encendido</span></div>
+        </div>
+      </div>
+      <p class="nota" id="sl-nota"></p>
+      <ul>
+        <li>Con tráfico <strong>esporádico</strong>, casi cada petición encuentra la plataforma «fría»: hay que cargar el runtime, las librerías y el modelo.</li>
+        <li>La concurrencia aprovisionada (<em>provisioned concurrency</em> en AWS Lambda) mantiene instancias calientes, pero se paga aunque no trabajen.</li>
+        <li>Con uso intenso 24/7, el pago por uso acaba saliendo más caro que un servidor dedicado: el precio por unidad de cómputo es mayor.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> serverless brilla con modelos ligeros y carga variable o esporádica. Para modelos grandes con GPU y latencia baja constante, mejor otra arquitectura.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9 -->
+  <section id="p-elegir" class="panel">
+    <div class="card">
+      <h2>Checklist de decisión: ¿qué arquitectura encaja?</h2>
+      <div class="meta"><span class="tag illus">Puntuación orientativa</span></div>
+      <p class="lead">Responde a las preguntas (o elige un escenario) y mira cómo se reordenan los cinco tipos de servidor, con su porqué.</p>
+      <div class="controles">
+        <div class="ctl ancho"><label for="e-esc">Escenario de ejemplo</label><select id="e-esc"></select></div>
+      </div>
+      <div class="fila">
+        <div class="preguntas" id="e-preg"></div>
+        <div class="escena"><svg id="e-svg"></svg></div>
+      </div>
+      <div class="grid2" id="e-porque" style="margin-top:.8rem"></div>
+      <div class="clave"><strong>Idea clave:</strong> la mejor arquitectura es la que se adapta a vuestro contexto, no la que está de moda. No hace falta Kubernetes para diez peticiones al día, ni serverless para un modelo gigante que trabaja sin parar.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/10_diagramas.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, D = D10, K = D10.col;
+  const reducido = RN.reducirMovimiento;
+  function $(id) { return document.getElementById(id); }
+  function tab(nombre, fn) { try { fn(); } catch (e) { console.error("Pestaña " + nombre + ": " + (e && e.stack ? e.stack : e)); } }
+  // bucle de animación que se congela con la pestaña oculta; arranca solo salvo con movimiento reducido
+  function bucle(paso, el, auto) {
+    const a = RN.anima(paso, el);
+    if (auto !== false) {
+      if (!reducido) a.iniciar();
+      else { const c = el.closest ? el.closest(".card") : null; if (c) c.addEventListener("click", function () { a.iniciar(); }, { once: true }); }
+    }
+    return a;
+  }
+  function hora(t) { const s = Math.floor(t); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
+  function registra(caja, html, clase) {
+    const d = RN.el("div", clase ? { class: "r-" + clase } : null, null);
+    d.innerHTML = html;
+    caja.insertBefore(d, caja.firstChild);
+    while (caja.childNodes.length > 30) caja.removeChild(caja.lastChild);
+  }
+
+  // =====================================================================================
+  // 1 · Del notebook a producción
+  tab("real", function () {
+    // ---------- 1a · el salto
+    const svg = D.prepara($("r-svg"), 1000, 330, "El modelo del notebook intenta llegar al banco: lenguaje, dependencias y latencia lo bloquean hasta que se sirve desde un servidor de modelos");
+    RN.svg("rect", { x: 20, y: 40, width: 210, height: 130, rx: 8, fill: "#0F1B2D" }, svg);
+    RN.svg("path", { d: "M8 184 H242 L230 170 H20 Z", fill: "#E4E7EB", stroke: K.borde, "stroke-width": 1.5 }, svg);
+    const M = { ancla: "start", tam: 12, mono: true };
+    [["In [12]:", "modelo.fit(X, y)", 66, "#E3EAF2"], ["In [13]:", "modelo.score(…)", 92, "#E3EAF2"], ["Out[13]:", "0.99", 118, "#C3E88D"]].forEach(function (l) {
+      D.texto(svg, 32, l[2], l[0], Object.assign({}, M, { color: "#7F8EA3" }));
+      D.texto(svg, 100, l[2], l[1], Object.assign({}, M, { color: l[3] }));
+    });
+    D.texto(svg, 32, 146, "# ¡funciona!", Object.assign({}, M, { color: "#7F8EA3" }));
+    D.texto(svg, 125, 206, "Notebook", { tam: 14, peso: 700 });
+    D.texto(svg, 125, 225, "Python 3.9 · scikit-learn", { tam: 12, color: C.ink2 });
+    D.texto(svg, 125, 242, "entorno local controlado", { tam: 12, color: C.ink2 });
+    D.ruta(svg, "M236 280 H750 V203", { color: K.linea, dash: "6 6", ancho: 2.5 });
+    D.texto(svg, 480, 318, "camino a producción", { tam: 12, color: C.ink2 });
+
+    const muros = [
+      { x: 330, ic: "app", tit: "Lenguaje", mal: ["Python 3.9", "frente a Java"], bien: ["API HTTP: Java", "la llama sin más"] },
+      { x: 470, ic: "candado", tit: "Dependencias", mal: ["No se pueden", "instalar paquetes"], bien: ["Contenedor con", "sus librerías"] },
+      { x: 610, ic: "reloj", tit: "Latencia", mal: ["200 ms; el banco", "exige < 50 ms"], bien: ["Optimizado y", "servido: < 50 ms"] }
+    ];
+    muros.forEach(function (m) {
+      m.g = RN.svg("g", { class: "d-caja" }, svg);
+      m.g.rect = RN.svg("rect", { x: m.x - 60, y: 30, width: 120, height: 205, rx: 10, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, m.g);
+      D.icono(m.g, m.ic, m.x, 64, 30);
+      D.texto(m.g, m.x, 102, m.tit, { tam: 14, peso: 700 });
+      m.t = D.texto(m.g, m.x, 148, m.mal, { tam: 12, color: C.ink2 });
+      m.est = D.texto(m.g, m.x, 208, "", { tam: 13, peso: 700 });
+      m.barra = RN.svg("line", { x1: m.x, y1: 256, x2: m.x, y2: 304, "stroke-width": 8, "stroke-linecap": "round" }, svg);
+      m.ab = 0; m.abA = 0;
+    });
+    const srvV = D.caja(svg, { x: 690, y: 70, w: 120, h: 130, dash: "6 5", titulo: ["Servidor", "de modelos"], sub: "(vacío)" });
+    const srvL = D.caja(svg, { x: 690, y: 70, w: 120, h: 130, icono: "servidor", titulo: ["Servidor", "de modelos"], sub: "modelo v1", clase: "d-activo" });
+    D.icono(svg, "banco", 930, 100, 62);
+    D.texto(svg, 930, 152, "Banco", { tam: 14, peso: 700 });
+    D.texto(svg, 930, 170, "Java · tiempo real", { tam: 12, color: C.ink2 });
+    const rq = D.cubica([905, 72], [880, 18], [800, 18], [775, 68]);
+    const rs = D.cubica([795, 202], [815, 252], [880, 252], [902, 192]);
+    const rutas = [D.ruta(svg, rq.d, { color: "#BFD3EA", ancho: 2, flecha: true }), D.ruta(svg, rs.d, { color: "#BCE5D6", ancho: 2, flecha: true })];
+    const cont1 = D.texto(svg, 930, 270, "", { tam: 13, peso: 700 });
+    const cont2 = D.texto(svg, 930, 288, "", { tam: 12, color: C.ink2 });
+    const tick = D.texto(svg, 930, 228, "", { tam: 12, peso: 700 });
+    const tok = RN.svg("g", {}, svg);
+    RN.svg("rect", { x: -38, y: -12, width: 76, height: 24, rx: 12, fill: C.s1, stroke: "#fff", "stroke-width": 1.5 }, tok);
+    RN.svg("text", { x: 0, y: 0.5, "text-anchor": "middle", "dominant-baseline": "central", "font-size": 12, "font-weight": 700, fill: "#fff", text: "modelo" }, tok);
+    const fl = D.Flujo(svg);
+    const rng = RN.rng(3);
+    function ponTok(x, y) { tok.setAttribute("transform", "translate(" + x.toFixed(1) + "," + y.toFixed(1) + ")"); }
+    const camino = [[272, 280], [750, 280], [750, 203]];
+    let modo = "sin", T = 0, tf = 0, fase = 0, pend = 0, anal = 0, tT = 0;
+
+    function ponerModo(m) {
+      modo = m; T = 0; tf = 0; fase = 0; tT = 0;
+      fl.vaciar();
+      muros.forEach(function (w) {
+        D.estado(w.g, "error"); D.ponTexto(w.t, w.mal);
+        w.est.textContent = "✕ bloquea"; w.est.setAttribute("fill", C.bad);
+        w.barra.setAttribute("stroke", C.bad); w.ab = 0; w.abA = 0; w.barra.setAttribute("y1", 256);
+      });
+      srvV.style.opacity = 1; srvL.style.opacity = 0;
+      rutas.forEach(function (r) { r.style.opacity = 0; });
+      tok.style.opacity = 1; ponTok(272, 280);
+      if (m === "sin") { pend = 0; anal = 0; }
+      tick.textContent = "";
+      if (reducido) for (let i = 0; i < 120; i++) paso(0.05);
+      pinta();
+    }
+    function abrir(k) {
+      const w = muros[k];
+      D.estado(w.g, "ok"); D.ponTexto(w.t, w.bien);
+      w.est.textContent = "✓ resuelto"; w.est.setAttribute("fill", C.ok);
+      w.barra.setAttribute("stroke", C.ok); w.ab = 1;
+    }
+    function transaccion() {
+      const fraude = rng() < 0.08;
+      const p = fraude ? 0.85 + 0.14 * rng() : 0.01 + 0.06 * rng();
+      fl.add({ pts: rq.pts, dur: 0.5, r: 6, color: C.s1, onFin: function () {
+        fl.add({ pts: rs.pts, dur: 0.5, r: 6, color: C.s3, onFin: function () {
+          anal += 25; pend = Math.max(0, pend - 60);
+          tick.textContent = (fraude ? "⚠ posible fraude " : "✓ legítima ") + RN.fmt(p, 2);
+          tick.setAttribute("fill", fraude ? C.bad : C.ok);
+        } });
+      } });
+    }
+    function pinta() {
+      if (modo === "con" && fase >= 4) {
+        cont1.textContent = "Analizadas: " + RN.fmtN(anal);
+        cont2.textContent = pend > 0 ? "pendientes: " + RN.fmtN(pend) : "< 50 ms cada una";
+      } else {
+        cont1.textContent = "Sin analizar: " + RN.fmtN(pend);
+        cont2.textContent = "el modelo no llega";
+      }
+    }
+    function paso(dt) {
+      T += dt;
+      if (modo === "sin") {
+        const u = T % 1.8;
+        let x = 272;
+        if (u < 0.6) x = 272 + 16 * RN.suave(u / 0.6);
+        else if (u < 1.0) x = 288 - 16 * RN.suave((u - 0.6) / 0.4);
+        ponTok(x, 280);
+        muros[0].barra.setAttribute("stroke-width", u > 0.5 && u < 0.85 ? 12 : 8);
+        tT += dt;
+        if (tT > 0.3) { tT = 0; pend = Math.min(99999, pend + 6); }
+      } else {
+        tf += dt;
+        if (fase < 3) {
+          if (tf > 0.45) { abrir(fase); fase++; tf = 0; }
+        } else if (fase === 3) {
+          const u = Math.min(1, tf / 1.6);
+          const p = D.enPol(camino, null, RN.suave(u));
+          ponTok(p[0], p[1]);
+          if (u >= 1) {
+            fase = 4; tf = 0; tok.style.opacity = 0;
+            srvV.style.opacity = 0; srvL.style.opacity = 1;
+            rutas.forEach(function (r) { r.style.opacity = 1; });
+          }
+        } else {
+          tT += dt;
+          if (tT > 0.42) { tT = 0; transaccion(); }
+        }
+      }
+      muros.forEach(function (w) {
+        w.abA += (w.ab - w.abA) * Math.min(1, dt * 7);
+        w.barra.setAttribute("y1", (256 + 44 * w.abA).toFixed(1));
+      });
+      fl.paso(dt);
+      pinta();
+    }
+    D.seg($("r-modo"), [["sin", "Sin infraestructura"], ["con", "Con servidor de modelos"]], "sin", ponerModo, "Situación");
+    ponerModo("sin");
+    bucle(paso, svg.parentNode);
+
+    // ---------- 1b · deuda técnica oculta
+    const sd = D.prepara($("d-svg"), 1000, 300, "Diagrama de Sculley y colaboradores (2015): el código de aprendizaje automático es una caja pequeña rodeada de infraestructura");
+    const piezas = [
+      [20, 20, 230, 120, "Configuración", "parámetros y entornos"],
+      [260, 20, 300, 80, "Recogida de datos", "pipelines (Airflow…)"],
+      [570, 20, 200, 80, "Verificación de datos", "calidad y esquemas"],
+      [780, 20, 200, 180, ["Gestión de", "recursos"], "CPU, GPU, memoria"],
+      [260, 110, 200, 90, ["Extracción de", "características"], "feature stores"],
+      [540, 110, 230, 90, ["Herramientas", "de análisis"], "experimentos (MLflow)"],
+      [20, 150, 230, 130, ["Gestión de", "procesos"], "CI/CD y versiones"],
+      [260, 210, 360, 70, "Infraestructura de servicio", "API, contenedores, balanceo"],
+      [630, 210, 350, 70, "Monitorización", "latencia, errores y deriva"]
+    ].map(function (p) {
+      return D.caja(sd, { x: p[0], y: p[1], w: p[2], h: p[3], titulo: p[4], sub: p[5], fill: K.suave, tam: 14 });
+    });
+    const ml = RN.svg("g", {}, sd);
+    RN.svg("rect", { x: 470, y: 125, width: 60, height: 60, rx: 6, fill: C.ink }, ml);
+    D.texto(ml, 500, 155, ["Código", "de ML"], { tam: 12, peso: 700, color: "#fff" });
+    let tD = 99;
+    function pasoD(dt) {
+      tD += dt;
+      const s = tD < 0.7 ? RN.lerp(2.4, 1, RN.suave(tD / 0.7)) : 1;
+      ml.setAttribute("transform", "translate(500,155) scale(" + s.toFixed(3) + ") translate(-500,-155)");
+      piezas.forEach(function (g, i) { g.style.opacity = RN.limita((tD - 0.8 - 0.28 * i) / 0.3, 0, 1); });
+      if (tD > 0.8 + 0.28 * piezas.length + 0.4) return false;
+    }
+    pasoD(0);
+    const animD = RN.anima(pasoD, sd.parentNode);
+    $("d-play").addEventListener("click", function () { tD = reducido ? 99 : 0; pasoD(0); animD.iniciar(); });
+
+    // ---------- 1c · seis consideraciones
+    const sc = D.prepara($("c6-svg"), 1000, 250, "Seis consideraciones alrededor del modelo en producción: accesibilidad, integración, operación continua, latencia, eficiencia y coste operativo");
+    const CONS = [
+      { id: "acc", lado: 0, y: 18, ic: "mundo", t: "Accesibilidad", s: "disponible y fiable (SLA)" },
+      { id: "int", lado: 0, y: 94, ic: "engranaje", t: "Integración", s: "encaja con lo que ya existe" },
+      { id: "op", lado: 0, y: 170, ic: "reloj", t: "Operación continua", s: "24/7, sin nadie delante" },
+      { id: "lat", lado: 1, y: 18, ic: "rayo", t: "Latencia", s: "respuesta rápida" },
+      { id: "efi", lado: 1, y: 94, ic: "chip", t: "Eficiencia", s: "recursos bien aprovechados" },
+      { id: "cos", lado: 1, y: 170, ic: "euro", t: "Coste operativo", s: "rendimiento frente a gasto" }
+    ];
+    CONS.forEach(function (c) {
+      const cy = c.y + 31;
+      const b = c.lado ? D.bezier(700, cy, 563, 125) : D.bezier(300, cy, 437, 125);
+      c.linea = D.ruta(sc, b.d, { color: K.linea, ancho: 2 });
+      c.pts = c.lado ? b.pts.slice().reverse() : b.pts;
+    });
+    RN.svg("circle", { cx: 500, cy: 125, r: 66, fill: K.acentoL, stroke: K.acento, "stroke-width": 2 }, sc);
+    D.icono(sc, "servidor", 500, 98, 34, K.acento);
+    D.texto(sc, 500, 140, ["Modelo en", "producción"], { tam: 13, peso: 700 });
+    CONS.forEach(function (c) {
+      const x = c.lado ? 700 : 30, cy = c.y + 31;
+      c.g = RN.svg("g", { class: "d-caja" }, sc);
+      c.g.rect = RN.svg("rect", { x: x, y: c.y, width: 270, height: 62, rx: 10, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, c.g);
+      D.icono(c.g, c.ic, x + 32, cy, 28);
+      D.texto(c.g, x + 58, cy - 10, c.t, { ancla: "start", tam: 14, peso: 700 });
+      D.texto(c.g, x + 58, cy + 11, c.s, { ancla: "start", tam: 12, color: C.ink2 });
+      D.clicable(c.g, function () { elegir(c.id); }, c.t);
+    });
+    const flc = D.Flujo(sc);
+    const mini = $("c6-mini"), txt = $("c6-txt");
+    let miniPaso = null, slaSel = 1, actual = "acc", tPulso = 0;
+    const SLA = [0.99, 0.999, 0.9999, 0.99999], SLAet = ["99 %", "99,9 %", "99,99 %", "99,999 %"];
+    const MINI = {
+      acc: function (s) {
+        D.texto(s, 10, 14, "Caída máxima permitida al año (escala logarítmica)", { ancla: "start", tam: 12, color: C.ink2 });
+        SLA.forEach(function (f, i) {
+          const min = 525600 * (1 - f), y = 32 + i * 46, sel = i === slaSel;
+          const g = RN.svg("g", { class: "d-caja" }, s);
+          g.rect = RN.svg("rect", { x: 4, y: y - 4, width: 552, height: 40, rx: 8, fill: sel ? K.acentoL : "#fff", stroke: sel ? K.acento : "#fff", "stroke-width": 1.5 }, g);
+          D.texto(g, 14, y + 16, SLAet[i], { ancla: "start", tam: 14, peso: 700 });
+          const L = Math.log10(min) / 4 * 250;
+          RN.svg("rect", { x: 100, y: y + 6, width: Math.max(4, L), height: 20, rx: 4, fill: sel ? K.acento : C.s1 }, g);
+          D.texto(g, 110 + L, y + 16, D.duracion(min) + " al año", { ancla: "start", tam: 13, peso: sel ? 700 : 400 });
+          D.clicable(g, function () { slaSel = i; elegir("acc"); }, "SLA del " + SLAet[i]);
+        });
+      },
+      int: function (s) {
+        const I = [[50, 62, "bd", "PostgreSQL", "historial"], [50, 160, "doc", "ERP", "catálogo"]];
+        const O = [[510, 62, "web", "Web", "React"], [510, 160, "movil", "Móvil", "Flutter"]];
+        const rr = [];
+        I.forEach(function (r) { const b = D.bezier(78, r[1] - 6, 215, 110); D.ruta(s, b.d, { color: K.linea }); rr.push(b.pts); });
+        O.forEach(function (r) { const b = D.bezier(345, 110, 482, r[1] - 6); D.ruta(s, b.d, { color: K.linea }); rr.push(b.pts); });
+        D.caja(s, { x: 215, y: 82, w: 130, h: 56, titulo: "Recomendador", sub: "el modelo", tam: 13 });
+        I.concat(O).forEach(function (r) {
+          D.icono(s, r[2], r[0], r[1] - 6, 30);
+          D.texto(s, r[0], r[1] + 22, r[3], { tam: 12, peso: 700 });
+          D.texto(s, r[0], r[1] + 37, r[4], { tam: 12, color: C.ink2 });
+        });
+        D.texto(s, 280, 36, "todo en menos de 1 s", { tam: 13, peso: 700, color: K.acento });
+        const f = D.Flujo(s); let tt = 0, k = 0;
+        miniPaso = function (dt) {
+          tt += dt;
+          if (tt > 0.75) {
+            tt = 0; k++;
+            f.add({ pts: rr[k % 2], dur: 0.6, r: 5, color: C.s1, onFin: function () { f.add({ pts: rr[2 + (k % 2)], dur: 0.6, r: 5, color: C.s3 }); } });
+          }
+          f.paso(dt);
+        };
+      },
+      op: function (s) {
+        const x0 = 40, x1 = 520, y = 125, X = function (h) { return x0 + (x1 - x0) * h / 24; };
+        RN.svg("rect", { x: X(0), y: y - 18, width: X(7) - X(0), height: 36, rx: 6, fill: "#ECEFF8" }, s);
+        D.icono(s, "luna", X(1.2), y - 34, 20);
+        RN.svg("rect", { x: x0, y: y - 4, width: x1 - x0, height: 8, rx: 4, fill: "#D5DAE0" }, s);
+        [0, 6, 12, 18, 24].forEach(function (h) { D.texto(s, X(h), y + 32, h + " h", { tam: 12, color: C.ink2 }); });
+        const srv = D.caja(s, { x: 210, y: 8, w: 140, h: 62, icono: "servidor", iconoTam: 22, titulo: "en marcha", tam: 13 });
+        const marca = RN.svg("circle", { cx: X(3.23), cy: y, r: 7, fill: C.bad, opacity: 0 }, s);
+        const cur = RN.svg("line", { x1: x0, y1: y - 20, x2: x0, y2: y + 20, stroke: K.acento, "stroke-width": 3, "stroke-linecap": "round" }, s);
+        const ev = D.texto(s, X(3.23) + 14, y - 30, "", { ancla: "start", tam: 12, peso: 700, color: C.bad });
+        D.texto(s, 280, 186, "Prometheus mide · Grafana muestra · las alertas avisan", { tam: 12, color: C.ink2 });
+        const disp = D.texto(s, 280, 208, "", { tam: 13, peso: 700 });
+        let h = 1.5, pausa = 0, inc = false;
+        miniPaso = function (dt) {
+          if (pausa > 0) {
+            pausa -= dt;
+            if (pausa > 1.3) { D.estado(srv, "error"); D.ponTexto(srv.t1, "caído ✕"); ev.textContent = "03:14 fallo → alerta"; ev.setAttribute("fill", C.bad); }
+            else { D.estado(srv, "ok"); D.ponTexto(srv.t1, "reiniciado ✓"); ev.textContent = "se repara solo en 2 min"; ev.setAttribute("fill", C.ok); }
+            return;
+          }
+          const h0 = h; h = (h + dt * 3) % 24;
+          if (h0 < 3.23 && h >= 3.23) { pausa = 2.4; inc = true; marca.setAttribute("opacity", 1); }
+          if (h < h0) { inc = false; marca.setAttribute("opacity", 0); ev.textContent = ""; }
+          if (h > 7 && srv.classList.contains("d-ok")) { D.estado(srv, null); D.ponTexto(srv.t1, "en marcha"); }
+          cur.setAttribute("x1", X(h)); cur.setAttribute("x2", X(h));
+          disp.textContent = "Disponibilidad del día: " + (inc ? "99,86 % (2 min caído)" : "100 %");
+        };
+        miniPaso(0);
+      },
+      lat: function (s) {
+        const x0 = 30, x1 = 530, y0 = 70, y1 = 140;
+        const X = function (ms) { return x0 + (Math.log10(ms) - 1) / 3 * (x1 - x0); };
+        [[10, 100, "instantáneo", K.okL], [100, 1000, "se nota", K.warnL], [1000, 3000, "molesta", "#FFE9D6"], [3000, 10000, "abandonan", K.badL]].forEach(function (z) {
+          RN.svg("rect", { x: X(z[0]), y: y0, width: X(z[1]) - X(z[0]), height: y1 - y0, fill: z[3] }, s);
+          D.texto(s, z[0] === 10 ? X(10) + 8 : (X(z[0]) + X(z[1])) / 2, y0 + 15, z[2], { ancla: z[0] === 10 ? "start" : "middle", tam: 12, peso: 700, color: C.ink2 });
+        });
+        [[10, "10 ms"], [100, "100 ms"], [1000, "1 s"], [3000, "3 s"], [10000, "10 s"]].forEach(function (m) {
+          RN.svg("line", { x1: X(m[0]), y1: y1, x2: X(m[0]), y2: y1 + 6, stroke: K.borde }, s);
+          D.texto(s, X(m[0]), y1 + 18, m[1], { tam: 12, color: C.ink2 });
+        });
+        RN.svg("line", { x1: X(50), y1: y0 - 18, x2: X(50), y2: y1, stroke: C.ink, "stroke-width": 2, "stroke-dasharray": "5 4" }, s);
+        D.texto(s, X(50) - 6, y0 - 26, "objetivo < 50 ms", { ancla: "end", tam: 12, peso: 700 });
+        RN.svg("line", { x1: X(200), y1: y0 - 18, x2: X(200), y2: y1, stroke: C.bad, "stroke-width": 2 }, s);
+        D.texto(s, X(200) + 6, y0 - 26, "modelo del banco: 200 ms", { ancla: "start", tam: 12, peso: 700, color: C.bad });
+        D.ruta(s, "M" + (X(200) - 4) + " 112 H" + (X(50) + 6), { color: K.acento, ancho: 3, flecha: true });
+        D.texto(s, 280, 184, "Cuantización (32 → 16 u 8 bits), destilación, poda,", { tam: 12, color: C.ink2 });
+        D.texto(s, 280, 202, "y motores optimizados: TensorRT, ONNX Runtime", { tam: 12, color: C.ink2 });
+      },
+      efi: function (s) {
+        const slots = [];
+        for (let i = 0; i < 8; i++) slots.push({ x: 196 + i * 22, ficha: null });
+        RN.svg("rect", { x: 186, y: 94, width: 186, height: 38, rx: 8, fill: "#fff", stroke: K.borde, "stroke-dasharray": "5 4" }, s);
+        D.texto(s, 279, 78, "lote de 8 peticiones", { tam: 12, peso: 700 });
+        const gpu = D.icono(s, "chip", 480, 113, 58);
+        D.texto(s, 480, 158, "GPU", { tam: 13, peso: 700 });
+        D.texto(s, 50, 50, "llegan sueltas", { tam: 12, color: C.ink2 });
+        const cont = D.texto(s, 470, 178, "", { tam: 12, color: C.ink2 });
+        D.texto(s, 280, 206, "Esperar unos milisegundos llena el lote: más caudal, algo más de latencia.", { tam: 12, color: C.ink2 });
+        const f = D.Flujo(s); let tt = 0, lotes = 0, n = 0, brillo = 0;
+        miniPaso = function (dt) {
+          tt -= dt;
+          if (tt <= 0 && n < 8) {
+            tt = 0.12 + Math.random() * 0.3;
+            const k = n++, y0 = 70 + Math.random() * 90;
+            f.add({ pts: [[30, y0], [slots[k].x + 9, 113]], dur: 0.5, r: 6, color: C.s1, quedarse: true, onFin: function (it) { slots[k].ficha = it; } });
+          }
+          if (n === 8 && slots.every(function (sl) { return sl.ficha; })) {
+            slots.forEach(function (sl) { sl.ficha.g.remove(); sl.ficha = null; f.add({ pts: [[sl.x + 9, 113], [480, 113]], dur: 0.4, r: 6, color: C.s1 }); });
+            n = 0; lotes++; tt = 0.7; brillo = 0.8;
+            cont.textContent = "lotes procesados: " + lotes;
+          }
+          brillo = Math.max(0, brillo - dt);
+          gpu.setAttribute("opacity", brillo > 0.35 ? 1 : 0.75);
+          f.paso(dt);
+        };
+      },
+      cos: function (s) {
+        D.texto(s, 10, 14, "Una GPU en la nube encendida 24/7 (730 h al mes)", { ancla: "start", tam: 12, color: C.ink2 });
+        [[1, "1 €/h"], [3, "3 €/h"], [10, "10 €/h"], [30, "30 €/h"]].forEach(function (r, i) {
+          const y = 34 + i * 40, mes = r[0] * 730, L = mes / 21900 * 300;
+          D.texto(s, 12, y + 12, r[1], { ancla: "start", tam: 14, peso: 700 });
+          RN.svg("rect", { x: 90, y: y, width: Math.max(3, L), height: 24, rx: 4, fill: C.s2 }, s);
+          D.texto(s, 98 + L, y + 12, RN.fmtN(mes) + " € al mes", { ancla: "start", tam: 13 });
+        });
+        D.texto(s, 280, 206, "Palancas: instancias spot, autoescalado, ¿basta una CPU?, modelo más pequeño", { tam: 12, color: C.ink2 });
+      }
+    };
+    const TXT = {
+      acc: function () {
+        const f = SLA[slaSel], mes = 43800 * (1 - f);
+        return "<h3>Accesibilidad</h3><p>El modelo tiene que estar disponible para personas y aplicaciones, siempre y de forma fiable. Se pacta con un <strong>SLA</strong> (acuerdo de nivel de servicio).</p>" +
+          "<p>Un SLA del <strong>" + SLAet[slaSel] + "</strong> admite " + D.duracion(525600 * (1 - f)) + " de caída al año (" + D.duracion(mes) + " al mes).</p>" +
+          "<p>Cada «nueve» más divide la caída entre diez y exige redundancia, balanceo y réplicas en varias zonas. Además, una API documentada (OpenAPI/Swagger) y versionada.</p>";
+      },
+      int: function () { return "<h3>Integración</h3><p>Las empresas ya tienen bases de datos, colas de mensajes y aplicaciones. El recomendador de una tienda en línea lee el historial de PostgreSQL, el catálogo del ERP y responde a la web (React) y al móvil (Flutter).</p><p>Formatos, protocolos y velocidades distintas… y todo en menos de un segundo.</p>"; },
+      op: function () { return "<h3>Operación continua</h3><p>Un notebook se ejecuta cuando lo abres; un servicio en producción funciona de noche, en fin de semana y en festivos, sin nadie delante.</p><p>Hace falta monitorización automática (Prometheus), paneles (Grafana), alertas, planes de recuperación y auto-reparación.</p>"; },
+      lat: function () { return "<h3>Latencia</h3><p>Por debajo de 100 ms se percibe como instantáneo; entre 100 ms y 1 s se nota; por encima de 3 s muchos usuarios abandonan.</p><p>La latencia suma <strong>red + preproceso + inferencia + posproceso</strong> (pestaña 3). Para bajar la inferencia: cuantizar, destilar, podar o usar motores optimizados.</p>"; },
+      efi: function () { return "<h3>Eficiencia</h3><p>La carga no es constante: el estreno de una serie dispara las peticiones de subtítulos y el sistema debe escalar sin degradarse.</p><p>Agrupar peticiones en lotes (<em>batching</em>) aprovecha mucho mejor la GPU: hay que ajustar el tamaño del lote y cuánto se espera para llenarlo.</p>"; },
+      cos: function () { return "<h3>Coste operativo</h3><p>Una instancia con GPU cuesta entre 1 y 30 € por hora. Encendida 24/7 se multiplica por unas 730 horas al mes.</p><p>Instancias spot, autoescalado para no pagar capacidad ociosa, CPU optimizada si basta, o un modelo más pequeño con resultados aceptables.</p>"; }
+    };
+    function elegir(id) {
+      actual = id; miniPaso = null; flc.vaciar(); tPulso = 0;
+      CONS.forEach(function (c) {
+        D.estado(c.g, c.id === id ? "activo" : null);
+        c.linea.setAttribute("stroke", c.id === id ? K.acento : K.linea);
+        c.linea.setAttribute("stroke-width", c.id === id ? 3 : 2);
+      });
+      const nombre = CONS.filter(function (c) { return c.id === id; })[0].t;
+      D.prepara(mini, 560, 220, "Detalle de la consideración: " + nombre);
+      MINI[id](mini);
+      txt.innerHTML = TXT[id]();
+    }
+    function pasoC(dt) {
+      tPulso += dt;
+      if (tPulso > 0.7) {
+        tPulso = 0;
+        const c = CONS.filter(function (x) { return x.id === actual; })[0];
+        flc.add({ pts: c.pts, dur: 0.7, r: 5, color: K.acento });
+      }
+      flc.paso(dt);
+      if (miniPaso) miniPaso(dt);
+    }
+    elegir("acc");
+    bucle(pasoC, sc.parentNode);
+  });
+
+  // =====================================================================================
+  // 2 · Ciclo de vida
+  tab("ciclo", function () {
+    const svg = D.prepara($("ci-svg"), 1000, 420, "Ciclo de vida del modelo: preparación, entrenamiento, despliegue, monitorización y mantenimiento; la deriva de datos dispara el reentreno");
+    const cx = 265, cy = 215, RX = 175, RY = 160, BW = 180, BH = 58;
+    const ANG = [-90, -20, 50, 130, 200];
+    const NOD = [["Preparación de datos", "Airflow · Prefect · Dagster"], ["Entrenamiento", "MLflow · W&B · Neptune"], ["Despliegue", "sin cortar el servicio"], ["Monitorización", "métricas y deriva de datos"], ["Mantenimiento", "reentreno con datos nuevos"]];
+    const pos = ANG.map(function (a) { return [cx + RX * Math.cos(a * Math.PI / 180), cy + RY * Math.sin(a * Math.PI / 180)]; });
+    function dentro(p, pad) { return pos.some(function (q) { return Math.abs(p[0] - q[0]) < BW / 2 + pad && Math.abs(p[1] - q[1]) < BH / 2 + pad; }); }
+    const arcos = ANG.map(function (a, i) {
+      const b = i < 4 ? ANG[i + 1] : ANG[0] + 360, pts = [];
+      for (let d = a; d <= b; d += 1) { const r = d * Math.PI / 180, p = [cx + RX * Math.cos(r), cy + RY * Math.sin(r)]; if (!dentro(p, 6)) pts.push(p); }
+      return pts;
+    });
+    arcos.forEach(function (p) { if (p.length > 1) D.ruta(svg, D.dPol(p), { color: K.borde, ancho: 2.2, flecha: true }); });
+    const nodos = NOD.map(function (n, i) { return D.caja(svg, { x: pos[i][0] - BW / 2, y: pos[i][1] - BH / 2, w: BW, h: BH, titulo: n[0], sub: n[1], tam: 13 }); });
+    D.texto(svg, cx, cy - 34, "ciclo continuo", { tam: 12, color: C.ink2 });
+    RN.svg("rect", { x: cx - 62, y: cy - 22, width: 124, height: 44, rx: 22, fill: "#fff", stroke: K.acento, "stroke-width": 2 }, svg);
+    const tVer = D.texto(svg, cx, cy, "modelo v1", { tam: 16, peso: 700 });
+    const ficha = RN.svg("circle", { r: 8, fill: K.acento, stroke: "#fff", "stroke-width": 2, visibility: "hidden" }, svg);
+
+    // gráfica A: distribuciones
+    RN.svg("rect", { x: 540, y: 14, width: 445, height: 186, rx: 10, fill: "#fff", stroke: K.linea }, svg);
+    D.texto(svg, 556, 34, "Una variable de entrada (simulada)", { ancla: "start", tam: 13, peso: 700 });
+    RN.svg("line", { x1: 560, y1: 60, x2: 578, y2: 60, stroke: C.s1, "stroke-width": 3 }, svg);
+    D.texto(svg, 584, 60, "datos de entrenamiento", { ancla: "start", tam: 12, color: C.ink2 });
+    RN.svg("rect", { x: 561, y: 73, width: 16, height: 12, rx: 2, fill: RN.rgba(C.s2, 0.35), stroke: C.s2 }, svg);
+    D.texto(svg, 584, 79, "datos de producción", { ancla: "start", tam: 12, color: C.ink2 });
+    RN.svg("line", { x1: 556, y1: 186, x2: 970, y2: 186, stroke: K.borde }, svg);
+    const pArea = RN.svg("path", { fill: RN.rgba(C.s2, 0.22), stroke: "none" }, svg);
+    const pProd = RN.svg("path", { fill: "none", stroke: C.s2, "stroke-width": 2 }, svg);
+    const pEnt = RN.svg("path", { fill: "none", stroke: C.s1, "stroke-width": 2.5 }, svg);
+    const fDer = D.ruta(svg, "M0 0", { color: C.ink, ancho: 2, flecha: true });
+    const tDer = D.texto(svg, 0, 62, "", { tam: 12, peso: 700 });
+    // gráfica B: acierto
+    RN.svg("rect", { x: 540, y: 214, width: 445, height: 196, rx: 10, fill: "#fff", stroke: K.linea }, svg);
+    D.texto(svg, 556, 234, "Acierto en producción (simulado)", { ancla: "start", tam: 13, peso: 700 });
+    const Y = function (a) { return 390 - (a - 0.7) / 0.3 * 128; };
+    [0.7, 0.8, 0.9, 1].forEach(function (a) {
+      RN.svg("line", { x1: 600, y1: Y(a), x2: 970, y2: Y(a), stroke: C.grid }, svg);
+      D.texto(svg, 594, Y(a), Math.round(a * 100) + " %", { ancla: "end", tam: 12, color: C.muted });
+    });
+    D.texto(svg, 785, 402, "últimas 30 semanas", { tam: 12, color: C.muted });
+    const gDesp = D.g(svg);
+    const lUmb = RN.svg("line", { x1: 600, x2: 970, stroke: C.bad, "stroke-width": 1.5, "stroke-dasharray": "6 4" }, svg);
+    const tUmb = D.texto(svg, 966, 0, "", { ancla: "end", tam: 12, peso: 700, color: C.bad });
+    const pAcc = RN.svg("path", { fill: "none", stroke: C.s1, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+    const tAlerta = D.texto(svg, 968, 234, "", { ancla: "end", tam: 12, peso: 700, color: C.bad });
+
+    const rng = RN.rng(7);
+    let sem, muP, muR, ver, fase, tFase, kRe, hist, despl, tMuestra, cD;
+    let vel = 0.12, umbral = 0.85;
+    const SEC = [4, 0, 1, 2], DUR = [0.9, 0.9, 1.1, 0.9];
+    function reinicia() {
+      sem = 0; muP = 0; muR = 0; ver = 1; fase = "monit"; tFase = 0; kRe = 0; hist = []; despl = []; tMuestra = 0; cD = 0;
+      for (let i = 0; i < 80; i++) avanza(0.05);
+      dibuja();
+    }
+    function acierto() { const d = muP - muR; return RN.limita(0.94 - 0.07 * d * d + 0.004 * RN.normal(rng), 0.6, 0.96); }
+    function avanza(dt) {
+      const ritmo = fase === "monit" ? 2 : 0.6, dS = dt * ritmo;
+      sem += dS; muP += vel * dS; tMuestra += dS;
+      if (tMuestra >= 0.25) { tMuestra = 0; hist.push([sem, acierto()]); if (hist.length > 500) hist.shift(); }
+      tFase += dt;
+      if (fase === "monit") {
+        const n = hist.length;
+        if (n > 2 && hist[n - 1][1] < umbral && hist[n - 2][1] < umbral + 0.01) { fase = "alerta"; tFase = 0; }
+      } else if (fase === "alerta") {
+        if (tFase > 0.9) { fase = "re"; kRe = 0; tFase = 0; }
+      } else if (fase === "re") {
+        if (tFase > DUR[kRe]) {
+          kRe++; tFase = 0;
+          if (kRe >= 4) { ver++; muR = muP; despl.push([sem, ver]); fase = "vuelta"; }
+        }
+      } else if (fase === "vuelta") {
+        if (tFase > 0.6) { fase = "monit"; tFase = 0; }
+      }
+      cD += ((muR + muP) / 2 - cD) * Math.min(1, dt * 3);
+    }
+    function curva(mu, sd, a, b) {
+      const pts = [];
+      for (let i = 0; i <= 80; i++) {
+        const v = a + (b - a) * i / 80, f = Math.exp(-0.5 * Math.pow((v - mu) / sd, 2)) / (sd * Math.sqrt(2 * Math.PI));
+        pts.push([556 + 414 * i / 80, 186 - f / 0.42 * 105]);
+      }
+      return pts;
+    }
+    function dibuja() {
+      // nodos
+      let activo = 3, est = "activo", arco = -1, u = 0;
+      if (fase === "alerta") est = "error";
+      if (fase === "re") {
+        const desde = kRe === 0 ? 3 : SEC[kRe - 1];
+        u = Math.min(1, tFase / (DUR[kRe] * 0.6));
+        arco = desde; activo = u >= 1 ? SEC[kRe] : -1;
+      }
+      if (fase === "vuelta") { arco = 2; u = Math.min(1, tFase / 0.6); activo = u >= 1 ? 3 : 2; }
+      nodos.forEach(function (g, i) { D.estado(g, i === activo ? est : null); });
+      if (arco >= 0 && u < 1 && arcos[arco].length > 1) {
+        const p = D.enPol(arcos[arco], null, RN.suave(u));
+        ficha.setAttribute("cx", p[0]); ficha.setAttribute("cy", p[1]); ficha.setAttribute("visibility", "visible");
+      } else ficha.setAttribute("visibility", "hidden");
+      tVer.textContent = "modelo v" + ver;
+      // distribuciones
+      const a = cD - 5, b = cD + 5;
+      const pe = curva(muR, 1, a, b), pp = curva(muP, 1.1, a, b);
+      pEnt.setAttribute("d", D.dPol(pe));
+      pProd.setAttribute("d", D.dPol(pp));
+      pArea.setAttribute("d", D.dPol(pp) + " L970,186 L556,186 Z");
+      const X = function (v) { return 556 + (v - a) / (b - a) * 414; };
+      const d = muP - muR;
+      if (d > 0.35) {
+        fDer.setAttribute("d", "M" + X(muR).toFixed(1) + " 74 H" + X(muP).toFixed(1));
+        fDer.style.opacity = 1;
+        tDer.setAttribute("x", ((X(muR) + X(muP)) / 2).toFixed(1));
+        tDer.textContent = "deriva: " + RN.fmt(d, 2) + " σ";
+      } else { fDer.style.opacity = 0; tDer.textContent = ""; }
+      // acierto
+      const s1 = Math.max(30, sem), s0 = s1 - 30;
+      const XS = function (s) { return 600 + (s - s0) / 30 * 370; };
+      const vis = hist.filter(function (h) { return h[0] >= s0; });
+      pAcc.setAttribute("d", vis.length > 1 ? D.dPol(vis.map(function (h) { return [XS(h[0]), Y(h[1])]; })) : "M0 0");
+      lUmb.setAttribute("y1", Y(umbral)); lUmb.setAttribute("y2", Y(umbral));
+      tUmb.setAttribute("y", Y(umbral) - 10); tUmb.textContent = "umbral " + Math.round(umbral * 100) + " %";
+      while (gDesp.firstChild) gDesp.removeChild(gDesp.firstChild);
+      despl.forEach(function (dv) {
+        if (dv[0] < s0) return;
+        const x = XS(dv[0]);
+        RN.svg("line", { x1: x, y1: 252, x2: x, y2: 390, stroke: C.ink2, "stroke-dasharray": "2 4" }, gDesp);
+        D.texto(gDesp, x + 4, 262, "v" + dv[1], { ancla: "start", tam: 12, peso: 700, color: C.ink2 });
+      });
+      tAlerta.textContent = fase === "alerta" ? "⚠ acierto bajo el umbral" : fase === "re" || fase === "vuelta" ? "reentrenando y desplegando…" : "";
+    }
+    function paso(dt) { avanza(dt); dibuja(); }
+    const anim = RN.anima(paso, svg.parentNode);
+    RN.botonPlay($("ci-play"), anim, ["▶ Avanzar el tiempo", "⏸ Pausa"]);
+    $("ci-reset").addEventListener("click", function () { anim.parar(); reinicia(); });
+    $("ci-vel").addEventListener("input", function () { vel = +this.value; $("ci-velo").textContent = RN.fmt(vel, 2) + " σ por semana"; });
+    $("ci-umb").addEventListener("input", function () { umbral = +this.value; $("ci-umbo").textContent = Math.round(umbral * 100) + " %"; dibuja(); });
+    reinicia();
+  });
+
+  // =====================================================================================
+  // 3 · Servidor de modelos
+  tab("servidor", function () {
+    const svg = D.prepara($("s-svg"), 1000, 400, "Tres aplicaciones envían peticiones al servidor de modelos, que valida, preprocesa, infiere y posprocesa antes de responder");
+    const yC = [95, 200, 305];
+    const ICL = [["web", "Navegador web"], ["movil", "App móvil"], ["app", "Otra aplicación"]];
+    svg.setAttribute("viewBox", "0 52 1000 340");
+    RN.svg("rect", { x: 200, y: 78, width: 785, height: 300, rx: 14, fill: K.zona, stroke: "#F3C8A6", "stroke-width": 1.5, "stroke-dasharray": "7 5" }, svg);
+    D.texto(svg, 218, 102, "Servidor de modelos", { ancla: "start", tam: 15, peso: 700 });
+    D.texto(svg, 968, 102, "TensorFlow Serving · Triton · TorchServe · BentoML…", { ancla: "end", tam: 12, color: C.ink2 });
+    const idas = [], vueltas = [];
+    yC.forEach(function (y, k) {
+      const a = D.bezier(100, y - 8, 222, 207), b = D.bezier(222, 226, 100, y + 8);
+      D.ruta(svg, a.d, { color: "#BFD3EA", ancho: 1.8 });
+      D.ruta(svg, b.d, { color: "#BCE5D6", ancho: 1.8 });
+      idas.push(a.pts); vueltas.push(b.pts);
+      D.icono(svg, ICL[k][0], 66, y - 8, 42);
+      D.texto(svg, 66, y + 30, ICL[k][1], { tam: 12, peso: 600 });
+    });
+    D.ruta(svg, "M859 264 V320 H277 V267", { color: C.s3, ancho: 2, dash: "6 5", flecha: true });
+    D.texto(svg, 568, 338, "respuesta JSON", { tam: 12, color: C.ink2 });
+    const ET = [
+      { x: 222, w: 110, ic: "doc", t: "API", s: ["POST", "/api/v1/predict"] },
+      { x: 350, w: 130, ic: "escudo", t: "Validar", s: ["campos y tipos"] },
+      { x: 498, w: 130, ic: "engranaje", t: "Preproceso", s: ["(x − μ) / σ", "como al entrenar"] },
+      { x: 646, w: 130, ic: "red", t: "Modelo", s: ["inferencia"] },
+      { x: 794, w: 130, ic: "doc", t: "Posproceso", s: ["probabilidad", "→ etiqueta"] }
+    ];
+    ET.forEach(function (e, i) {
+      if (i) D.ruta(svg, "M" + (ET[i - 1].x + ET[i - 1].w + 2) + " 207 H" + (e.x - 3), { color: K.borde, ancho: 2, flecha: true });
+      const g = RN.svg("g", { class: "d-caja" }, svg);
+      g.rect = RN.svg("rect", { x: e.x, y: 140, width: e.w, height: 124, rx: 10, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, g);
+      e.c = e.x + e.w / 2;
+      D.icono(g, e.ic, e.c, 162, 26);
+      D.texto(g, e.c, 186, e.t, { tam: 14, peso: 700 });
+      e.sub = D.texto(g, e.c, 234, e.s, { tam: 12, color: C.ink2, arriba: true });
+      e.g = g;
+    });
+    const tok = RN.svg("g", { visibility: "hidden" }, svg);
+    const tokR = RN.svg("rect", { x: -26, y: -11, width: 52, height: 22, rx: 11, fill: C.s1, stroke: "#fff", "stroke-width": 1.5 }, tok);
+    RN.svg("text", { x: 0, y: 0.5, "text-anchor": "middle", "dominant-baseline": "central", "font-size": 12, "font-weight": 700, fill: "#fff", text: "JSON" }, tok);
+    const fl = D.Flujo(svg);
+
+    // barra de latencia
+    const lat = D.prepara($("s-lat"), 1000, 92, "Desglose orientativo de la latencia de una petición: red, validación, preproceso, inferencia, posproceso y red");
+    const SEG = [["red (ida)", 15, C.s1], ["validar", 1, C.s3], ["preproceso", 4, C.s4], ["inferencia", 12, C.s2], ["posproceso", 1, C.s5], ["red (vuelta)", 15, C.s1]];
+    const x0 = 30, esc = 900 / 120;
+    D.texto(lat, 30, 14, "Latencia de una petición (valores orientativos)", { ancla: "start", tam: 12, peso: 700, color: C.ink2 });
+    RN.svg("rect", { x: x0, y: 28, width: 900, height: 30, rx: 4, fill: K.suave }, lat);
+    let xs = x0;
+    SEG.forEach(function (s) {
+      const w = s[1] * esc;
+      s.r = RN.svg("rect", { x: xs, y: 28, width: w, height: 30, fill: s[2], stroke: "#fff", "stroke-width": 1 }, lat);
+      if (w > 60) D.texto(lat, xs + w / 2, 43, s[1] + " ms", { tam: 12, peso: 700, color: "#fff" });
+      xs += w;
+    });
+    D.texto(lat, xs + 10, 43, "total ≈ 48 ms", { ancla: "start", tam: 13, peso: 700 });
+    const xu = x0 + 100 * esc;
+    RN.svg("line", { x1: xu, y1: 22, x2: xu, y2: 66, stroke: C.ink2, "stroke-width": 1.5, "stroke-dasharray": "4 3" }, lat);
+    D.texto(lat, xu, 80, "100 ms: se percibe instantáneo", { tam: 12, color: C.ink2 });
+    D.texto(lat, x0, 74, "0 ms", { ancla: "start", tam: 12, color: C.muted });
+    $("s-ley").innerHTML = '<span><i style="background:var(--s1)"></i>red: 15 ms de ida y 15 de vuelta</span><span><i style="background:var(--s3)"></i>validar: 1 ms</span><span><i style="background:var(--s4)"></i>preproceso: 4 ms</span><span><i style="background:var(--s2)"></i>inferencia: 12 ms</span><span><i style="background:var(--s5)"></i>posproceso: 1 ms</span>';
+    function progreso(n) { SEG.forEach(function (s, i) { s.r.setAttribute("opacity", i < n ? 1 : 0.18); }); }
+
+    // modelo de juguete (pesos inventados) para el riesgo de impago
+    const CLI = {
+      A: { cliente_id: "C-10482", edad: 34, ingresos_mensuales: 2150, deuda_actual: 8400, meses_en_empleo: 18, impagos_previos: 0 },
+      B: { cliente_id: "C-20917", edad: 29, ingresos_mensuales: 1600, deuda_actual: 11000, meses_en_empleo: 10, impagos_previos: 1 },
+      C: { cliente_id: "C-31555", edad: 47, ingresos_mensuales: 3100, deuda_actual: 3000, meses_en_empleo: 96, impagos_previos: 0 }
+    };
+    const VAR = ["edad", "ingresos_mensuales", "deuda_actual", "meses_en_empleo", "impagos_previos"];
+    const MU = [42, 2400, 6000, 60, 0.3], SD = [12, 900, 5000, 48, 0.7], W = [-0.3, -0.9, 0.8, -0.6, 1.2], B0 = -2.6;
+    function prob(c, sesgo) {
+      let z = B0;
+      VAR.forEach(function (v, i) { z += W[i] * (sesgo ? c[v] : (c[v] - MU[i]) / SD[i]); });
+      return 1 / (1 + Math.exp(-RN.limita(z, -60, 60)));
+    }
+    let skew = false;
+    const origen = D.seg($("s-origen"), [[0, "Navegador"], [1, "Móvil"], [2, "Otra app"]], 0, null, "Origen de la petición");
+    const cliente = D.seg($("s-cliente"), [["A", "Cliente A"], ["B", "Cliente B"], ["C", "Cliente C"]], "A", function () { cancelar(); muestra(false); }, "Datos del cliente");
+    function respuestaHTML(p, esperando) {
+      if (esperando) return D.codigoHTML(['<span class="com">… esperando la respuesta …</span>']);
+      const et = p >= 0.5 ? "riesgo_alto" : "riesgo_bajo";
+      return D.codigoHTML(['HTTP/1.1 <span class="num">200</span> OK', "Content-Type: application/json", "", "{",
+        '  <span class="kw">"prediccion"</span>: <span class="str">"' + et + '"</span>,']) +
+        '<span class="ln' + (skew ? " hl" : "") + '">  <span class="kw">"probabilidad_impago"</span>: <span class="num">' + p.toFixed(2) + "</span>,</span>" +
+        D.codigoHTML(['  <span class="kw">"version_modelo"</span>: <span class="str">"impago-v3.2"</span>,', '  <span class="kw">"latencia_ms"</span>: <span class="num">48</span>', "}"]);
+    }
+    function muestra(esperando) {
+      const c = CLI[cliente.valor], p = prob(c, skew);
+      $("s-req").innerHTML = D.codigoHTML(['<span class="kw">POST</span> /api/v1/predict HTTP/1.1', "Content-Type: application/json", ""]) + D.jsonHTML(c);
+      $("s-res").innerHTML = respuestaHTML(p, esperando);
+      ponPost();
+      D.ponTexto(ET[2].sub, skew ? ["¡sin estandarizar!", "(código distinto)"] : ["(x − μ) / σ", "como al entrenar"], { arriba: true });
+      act(-1);
+    }
+    function ponPost() { const p = prob(CLI[cliente.valor], skew); D.ponTexto(ET[4].sub, [RN.fmt(p, 2) + " →", p >= 0.5 ? "riesgo alto" : "riesgo bajo"], { arriba: true }); }
+    function act(i) {
+      ET.forEach(function (e, k) {
+        let st = null;
+        if (k === 2 && skew) st = "error";
+        if (k === i) st = (k === 2 && skew) ? "error" : "activo";
+        D.estado(e.g, st);
+      });
+    }
+    // guion de una petición detallada
+    let guion = null, gi = 0, gt = 0;
+    function cancelar() { guion = null; tok.setAttribute("visibility", "hidden"); progreso(6); }
+    function lanzar(pasos) { guion = pasos; gi = 0; gt = 0; empieza(); }
+    function empieza() {
+      const p = guion[gi];
+      gt = 0;
+      if (p.pts) { p.L = null; tokR.setAttribute("fill", p.color || C.s1); }
+      if (p.ini) p.ini();
+    }
+    function corre(dt) {
+      if (!guion) return;
+      const p = guion[gi];
+      gt += dt;
+      if (p.pts) {
+        const q = D.enPol(p.pts, null, RN.suave(Math.min(1, gt / p.dur)));
+        tok.setAttribute("transform", "translate(" + q[0].toFixed(1) + "," + q[1].toFixed(1) + ")");
+        tok.setAttribute("visibility", "visible");
+      }
+      if (gt >= p.dur) {
+        if (p.fin) p.fin();
+        gi++;
+        if (gi >= guion.length) { guion = null; tok.setAttribute("visibility", "hidden"); } else empieza();
+      }
+    }
+    function guionPeticion(k) {
+      const c = [277, 415, 563, 711, 859];
+      const salto = function (a, b, i) { return { pts: [[c[a], 207], [c[b], 207]], dur: 0.35, fin: function () { act(i); progreso(i + 1); if (i === 4) ponPost(); } }; };
+      return [
+        { pts: idas[k].concat([[277, 207]]), dur: 0.8, color: C.s1, ini: function () { act(-1); progreso(0); $("s-res").innerHTML = respuestaHTML(0, true); D.ponTexto(ET[4].sub, ["probabilidad", "→ etiqueta"], { arriba: true }); }, fin: function () { act(0); progreso(1); } },
+        { dur: 0.25 }, salto(0, 1, 1), { dur: 0.35 }, salto(1, 2, 2), { dur: 0.5 }, salto(2, 3, 3), { dur: 0.55 }, salto(3, 4, 4), { dur: 0.4 },
+        { pts: [[859, 207], [859, 320], [277, 320], [277, 250], [222, 226]].concat(vueltas[k]), dur: 1.6, color: C.s3, ini: function () { act(-1); },
+          fin: function () { muestra(false); progreso(6); } }
+      ];
+    }
+    function rafaga() {
+      for (let i = 0; i < 9; i++) {
+        const k = i % 3;
+        fl.add({ pts: idas[k].concat([[277, 207], [859, 207]]), dur: 1.7, retardo: i * 0.2, color: C.s1, r: 7, onFin: function () {
+          fl.add({ pts: [[859, 207], [859, 320], [277, 320], [277, 250], [222, 226]].concat(vueltas[k]), dur: 1.4, color: C.s3, r: 7 });
+        } });
+      }
+    }
+    function paso(dt) {
+      corre(dt);
+      fl.paso(dt);
+      if (!guion) {
+        const den = [false, false, false, false, false];
+        fl.lista.forEach(function (it) {
+          if (it.color !== C.s1 || it.t < 0 || !it.x) return;
+          ET.forEach(function (e, i) { if (it.x >= e.x && it.x <= e.x + e.w && Math.abs(it.y - 207) < 4) den[i] = true; });
+        });
+        ET.forEach(function (e, i) { D.estado(e.g, (i === 2 && skew) ? "error" : den[i] ? "activo" : null); });
+      }
+    }
+    $("s-enviar").addEventListener("click", function () { muestra(false); lanzar(guionPeticion(origen.valor)); if (reducido) for (let i = 0; i < 200 && guion; i++) corre(0.05); });
+    $("s-rafaga").addEventListener("click", function () { cancelar(); rafaga(); });
+    $("s-skew").addEventListener("change", function () { skew = this.checked; cancelar(); muestra(false); });
+    muestra(false);
+    progreso(6);
+    bucle(paso, svg.parentNode);
+  });
+
+  // tarjeta con icono a la izquierda, título y subtítulo
+  function tarjeta(padre, x, y, w, h, ic, t, s, o) {
+    o = o || {};
+    const g = RN.svg("g", { class: "d-caja" }, padre);
+    g.rect = RN.svg("rect", { x: x, y: y, width: w, height: h, rx: o.r || 10, fill: o.fill || "#fff", stroke: o.stroke || K.borde, "stroke-width": 1.5 }, g);
+    const cy = y + h / 2;
+    if (ic) g.ic = D.icono(g, ic, x + (o.dxIc || 24), cy, o.tamIc || 24, o.colIc);
+    const tx = x + (ic ? (o.dxTxt || 46) : 14);
+    g.t1 = D.texto(g, tx, s ? cy - 9 : cy, t, { ancla: "start", tam: o.tam || 13, peso: 700 });
+    if (s) g.t2 = D.texto(g, tx, cy + 10, s, { ancla: "start", tam: 12, color: C.ink2 });
+    return g;
+  }
+  function bonito(v) { const p = Math.pow(10, Math.floor(Math.log10(v))), r = v / p; return (r <= 1 ? 1 : r <= 2 ? 2 : r <= 5 ? 5 : 10) * p; }
+  function kpi(cont, id, titulo) {
+    const k = RN.el("div", { class: "kpi", id: id }, cont);
+    RN.el("div", { class: "t" }, k, titulo);
+    k.v = RN.el("div", { class: "v" }, k, "—");
+    return k;
+  }
+
+  // =====================================================================================
+  // 4 · Versiones: canary, A/B y blue-green
+  tab("versiones", function () {
+    const svg = D.prepara($("v-svg"), 1000, 320, "Un enrutador reparte el tráfico de los usuarios entre la versión 1 y la versión 2 del modelo");
+    const COL = [C.s1, C.s3];
+    D.icono(svg, "equipo", 62, 152, 52);
+    D.texto(svg, 62, 196, "Usuarios", { tam: 13, peso: 700 });
+    D.ruta(svg, "M100 160 H248", { color: K.linea, ancho: 2 });
+    const rin = [[100, 160], [250, 160]];
+    RN.svg("circle", { cx: 290, cy: 160, r: 40, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, svg);
+    D.icono(svg, "balanceador", 290, 160, 44);
+    D.texto(svg, 290, 218, "Enrutador", { tam: 13, peso: 700 });
+    const tSplit = D.texto(svg, 290, 100, "", { tam: 13, peso: 700 });
+    const r1 = D.bezier(328, 150, 480, 95), r2 = D.bezier(328, 170, 480, 235);
+    const l1 = D.ruta(svg, r1.d, { color: COL[0], ancho: 2 }), l2 = D.ruta(svg, r2.d, { color: COL[1], ancho: 2 });
+    const cajas = [0, 1].map(function (k) {
+      const y = k ? 185 : 45;
+      const g = RN.svg("g", { class: "d-caja" }, svg);
+      g.rect = RN.svg("rect", { x: 480, y: y, width: 230, height: 100, rx: 10, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, g);
+      RN.svg("rect", { x: 481, y: y + 8, width: 7, height: 84, rx: 3, fill: COL[k] }, g);
+      g.t1 = D.texto(g, 600, y + 24, "", { tam: 14, peso: 700 });
+      g.t2 = D.texto(g, 600, y + 49, "", { tam: 12, color: C.ink2 });
+      g.t3 = D.texto(g, 600, y + 74, "", { tam: 13, peso: 700 });
+      return g;
+    });
+    const sal = [[[712, 95], [880, 95]], [[712, 235], [880, 235]]];
+    sal.forEach(function (s) { D.ruta(svg, D.dPol(s), { color: K.linea, ancho: 2 }); });
+    const cOk = [D.texto(svg, 892, 84, "", { ancla: "start", tam: 13, peso: 700, color: C.ok }), D.texto(svg, 892, 224, "", { ancla: "start", tam: 13, peso: 700, color: C.ok })];
+    const cEr = [D.texto(svg, 892, 106, "", { ancla: "start", tam: 13, peso: 700, color: C.bad }), D.texto(svg, 892, 246, "", { ancla: "start", tam: 13, peso: 700, color: C.bad })];
+    const fl = D.Flujo(svg);
+    const log = $("v-log");
+    const kc = $("v-kpis");
+    const kP = kpi(kc, "vk-p", "Tráfico a v2"), kE1 = kpi(kc, "vk-e1", "Errores v1 (10 s)"), kE2 = kpi(kc, "vk-e2", "Errores v2 (10 s)");
+    const kS1 = kpi(kc, "vk-s1", "Ventas por recomendación v1"), kS2 = kpi(kc, "vk-s2", "Ventas por recomendación v2");
+    const graf = RN.grafica($("v-graf"), {
+      alto: 230, x: { min: -60, max: 0, titulo: "tiempo (s; 0 = ahora)" }, y: { min: 0, max: 10, titulo: "errores (%)" },
+      extras: function (ctx, g) {
+        const Y = g.sy(2);
+        ctx.save(); ctx.strokeStyle = C.bad; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(g.m.l, Y); ctx.lineTo(g.w - g.m.r, Y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = C.bad; ctx.font = "600 12px system-ui, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+        ctx.fillText("umbral de rollback: 2 %", g.w - g.m.r - 6, Y - 4); ctx.restore();
+      }
+    });
+    const rng = RN.rng(21);
+    const VENTA = [0.06, 0.048];
+    let modo = "canary", p2 = 5, fallo = false, auto = true, t = 0, tVis = 0, tBin = 0, bins = [], cur, tot, des;
+    function tasaErr(k) { return k ? (fallo ? 0.06 : 0.003) : 0.003; }
+    function vacio() { return { n: [0, 0], e: [0, 0], v: [0, 0] }; }
+    function nota(html, clase) { registra(log, '<span class="r-t">' + hora(t) + "</span> " + html, clase); }
+    function textos() {
+      const bg = modo === "bg";
+      cajas[0].t1.textContent = bg ? "Entorno azul · v1" : "v1 · en producción";
+      cajas[1].t1.textContent = bg ? "Entorno verde · v2" : "v2 · candidata";
+      cajas[0].t2.textContent = modo === "ab" ? "exactitud en el test: 0,88" : bg ? "idéntico al verde" : "versión estable";
+      cajas[1].t2.textContent = modo === "ab" ? "exactitud en el test: 0,91" : bg ? "idéntico al azul" : "versión nueva";
+      [kS1, kS2].forEach(function (k) { k.style.display = modo === "ab" ? "" : "none"; });
+    }
+    function ponP(v, silencio) {
+      p2 = RN.limita(Math.round(v), 0, 100); des = vacio();
+      $("v-p").value = p2; $("v-po").textContent = p2 + " %";
+      l1.setAttribute("stroke-width", 1 + 5 * (100 - p2) / 100);
+      l2.setAttribute("stroke-width", 1 + 5 * p2 / 100);
+      tSplit.textContent = "v1 " + (100 - p2) + " % · v2 " + p2 + " %";
+      kP.v.textContent = p2 + " %";
+      D.estado(cajas[0], p2 < 100 ? null : "apagado");
+      D.estado(cajas[1], p2 > 0 ? null : "apagado");
+      if (!silencio) nota("Tráfico: v1 " + (100 - p2) + " % · v2 " + p2 + " %.");
+    }
+    function ponModo(m) {
+      modo = m;
+      $("v-pctl").style.display = m === "bg" ? "none" : "";
+      $("v-paso").style.display = m === "canary" ? "" : "none";
+      $("v-conm").style.display = m === "bg" ? "" : "none";
+      textos();
+      tot = vacio();
+      ponP(m === "canary" ? 5 : m === "ab" ? 50 : 0, true);
+      nota(m === "canary" ? "Canary: v2 recibe solo el 5 % del tráfico; se sube por pasos si todo va bien." :
+        m === "ab" ? "A/B: 50 % a cada versión para comparar el negocio (ventas), no solo la exactitud." :
+          "Blue-green: todo el tráfico va al entorno azul (v1); el verde (v2) espera listo.", "av");
+    }
+    function rollback(como) {
+      if (p2 === 0) { nota("Todo el tráfico ya está en v1."); return; }
+      ponP(0, true);
+      nota("↩ Rollback " + como + ": todo el tráfico vuelve a v1 en segundos (basta cambiar un puntero).", "mal");
+    }
+    function ventana(k, nb) {
+      let n = 0, e = 0;
+      for (let j = Math.max(0, bins.length - nb); j < bins.length; j++) { n += bins[j].n[k]; e += bins[j].e[k]; }
+      return n ? 100 * e / n : NaN;
+    }
+    function serie(k) {
+      const out = [];
+      for (let i = 0; i < bins.length; i++) {
+        if (bins[i].t - t < -60.5) continue;
+        let n = 0, e = 0;
+        for (let j = Math.max(0, i - 9); j <= i; j++) { n += bins[j].n[k]; e += bins[j].e[k]; }
+        out.push([bins[i].t - t, n >= 15 ? 100 * e / n : null]);
+      }
+      return out;
+    }
+    function actualiza() {
+      graf.dibujar([{ nombre: "v1", color: COL[0], puntos: serie(0) }, { nombre: "v2", color: COL[1], puntos: serie(1) }]);
+      const e1 = ventana(0, 20), e2 = ventana(1, 20);
+      kE1.v.textContent = Number.isFinite(e1) ? RN.fmt(e1, 1) + " %" : "—";
+      kE2.v.textContent = Number.isFinite(e2) ? RN.fmt(e2, 1) + " %" : "—";
+      kE2.classList.toggle("alerta", e2 > 2);
+      [0, 1].forEach(function (k) {
+        const er = ventana(k, 20);
+        cajas[k].t3.textContent = "tráfico " + (k ? p2 : 100 - p2) + " % · errores " + (Number.isFinite(er) ? RN.fmt(er, 1) + " %" : "—");
+        cOk[k].textContent = "✓ " + RN.fmtN(tot.n[k] - tot.e[k]);
+        cEr[k].textContent = "✕ " + RN.fmtN(tot.e[k]);
+      });
+      kS1.v.textContent = tot.n[0] ? RN.fmt(100 * tot.v[0] / tot.n[0], 1) + " %" : "—";
+      kS2.v.textContent = tot.n[1] ? RN.fmt(100 * tot.v[1] / tot.n[1], 1) + " %" : "—";
+      if (auto && p2 > 0 && des.n[1] >= 80 && des.e[1] >= 3 && des.e[1] / des.n[1] > 0.02) rollback("automático");
+    }
+    function estadistica(dt) {
+      t += dt;
+      const n = D.poisson(rng, 80 * dt);
+      for (let i = 0; i < n; i++) {
+        const k = rng() * 100 < p2 ? 1 : 0;
+        const e = rng() < tasaErr(k);
+        cur.n[k]++; tot.n[k]++; des.n[k]++;
+        if (e) { cur.e[k]++; tot.e[k]++; des.e[k]++; } else if (rng() < VENTA[k]) tot.v[k]++;
+      }
+      tBin += dt;
+      if (tBin >= 0.5) { tBin = 0; cur.t = t; bins.push(cur); cur = vacio(); if (bins.length > 140) bins.shift(); return true; }
+      return false;
+    }
+    function ficha() {
+      fl.add({ pts: rin, dur: 0.45, r: 6, color: C.muted, onFin: function () {
+        const k = rng() * 100 < p2 ? 1 : 0, err = rng() < tasaErr(k);
+        fl.add({ pts: (k ? r2 : r1).pts, dur: 0.45, r: 6, color: COL[k], onFin: function () {
+          if (err) fl.add({ pts: sal[k], dur: 0.5, retardo: 0.15, texto: "✕", color: C.bad });
+          else fl.add({ pts: sal[k], dur: 0.5, retardo: 0.15, r: 6, color: COL[k] });
+        } });
+      } });
+    }
+    function reinicia() {
+      t = 0; bins = []; cur = vacio(); fl.vaciar(); log.innerHTML = "";
+      ponModo(modoSeg.valor);
+      for (let i = 0; i < 1200; i++) estadistica(0.05);
+      actualiza();
+    }
+    function paso(dt) {
+      if (estadistica(dt)) actualiza();
+      tVis += dt;
+      if (tVis > 0.13) { tVis = 0; ficha(); }
+      fl.paso(dt);
+    }
+    const modoSeg = D.seg($("v-modo"), [["canary", "Canary"], ["ab", "A/B"], ["bg", "Blue-green"]], "canary", function () { ponModo(modoSeg.valor); actualiza(); }, "Estrategia de despliegue");
+    $("v-p").addEventListener("input", function () { ponP(+this.value, true); });
+    $("v-p").addEventListener("change", function () { nota("Tráfico: v1 " + (100 - p2) + " % · v2 " + p2 + " %."); });
+    $("v-paso").addEventListener("click", function () {
+      const pasos = [1, 5, 25, 50, 100], sig = pasos.filter(function (x) { return x > p2; })[0];
+      if (sig === undefined) { nota("v2 ya recibe el 100 %: pasa a ser la versión estable.", "ok"); return; }
+      ponP(sig, true); nota("Canary: v2 sube al " + sig + " % del tráfico.", "ok");
+    });
+    $("v-conm").addEventListener("click", function () {
+      ponP(p2 >= 50 ? 0 : 100, true);
+      nota(p2 ? "Conmutado: todo el tráfico al entorno verde (v2)." : "Conmutado: todo el tráfico vuelve al entorno azul (v1).", "ok");
+    });
+    $("v-fallo").addEventListener("change", function () { fallo = this.checked; des = vacio(); nota(fallo ? "v2 empieza a fallar: un 6 % de sus respuestas son error." : "v2 corregida: vuelve a su 0,3 % de errores.", fallo ? "mal" : "ok"); });
+    $("v-auto").addEventListener("change", function () { auto = this.checked; });
+    $("v-rb").addEventListener("click", function () { rollback("manual"); });
+    $("v-reset").addEventListener("click", reinicia);
+    reinicia();
+    bucle(paso, svg.parentNode);
+  });
+
+  // =====================================================================================
+  // 5 · Carga y concurrencia (simulación de colas)
+  tab("carga", function () {
+    const cv = $("q-cv");
+    let L = null;
+    const rng = RN.rng(11);
+    const VIAJE = 0.35, MAXQ = 300;
+    let lam = 20, nRep = 2, S = 50, t, nextGen, pico, enCamino, cola, reps, lat, rech, aten, salidas, caidas, hist;
+    function nuevaRep() { return { ocupada: false, fin: 0, ini: 0, tl: 0, retirar: false }; }
+    function activas() { return reps.filter(function (r) { return !r.retirar; }).length; }
+    function lamEf() { return lam * (t < pico ? 3 : 1); }
+    function asigna(te) {
+      for (let i = 0; i < reps.length && cola.length; i++) {
+        const r = reps[i];
+        if (!r.ocupada && !r.retirar) { r.ocupada = true; r.ini = te; r.fin = te + D.expo(rng, 1000 / S); r.tl = cola.shift(); }
+      }
+    }
+    let tStat = 0;
+    function sim(dt) {
+      const t1 = t + dt;
+      if (nextGen < t) nextGen = t + D.expo(rng, lamEf());
+      while (nextGen <= t1) { enCamino.push({ tg: nextGen, tl: nextGen + VIAJE, y: rng() }); nextGen += D.expo(rng, lamEf()); }
+      for (let guarda = 0; guarda < 50000; guarda++) {
+        let te = Infinity, k = -2;
+        if (enCamino.length && enCamino[0].tl <= t1) { te = enCamino[0].tl; k = -1; }
+        for (let i = 0; i < reps.length; i++) { const r = reps[i]; if (r.ocupada && r.fin <= t1 && r.fin < te) { te = r.fin; k = i; } }
+        if (k === -2) break;
+        if (k === -1) {
+          const a = enCamino.shift();
+          if (cola.length >= MAXQ) { rech++; caidas.push({ t: te }); } else cola.push(a.tl);
+        } else {
+          const r = reps[k];
+          lat.push([te, (te - r.tl) * 1000]); aten++;
+          salidas.push({ t: te, y: (k + 0.5) / reps.length });
+          r.ocupada = false;
+        }
+        asigna(te);
+      }
+      reps = reps.filter(function (r) { return !(r.retirar && !r.ocupada); });
+      t = t1;
+      while (lat.length && lat[0][0] < t - 6) lat.shift();
+      salidas = salidas.filter(function (s) { return t - s.t < 0.35; });
+      caidas = caidas.filter(function (s) { return t - s.t < 0.7; });
+      tStat += dt;
+      if (tStat >= 0.5) {
+        tStat = 0;
+        const l5 = lat.filter(function (l) { return l[0] >= t - 5; }).map(function (l) { return l[1]; });
+        hist.push([t, D.percentil(l5, 0.5), D.percentil(l5, 0.95)]);
+        if (hist.length > 130) hist.shift();
+      }
+    }
+    function ponReplicas(n) {
+      nRep = n;
+      let act = reps.filter(function (r) { return !r.retirar; });
+      while (act.length < n) { const r = nuevaRep(); reps.push(r); act.push(r); }
+      let sobran = act.length - n;
+      act.slice().sort(function (a, b) { return a.ocupada - b.ocupada; }).forEach(function (r) { if (sobran > 0) { r.retirar = true; sobran--; } });
+      reps = reps.filter(function (r) { return !(r.retirar && !r.ocupada); });
+      asigna(t);
+    }
+    function dibuja() {
+      if (!L) return;
+      const ctx = L.ctx, W = L.w, H = L.h;
+      ctx.clearRect(0, 0, W, H); ctx.fillStyle = C.surface; ctx.fillRect(0, 0, W, H);
+      const xQ0 = W * 0.2, xQ1 = W * 0.56, xR0 = W * 0.64, xR1 = W * 0.85, yM = H / 2 + 14, paso = 13;
+      const vis = Math.floor((xQ1 - xQ0) / paso), nq = Math.min(cola.length, vis);
+      ctx.font = "700 13px system-ui, sans-serif"; ctx.textBaseline = "middle"; ctx.fillStyle = C.ink;
+      ctx.textAlign = "left"; ctx.fillText("Llegan " + RN.fmt(lamEf(), 0) + " peticiones/s" + (t < pico ? " (¡pico ×3!)" : ""), 14, 22);
+      ctx.textAlign = "center";
+      ctx.fillText("Cola: " + RN.fmtN(cola.length) + (cola.length >= MAXQ ? " (llena: se rechaza)" : ""), (xQ0 + xQ1) / 2, 22);
+      ctx.fillText("Réplicas: " + activas() + " × " + RN.fmt(1000 / S, 0) + " peticiones/s", (xR0 + xR1) / 2, 22);
+      // carril de la cola
+      ctx.fillStyle = "#EEF1F4"; ctx.fillRect(xQ0 - 4, yM - 16, xQ1 - xQ0 + 8, 32);
+      for (let i = 0; i < nq; i++) {
+        const x = xQ1 - (i + 1) * paso;
+        ctx.fillStyle = C.s1;
+        ctx.fillRect(x, yM - 11, 10, 22);
+      }
+      if (cola.length > vis) { ctx.fillStyle = C.ink; ctx.textAlign = "left"; ctx.font = "700 13px system-ui, sans-serif"; ctx.fillText("… y " + RN.fmtN(cola.length - vis) + " más esperando", xQ0, yM - 30); }
+      // réplicas
+      const nR = Math.max(1, reps.length), hueco = (H - 56) / nR, hR = Math.min(46, hueco - 8);
+      reps.forEach(function (r, i) {
+        const yc = 44 + hueco * (i + 0.5);
+        ctx.strokeStyle = K.linea; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(xQ1 + 2, yM); ctx.lineTo(xR0, yc); ctx.stroke();
+        ctx.fillStyle = r.ocupada ? K.acentoL : "#fff"; ctx.strokeStyle = r.ocupada ? K.acento : K.borde; ctx.lineWidth = r.ocupada ? 2 : 1.5;
+        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(xR0, yc - hR / 2, xR1 - xR0, hR, 7) : ctx.rect(xR0, yc - hR / 2, xR1 - xR0, hR); ctx.fill(); ctx.stroke();
+        if (r.ocupada) {
+          const f = RN.limita((t - r.ini) / Math.max(1e-6, r.fin - r.ini), 0, 1);
+          ctx.fillStyle = RN.rgba(K.acento, 0.25); ctx.fillRect(xR0 + 2, yc - hR / 2 + 2, (xR1 - xR0 - 4) * f, hR - 4);
+        }
+        ctx.fillStyle = r.retirar ? C.muted : C.ink; ctx.textAlign = "left"; ctx.font = (hR > 24 ? "600 13px" : "600 12px") + " system-ui, sans-serif";
+        ctx.fillText("Réplica " + (i + 1) + (r.retirar ? " (retirándose)" : r.ocupada ? " · ocupada" : " · libre"), xR0 + 10, yc);
+      });
+      // llegadas
+      const xFin = xQ1 - (nq + 0.5) * paso;
+      enCamino.forEach(function (a) {
+        const u = RN.limita((t - a.tg) / VIAJE, 0, 1);
+        const x = RN.lerp(10, Math.max(xQ0, xFin), u), y = RN.lerp(yM + (a.y - 0.5) * 150, yM, RN.suave(u));
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fillStyle = C.s1; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "#fff"; ctx.stroke();
+      });
+      salidas.forEach(function (s) {
+        const u = (t - s.t) / 0.35, y = 44 + (H - 56) * s.y;
+        ctx.beginPath(); ctx.arc(RN.lerp(xR1 + 6, W - 10, u), y, 5, 0, 7); ctx.fillStyle = C.s3; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.stroke();
+      });
+      caidas.forEach(function (s) {
+        const u = (t - s.t) / 0.7, x = xQ0 + 6, y = yM + 24 + u * 70;
+        ctx.globalAlpha = 1 - u * 0.7;
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fillStyle = C.bad; ctx.fill();
+        ctx.fillStyle = C.bad; ctx.textAlign = "left"; ctx.font = "700 12px system-ui, sans-serif"; ctx.fillText("503", x + 9, y);
+        ctx.globalAlpha = 1;
+      });
+    }
+    const kc = $("q-kpis");
+    const kU = kpi(kc, "qk-u", "Utilización ρ"), kQ = kpi(kc, "qk-q", "En cola"), k50 = kpi(kc, "qk-50", "Latencia p50"), k95 = kpi(kc, "qk-95", "Latencia p95"), kR = kpi(kc, "qk-r", "Rechazadas (503)");
+    function kpis() {
+      const rho = lamEf() / (Math.max(1, activas()) * 1000 / S);
+      const l5 = lat.filter(function (l) { return l[0] >= t - 5; }).map(function (l) { return l[1]; });
+      const p50 = D.percentil(l5, 0.5), p95 = D.percentil(l5, 0.95);
+      kU.v.textContent = RN.fmt(100 * rho, 0) + " %"; kU.classList.toggle("alerta", rho >= 0.9);
+      kQ.v.textContent = RN.fmtN(cola.length); kQ.classList.toggle("alerta", cola.length > 50);
+      k50.v.textContent = D.ms(p50);
+      k95.v.textContent = D.ms(p95); k95.classList.toggle("alerta", p95 > 500);
+      kR.v.textContent = RN.fmtN(rech); kR.classList.toggle("alerta", rech > 0);
+    }
+    const g1 = RN.grafica($("q-g1"), { alto: 260, x: { min: 0, max: 60, titulo: "tiempo de simulación (s)" }, y: { min: 0, max: 300, titulo: "latencia (ms)" } });
+    function graf1() {
+      g1.op.x.min = Math.max(0, t - 60); g1.op.x.max = Math.max(60, t);
+      let mx = 100;
+      hist.forEach(function (h) { if (h[0] >= t - 60 && Number.isFinite(h[2])) mx = Math.max(mx, h[2]); });
+      g1.op.y.max = bonito(mx * 1.1);
+      g1.dibujar([
+        { nombre: "p50", color: C.s1, puntos: hist.map(function (h) { return [h[0], Number.isFinite(h[1]) ? h[1] : null]; }) },
+        { nombre: "p95", color: C.s2, puntos: hist.map(function (h) { return [h[0], Number.isFinite(h[2]) ? h[2] : null]; }) }
+      ]);
+    }
+    const g2 = RN.grafica($("q-g2"), {
+      alto: 260, x: { min: 0, max: 150, titulo: "peticiones por segundo (λ)" }, y: { min: 0, max: 400, titulo: "latencia teórica (ms)" },
+      extras: function (ctx, g) {
+        const mu = 1000 / S, cap = nRep * mu;
+        ctx.save(); ctx.font = "600 12px system-ui, sans-serif";
+        if (cap <= 150) {
+          const X = g.sx(cap);
+          ctx.strokeStyle = C.ink2; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(X, g.m.t); ctx.lineTo(X, g.h - g.m.b); ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle = C.ink2; ctx.textAlign = X > g.w - 150 ? "right" : "left"; ctx.textBaseline = "top";
+          ctx.fillText("capacidad: " + RN.fmt(cap, 0) + "/s", X + (X > g.w - 150 ? -6 : 6), g.m.t + 4);
+        }
+        const r = D.mmc(lam, mu, nRep);
+        ctx.textBaseline = "bottom";
+        if (r) {
+          const v = r.percentil(0.95) * 1000, X = g.sx(lam), Y = g.sy(Math.min(v, g.op.y.max));
+          ctx.beginPath(); ctx.arc(X, Y, 6, 0, 7); ctx.fillStyle = C.s2; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+          ctx.fillStyle = C.ink; ctx.textAlign = X > g.w - 160 ? "right" : "left";
+          ctx.fillText("ahora: p95 ≈ " + D.ms(v), X + (X > g.w - 160 ? -10 : 10), Y - 6);
+        } else {
+          ctx.fillStyle = C.bad; ctx.textAlign = "center";
+          ctx.fillText("λ ≥ capacidad: la cola crece sin límite", g.m.l + (g.w - g.m.l - g.m.r) * 0.62, g.m.t + 70);
+        }
+        ctx.restore();
+      }
+    });
+    function graf2() {
+      const mu = 1000 / S, cap = nRep * mu, med = [], p95 = [];
+      g2.op.y.max = bonito(Math.max(200, 8 * S));
+      for (let l = 0.5; l <= 150; l += 0.5) {
+        if (l >= cap * 0.995) break;
+        const r = D.mmc(l, mu, nRep);
+        med.push([l, r.media * 1000]); p95.push([l, r.percentil(0.95) * 1000]);
+      }
+      g2.dibujar([{ nombre: "media", color: C.s1, puntos: med }, { nombre: "p95", color: C.s2, puntos: p95 }]);
+    }
+    function reinicia() {
+      t = 0; nextGen = 0; pico = -1; enCamino = []; cola = []; reps = []; lat = []; rech = 0; aten = 0; salidas = []; caidas = []; hist = []; tStat = 0;
+      for (let i = 0; i < nRep; i++) reps.push(nuevaRep());
+      for (let i = 0; i < 800; i++) sim(0.05);
+      dibuja(); kpis(); graf1(); graf2();
+    }
+    RN.alCambiarTam(cv, function () { L = RN.lienzo(cv, 300); dibuja(); });
+    let tk = 0, tg = 0;
+    const anim = bucle(function (dt) {
+      sim(dt); dibuja();
+      tk += dt; if (tk > 0.25) { tk = 0; kpis(); }
+      tg += dt; if (tg > 0.5) { tg = 0; graf1(); }
+    }, cv);
+    RN.botonPlay($("q-play"), anim, ["▶ Reanudar", "⏸ Pausa"]);
+    $("q-lam").addEventListener("input", function () { lam = +this.value; $("q-lamo").textContent = lam + "/s"; nextGen = t + D.expo(rng, lamEf()); kpis(); graf2(); });
+    $("q-c").addEventListener("input", function () { ponReplicas(+this.value); $("q-co").textContent = nRep; kpis(); graf2(); dibuja(); });
+    $("q-s").addEventListener("input", function () { S = +this.value; $("q-so").textContent = S + " ms"; kpis(); graf2(); });
+    $("q-pico").addEventListener("click", function () { pico = t + 10; nextGen = t + D.expo(rng, lamEf()); });
+    $("q-reset").addEventListener("click", reinicia);
+    reinicia();
+  });
+
+  // =====================================================================================
+  // 6 · Integración y seguridad
+  tab("seguridad", function () {
+    // ---------- integración con sistemas heredados
+    const svg = D.prepara($("g-svg"), 1000, 290, "Sistemas heredados de la empresa conectados al modelo a través de una capa de integración");
+    const LEG = [["servidor", "Mainframe COBOL", "transacciones"], ["bd", "Oracle de hace años", "tablas SQL"], ["app", "ERP en Java", "pedidos y catálogo"], ["doc", "CSV y hojas de cálculo", "ficheros sueltos"]];
+    const COLL = [C.s1, C.s7, C.s4, C.s5];
+    const entr = LEG.map(function (l, i) {
+      const y = 14 + i * 68;
+      tarjeta(svg, 20, y, 250, 56, l[0], l[1], l[2]);
+      const b = D.bezier(272, y + 28, 380, 112 + i * 22);
+      D.ruta(svg, b.d, { color: K.linea, ancho: 1.8 });
+      return b.pts;
+    });
+    D.caja(svg, { x: 380, y: 76, w: 240, h: 136, icono: "engranaje", iconoTam: 30, titulo: "Capa de integración", sub: ["adaptadores, API y ETL", "SQL, JSON, CSV → tensores"], fill: K.zona, stroke: "#F3C8A6" });
+    D.ruta(svg, "M622 144 H726", { color: K.borde, ancho: 2, flecha: true });
+    const sale = [[622, 144], [728, 144]];
+    D.caja(svg, { x: 730, y: 94, w: 240, h: 100, icono: "red", iconoTam: 30, titulo: "Modelo (Python)", sub: "espera tensores o DataFrames" });
+    D.texto(svg, 500, 238, "Cada integración es única: planificación, personalización", { tam: 12, color: C.ink2 });
+    D.texto(svg, 500, 256, "y más coste de desarrollo y mantenimiento.", { tam: 12, color: C.ink2 });
+    const fl = D.Flujo(svg);
+    let tt = 0, k = 0;
+    function pasoG(dt) {
+      tt += dt;
+      if (tt > 0.45) {
+        tt = 0; const i = k++ % 4;
+        fl.add({ pts: entr[i], dur: 0.8, r: 6, color: COLL[i], onFin: function () { fl.add({ pts: sale, dur: 0.45, retardo: 0.25, texto: "tensor", color: C.s2 }); } });
+      }
+      fl.paso(dt);
+    }
+    bucle(pasoG, svg.parentNode);
+
+    const s2 = D.prepara($("g-svg2"), 1000, 170, "Fricción entre el equipo de ciencia de datos y el de operaciones, y MLOps como puente");
+    D.caja(s2, { x: 20, y: 18, w: 320, h: 134, icono: "equipo", iconoTam: 30, titulo: "Ciencia de datos", sub: ["quiere flexibilidad para experimentar:", "cualquier librería y GPU potentes"] });
+    D.caja(s2, { x: 660, y: 18, w: 320, h: 134, icono: "servidor", iconoTam: 30, titulo: "DevOps", sub: ["quiere estabilidad y control:", "dependencias fijas y entornos reproducibles"] });
+    D.caja(s2, { x: 400, y: 38, w: 200, h: 94, titulo: "MLOps", sub: ["prácticas y herramientas", "compartidas + cambio cultural"], clase: "d-activo" });
+    D.ruta(s2, "M342 85 H396", { color: K.acento, ancho: 2.5, flecha: true });
+    D.ruta(s2, "M658 85 H604", { color: K.acento, ancho: 2.5, flecha: true });
+
+    // ---------- seguridad: capas
+    const sk = D.prepara($("k-svg"), 1000, 400, "Capas de defensa alrededor del modelo (red, autenticación, autorización y cifrado) y ataques que se detienen en ellas o las atraviesan");
+    const CAP = [
+      { x: 330, y: 18, w: 650, h: 364, fill: "#F5F7FA", t: "Red: cortafuegos, VPN y segmentación" },
+      { x: 400, y: 60, w: 520, h: 280, fill: "#EDF1F5", t: "Autenticación: API keys, JWT, mTLS" },
+      { x: 470, y: 102, w: 390, h: 196, fill: "#E2E8EF", t: "Autorización y límites de uso" }
+    ];
+    CAP.forEach(function (c) {
+      c.g = RN.svg("g", { class: "d-caja" }, sk);
+      c.g.rect = RN.svg("rect", { x: c.x, y: c.y, width: c.w, height: c.h, rx: 24, fill: c.fill, stroke: K.borde, "stroke-width": 1.5 }, c.g);
+      D.texto(c.g, c.x + 18, c.y + 20, c.t, { ancla: "start", tam: 13, peso: 700, color: C.ink2 });
+    });
+    const nucleo = D.caja(sk, { x: 580, y: 158, w: 170, h: 84, icono: "red", iconoTam: 30, titulo: "Modelo", stroke: K.acento });
+    D.icono(sk, "candado", 598, 272, 18);
+    D.texto(sk, 612, 272, "datos cifrados en reposo", { ancla: "start", tam: 12, color: C.ink2 });
+    D.ruta(sk, "M150 200 H578", { color: K.linea, ancho: 2, dash: "6 5" });
+    D.icono(sk, "candado", 365, 182, 16);
+    D.texto(sk, 365, 222, "TLS", { tam: 12, peso: 700, color: C.ink2 });
+    const actorG = D.g(sk);
+    const tActor = D.texto(sk, 90, 246, "", { tam: 13, peso: 700 });
+    const almacen = D.g(sk);
+    D.texto(sk, 150, 362, "Datos de entrenamiento", { tam: 12, peso: 700 });
+    const lReent = D.ruta(sk, "M178 326 H520 V230 H578", { color: K.borde, ancho: 1.8, dash: "4 5" });
+    D.texto(sk, 255, 316, "reentreno", { tam: 12, color: C.ink2 });
+    const etiquetas = D.g(sk);
+    const flk = D.Flujo(sk);
+    const klog = $("k-log");
+    function actor(malo, nombre) {
+      while (actorG.firstChild) actorG.removeChild(actorG.firstChild);
+      D.icono(actorG, "usuario", 90, 200, 50, malo ? C.bad : C.s1);
+      tActor.textContent = nombre; tActor.setAttribute("fill", malo ? C.bad : C.ink);
+    }
+    function pintaAlmacen(malo) {
+      while (almacen.firstChild) almacen.removeChild(almacen.firstChild);
+      D.icono(almacen, "bd", 150, 326, 40, malo ? C.bad : C.ink2);
+    }
+    let marcas = [], tK = 0, cola = [];
+    function etiqueta(x, y, txt, color) {
+      const e = D.texto(etiquetas, x, y, txt, { tam: 13, peso: 700, color: color });
+      const r = e.getBBox ? null : null;
+      marcas.push({ e: e, t: 2.6 });
+    }
+    function limpia() {
+      CAP.forEach(function (c) { D.estado(c.g, null); });
+      D.estado(nucleo, null);
+    }
+    function msg(html, clase) { registra(klog, html, clase); }
+    const XB = [330, 400, 470, 580];
+    function lanza(color, texto, hasta, alFin) {
+      const x1 = hasta >= 3 ? 665 : XB[hasta] - 14;
+      flk.add({ pts: [[112, 200], [x1, 200]], dur: 0.35 + (x1 - 112) / 500, color: color, texto: texto, r: 7, onFin: alFin });
+    }
+    function bloquea(capa, txt) {
+      D.estado(CAP[capa].g, "error");
+      etiqueta(XB[capa] - 14, 168 - capa * 0, txt, C.bad);
+      setTimeout(limpia, 1600);
+    }
+    const ESC = {
+      legit: function () {
+        actor(false, "Cliente con token"); limpia();
+        lanza(C.s1, null, 3, function () {
+          D.estado(nucleo, "ok"); etiqueta(665, 140, "✓ 200 OK", C.ok);
+          flk.add({ pts: [[665, 212], [112, 212]], dur: 1.1, r: 7, color: C.s3 });
+          setTimeout(limpia, 1600);
+        });
+        msg("✓ Cliente legítimo: puerto 443 abierto → token válido → permiso y cuota correctos → predicción cifrada con TLS.", "ok");
+      },
+      puertos: function () {
+        actor(true, "Atacante"); limpia();
+        lanza(C.bad, null, 0, function () { bloquea(0, "✕ puerto 22 cerrado"); });
+        msg("✕ Escaneo de puertos: el cortafuegos solo deja pasar el 443 hacia el balanceador.", "mal");
+      },
+      sincred: function () {
+        actor(true, "Sin credenciales"); limpia();
+        lanza(C.bad, null, 1, function () { bloquea(1, "✕ 401 no autenticado"); });
+        msg("✕ Petición sin API key ni token: la autenticación verifica quién llama y la rechaza (401).", "mal");
+      },
+      extrac: function () {
+        actor(true, "Cliente abusivo"); limpia();
+        for (let i = 0; i < 14; i++) {
+          const pasa = i < 7;
+          flk.add({ pts: [[112, 200], [pasa ? 665 : XB[2] - 14, 200]], dur: pasa ? 1.4 : 1.1, retardo: i * 0.22, r: 6, color: C.s5, onFin: (function (j, ok) {
+            return function () {
+              if (!ok && j === 7) { bloquea(2, "✕ 429 demasiadas peticiones"); msg("⚠ Alerta: miles de consultas casi iguales desde la misma clave. Posible extracción del modelo (robo de propiedad intelectual).", "av"); }
+            };
+          })(i, pasa) });
+        }
+        msg("Extracción del modelo: consultas masivas para reconstruir una copia. Defensa: límites de uso (rate limiting) y vigilancia de patrones.", "");
+      },
+      advers: function () {
+        actor(true, "Atacante con token"); limpia();
+        lanza(C.s2, "stop + ruido", 3, function () {
+          D.estado(nucleo, "error"); etiqueta(665, 140, "predice «límite 30 km/h» ✕", C.bad);
+          setTimeout(limpia, 2200);
+        });
+        msg("✕ Ataque adversario: unos píxeles cambiados en una señal de stop engañan al modelo. Pasa todas las capas porque es una petición válida: hace falta robustez del modelo y vigilancia.", "mal");
+      },
+      veneno: function () {
+        actor(true, "Atacante"); limpia();
+        flk.add({ pts: [[100, 225], [140, 300]], dur: 0.8, r: 7, color: C.bad, onFin: function () {
+          pintaAlmacen(true);
+          flk.add({ pts: [[178, 326], [520, 326], [520, 230], [578, 230]], dur: 1.6, retardo: 0.3, texto: "datos trucados", color: C.bad, onFin: function () {
+            D.estado(nucleo, "error"); etiqueta(665, 140, "puerta trasera ✕", C.bad);
+            setTimeout(function () { limpia(); pintaAlmacen(false); }, 2400);
+          } });
+        } });
+        msg("✕ Envenenamiento de datos: se cuelan ejemplos maliciosos en el conjunto de entrenamiento y el siguiente reentreno aprende una puerta trasera. Defensa: controlar el origen y el linaje de los datos.", "mal");
+      }
+    };
+    function pasoK(dt) {
+      flk.paso(dt);
+      marcas = marcas.filter(function (m) { m.t -= dt; m.e.setAttribute("opacity", RN.limita(m.t, 0, 1)); if (m.t <= 0) { m.e.remove(); return false; } return true; });
+    }
+    actor(false, "Cliente con token"); pintaAlmacen(false);
+    ["legit", "puertos", "sincred", "extrac", "advers", "veneno"].forEach(function (id) {
+      $("k-" + id).addEventListener("click", function () { ESC[id](); });
+    });
+    msg("Pulsa un tipo de petición para ver hasta dónde llega.", "t");
+    bucle(pasoK, sk.parentNode);
+  });
+
+  // =====================================================================================
+  // 7 · Tipos de servidor
+  tab("tipos", function () {
+    const svg = D.prepara($("t-svg"), 1000, 360, "Diagrama animado del tipo de servidor elegido");
+    const capa = D.g(svg);
+    let fl = D.Flujo(svg);
+    const IMG = C.s1, TXT = C.s4;
+    let escena = null, tipo = "mono";
+    const rng = RN.rng(9);
+    function fichaTxt(o) { return Object.assign({ r: 7, color: TXT, borde: C.ink2 }, o); }
+
+    const ESCENAS = {
+      // ---------------------------------------------------------- monolítico
+      mono: function (g) {
+        D.icono(g, "web", 60, 160, 40);
+        D.texto(g, 60, 196, "peticiones", { tam: 12, color: C.ink2 });
+        const MODS = [["API", "doc"], ["Preproceso", "engranaje"], ["Modelo imágenes (GPU)", "chip"], ["Modelo texto (CPU)", "red"], ["Registro (logs)", "lista"]];
+        function instancia(x0, titulo) {
+          const gg = RN.svg("g", {}, g);
+          RN.svg("rect", { x: x0, y: 30, width: 270, height: 296, rx: 14, fill: K.zona, stroke: "#F3C8A6", "stroke-width": 1.5 }, gg);
+          D.texto(gg, x0 + 16, 52, titulo, { ancla: "start", tam: 13, peso: 700 });
+          gg.mods = MODS.map(function (m, i) { return tarjeta(gg, x0 + 14, 70 + i * 50, 242, 40, m[1], m[0], null, { tamIc: 20, dxIc: 22, dxTxt: 42 }); });
+          return gg;
+        }
+        const A = instancia(200, "Instancia única · FastAPI");
+        const hueco = RN.svg("rect", { x: 560, y: 30, width: 270, height: 296, rx: 14, fill: "none", stroke: K.borde, "stroke-width": 1.5, "stroke-dasharray": "6 5" }, g);
+        const tHueco = D.texto(g, 695, 178, ["aquí iría una réplica", "al escalar"], { tam: 12, color: C.muted });
+        const B = instancia(560, "Réplica completa");
+        B.style.opacity = 0;
+        const ociosa = D.texto(g, 695, 344, "la GPU de la réplica está ociosa, pero se paga", { tam: 12, peso: 700, color: C.bad });
+        ociosa.style.opacity = 0;
+        const FILA = [90, 140, 190, 240, 290];
+        let alta = false, tt = 0, tB = 0, flash = [];
+        function ruta(x0, fila) { return [[92, 165], [x0 - 6, 90], [x0 + 236, 90], [x0 + 236, FILA[fila]]]; }
+        return {
+          accion: ["Sube la demanda de texto", "Vuelve a la demanda normal"],
+          pie: "Todo vive en un mismo proceso: simple de montar y de depurar. Para escalar el texto hay que copiar la instancia entera, GPU incluida.",
+          activa: function (v) { alta = v; tB = 0; },
+          paso: function (dt) {
+            tt += dt;
+            const lamT = alta ? 3.5 : 0.9, lamI = 0.9;
+            if (rng() < lamI * dt) fl.add({ pts: ruta(200, 2), dur: 1.3, r: 7, color: IMG, onFin: function () { flash.push([A.mods[2], 0.3]); } });
+            if (rng() < lamT * dt) {
+              const enB = alta && tB > 1 && rng() < 0.5;
+              const ob = enB ? B : A;
+              fl.add(fichaTxt({ pts: ruta(enB ? 560 : 200, 3), dur: 1.3, onFin: function () { flash.push([ob.mods[3], 0.3]); } }));
+            }
+            if (alta) tB += dt;
+            const vis = alta ? RN.limita((tB - 0.4) / 0.5, 0, 1) : 0;
+            B.style.opacity = vis; ociosa.style.opacity = vis; hueco.style.opacity = 1 - vis; tHueco.style.opacity = 1 - vis;
+            D.estado(B.mods[2], vis > 0.5 ? "apagado" : null);
+            flash = flash.filter(function (f) { f[1] -= dt; D.estado(f[0], f[1] > 0 ? "activo" : null); return f[1] > 0; });
+          }
+        };
+      },
+      // ---------------------------------------------------------- microservicios
+      micro: function (g) {
+        D.icono(g, "web", 50, 180, 40);
+        D.texto(g, 50, 216, "peticiones", { tam: 12, color: C.ink2 });
+        const gw = tarjeta(g, 130, 150, 150, 60, "balanceador", "Pasarela API", "Kong, Ambassador…");
+        const pre = tarjeta(g, 345, 150, 150, 60, "engranaje", "Preproceso", "servicio propio");
+        const reps = [];
+        for (let i = 2; i >= 1; i--) { const r = RN.svg("rect", { x: 570 + i * 9, y: 236 + i * 9, width: 200, height: 60, rx: 10, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, g); r.style.opacity = 0; reps.push(r); }
+        const img = tarjeta(g, 570, 64, 200, 60, "chip", "Inferencia imágenes", "GPU");
+        const txt = tarjeta(g, 570, 236, 200, 60, "red", "Inferencia texto", "CPU");
+        const logs = tarjeta(g, 830, 150, 150, 60, "lista", "Registro", "logs y trazas");
+        const cache = tarjeta(g, 345, 262, 150, 50, "rayo", "Caché", null);
+        const tRep = D.texto(g, 790, 324, "", { tam: 12, peso: 700, color: K.acento });
+        D.ruta(g, "M282 180 H343", { color: K.borde, ancho: 2, flecha: true });
+        const bI = D.bezier(497, 180, 568, 94), bT = D.bezier(497, 180, 568, 266);
+        D.ruta(g, bI.d, { color: K.borde, ancho: 2, flecha: true });
+        D.ruta(g, bT.d, { color: K.borde, ancho: 2, flecha: true });
+        D.ruta(g, "M420 212 V260", { color: K.linea, ancho: 1.5, dash: "4 4" });
+        D.ruta(g, "M772 94 C800 94 800 170 828 175", { color: K.linea, ancho: 1.5, dash: "4 4" });
+        D.ruta(g, "M772 266 C800 266 800 190 828 185", { color: K.linea, ancho: 1.5, dash: "4 4" });
+        D.texto(g, 313, 166, "+2 ms", { tam: 12, color: C.ink2 });
+        D.texto(g, 545, 112, "+2 ms", { tam: 12, color: C.ink2 });
+        D.texto(g, 545, 250, "+2 ms", { tam: 12, color: C.ink2 });
+        D.texto(g, 500, 344, "Cada salto de red suma latencia (aquí 3 saltos ≈ +6 ms, orientativo) · Kubernetes, service mesh, colas", { tam: 12, color: C.ink2 });
+        let alta = false, flash = [];
+        function cadena(tipoR) {
+          const col = tipoR ? TXT : IMG, dest = tipoR ? txt : img;
+          const tramos = [[[[80, 180], [128, 180]], gw], [[[282, 180], [343, 180]], pre], [(tipoR ? bT : bI).pts, dest]];
+          (function sig(k) {
+            const tr = tramos[k];
+            fl.add(Object.assign({ pts: tr[0], dur: k === 2 ? 0.5 : 0.35, retardo: k ? 0.25 : 0, r: 7, color: col }, tipoR ? { borde: C.ink2 } : {}, { onFin: function () {
+              flash.push([tr[1], 0.28]);
+              if (k < 2) sig(k + 1);
+            } }));
+          })(0);
+        }
+        return {
+          accion: ["Sube la demanda de texto", "Vuelve a la demanda normal"],
+          pie: "Cada servicio hace una tarea y se despliega por separado: se escala solo el que lo necesita, a cambio de más piezas que vigilar.",
+          activa: function (v) {
+            alta = v;
+            reps.forEach(function (r) { r.style.opacity = v ? 1 : 0; });
+            tRep.textContent = v ? "×3 réplicas: solo se escala este servicio" : "";
+          },
+          paso: function (dt) {
+            if (rng() < 0.9 * dt) cadena(0);
+            if (rng() < (alta ? 3.5 : 0.9) * dt) cadena(1);
+            flash = flash.filter(function (f) { f[1] -= dt; D.estado(f[0], f[1] > 0 ? "activo" : null); return f[1] > 0; });
+          }
+        };
+      },
+      // ---------------------------------------------------------- serverless
+      serverless: function (g) {
+        D.icono(g, "web", 50, 190, 40);
+        D.texto(g, 50, 226, "peticiones", { tam: 12, color: C.ink2 });
+        RN.svg("rect", { x: 170, y: 22, width: 810, height: 300, rx: 14, fill: K.zona, stroke: "#F3C8A6", "stroke-width": 1.5, "stroke-dasharray": "7 5" }, g);
+        D.texto(g, 188, 44, "Plataforma serverless · AWS Lambda, Cloud Run functions, Azure Functions", { ancla: "start", tam: 13, peso: 700 });
+        const SLOT = [];
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) SLOT.push({ x: 195 + c * 195, y: 66 + r * 84, inst: null });
+        const tCont = D.texto(g, 575, 342, "", { tam: 13, peso: 700 });
+        let frios = 0, tt = 0;
+        function crea(sl) {
+          const gg = RN.svg("g", {}, g);
+          const rect = RN.svg("rect", { x: sl.x, y: sl.y, width: 175, height: 70, rx: 10, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, gg);
+          const t1 = D.texto(gg, sl.x + 87, sl.y + 22, "", { tam: 13, peso: 700 });
+          const t2 = D.texto(gg, sl.x + 87, sl.y + 46, "", { tam: 12, color: C.ink2 });
+          const giro = RN.svg("path", { d: "M" + (sl.x + 155) + "," + (sl.y + 11) + " a9,9 0 1,1 -0.1,0", fill: "none", stroke: K.acento, "stroke-width": 3, "stroke-dasharray": "40 20", class: "d-gira" }, gg);
+          const euro = D.icono(gg, "euro", sl.x + 157, sl.y + 18, 18, K.acento);
+          return { g: gg, rect: rect, t1: t1, t2: t2, giro: giro, euro: euro, estado: "frio", t: 0, cola: 0, ocioso: 0 };
+        }
+        function pinta(it) {
+          it.t1.textContent = it.estado === "frio" ? "arranque en frío" : it.estado === "ejec" ? "ejecutando" : "caliente, ociosa";
+          it.t2.textContent = it.estado === "frio" ? "runtime · librerías · modelo" : it.estado === "ejec" ? "se factura este tiempo" : "se apaga si no hay más";
+          it.rect.setAttribute("fill", it.estado === "ejec" ? K.acentoL : it.estado === "frio" ? K.warnL : "#fff");
+          it.rect.setAttribute("stroke", it.estado === "ejec" ? K.acento : K.borde);
+          it.giro.style.display = it.estado === "frio" ? "" : "none";
+          it.euro.style.display = it.estado === "ejec" ? "" : "none";
+        }
+        function llega() {
+          let sl = SLOT.filter(function (s) { return s.inst && s.inst.estado === "libre" && !s.reservada; })[0];
+          let frio = false;
+          if (!sl) { sl = SLOT.filter(function (s) { return !s.inst; })[0]; frio = true; }
+          if (!sl) return;
+          sl.reservada = true;
+          if (frio) { sl.inst = crea(sl); sl.inst.estado = "frio"; sl.inst.t = 0; sl.inst.espera = true; frios++; pinta(sl.inst); }
+          fl.add({ pts: [[80, 190], [150, 190], [sl.x - 4, sl.y + 35]], dur: 0.7, r: 7, color: IMG, onFin: function () {
+            const it = sl.inst; sl.reservada = false;
+            if (!it) return;
+            if (it.estado === "frio") { it.pend = true; } else { it.estado = "ejec"; it.t = 0; pinta(it); }
+          } });
+        }
+        return {
+          accion: ["Ráfaga de 8 peticiones", "Ráfaga de 8 peticiones"],
+          pie: "No hay servidores que gestionar: cada petición levanta (o reutiliza) una instancia. Si no hay ninguna caliente, toca esperar el arranque en frío. Sin tráfico, escala a cero.",
+          unaVez: true,
+          activa: function () { for (let i = 0; i < 8; i++) setTimeout(llega, i * 60); },
+          paso: function (dt) {
+            tt += dt;
+            if (rng() < 0.45 * dt) llega();
+            let vivas = 0;
+            SLOT.forEach(function (s) {
+              const it = s.inst; if (!it) return;
+              vivas++; it.t += dt;
+              if (it.estado === "frio" && it.t > 1.8) { it.estado = it.pend ? "ejec" : "libre"; it.t = 0; it.pend = false; pinta(it); }
+              else if (it.estado === "ejec" && it.t > 0.6) { it.estado = "libre"; it.t = 0; pinta(it); }
+              else if (it.estado === "libre" && it.t > 4 && !s.reservada) { it.g.remove(); s.inst = null; }
+            });
+            tCont.textContent = "Instancias: " + vivas + " · arranques en frío: " + frios + " · solo se paga mientras se ejecuta";
+          }
+        };
+      },
+      // ---------------------------------------------------------- contenedores
+      cont: function (g) {
+        D.icono(g, "capas", 100, 100, 64, K.acento);
+        D.texto(g, 100, 150, "Imagen riesgo:1.2", { tam: 13, peso: 700 });
+        D.texto(g, 100, 168, ["inmutable: Python 3.10,", "PyTorch 2.3 y el modelo"], { tam: 12, color: C.ink2, arriba: true });
+        const ENV = [[270, "Portátil"], [510, "Servidor de pruebas"], [750, "Nube (AWS, GCP o Azure)"]];
+        const conts = ENV.map(function (e, i) {
+          RN.svg("rect", { x: e[0], y: 24, width: 220, height: 160, rx: 12, fill: K.suave, stroke: K.borde, "stroke-width": 1.5 }, g);
+          D.texto(g, e[0] + 14, 44, e[1], { ancla: "start", tam: 13, peso: 700 });
+          const vacio = RN.svg("rect", { x: e[0] + 16, y: 64, width: 188, height: 84, rx: 10, fill: "none", stroke: K.borde, "stroke-dasharray": "5 4" }, g);
+          const c = tarjeta(g, e[0] + 16, 64, 188, 84, "contenedor", "riesgo:1.2", "PyTorch 2.3 + modelo", { tamIc: 26 });
+          const ok = D.texto(g, e[0] + 110, 168, "✓ funciona igual", { tam: 12, peso: 700, color: C.ok });
+          const on = i === 0;
+          c.style.opacity = on ? 1 : 0; ok.style.opacity = on ? 1 : 0; vacio.style.opacity = on ? 0 : 1;
+          return { c: c, ok: ok, vacio: vacio, x: e[0] + 110 };
+        });
+        RN.svg("rect", { x: 270, y: 206, width: 700, height: 116, rx: 12, fill: K.suave, stroke: K.borde, "stroke-width": 1.5 }, g);
+        D.texto(g, 284, 226, "Una misma máquina, dos contenedores aislados", { ancla: "start", tam: 13, peso: 700 });
+        tarjeta(g, 290, 244, 300, 60, "contenedor", "modelo A", "TensorFlow 2.15");
+        tarjeta(g, 650, 244, 300, 60, "contenedor", "modelo B", "TensorFlow 2.12");
+        D.texto(g, 620, 274, "≠", { tam: 22, peso: 700, color: C.ink2 });
+        D.icono(g, "timon", 100, 262, 44, C.ink2);
+        D.texto(g, 100, 300, ["Muchos contenedores", "→ Kubernetes"], { tam: 12, peso: 700, arriba: true });
+        let hecho = false;
+        return {
+          accion: ["Llevar la misma imagen a otros entornos", "Llevar la misma imagen a otros entornos"],
+          pie: "Docker empaqueta código, librerías y configuración en una imagen que funciona igual en cualquier sitio. Con muchas réplicas hace falta un orquestador.",
+          unaVez: true,
+          activa: function () {
+            conts.forEach(function (c, i) { if (i) { c.c.style.opacity = 0; c.ok.style.opacity = 0; c.vacio.style.opacity = 1; } });
+            [1, 2].forEach(function (i) {
+              fl.add({ pts: [[130, 100], [conts[i].x, 40], [conts[i].x, 104]], dur: 1.2, retardo: (i - 1) * 0.4, texto: "riesgo:1.2", color: K.acento, onFin: function () {
+                conts[i].c.style.opacity = 1; conts[i].ok.style.opacity = 1; conts[i].vacio.style.opacity = 0;
+              } });
+            });
+            hecho = true;
+          },
+          paso: function () {}
+        };
+      },
+      // ---------------------------------------------------------- especializado
+      gpu: function (g) {
+        RN.svg("rect", { x: 20, y: 22, width: 450, height: 280, rx: 14, fill: K.suave, stroke: K.borde, "stroke-width": 1.5 }, g);
+        D.texto(g, 38, 44, "CPU · pocos núcleos potentes", { ancla: "start", tam: 13, peso: 700 });
+        RN.svg("rect", { x: 520, y: 22, width: 460, height: 280, rx: 14, fill: K.zona, stroke: "#F3C8A6", "stroke-width": 1.5 }, g);
+        D.texto(g, 538, 44, "GPU · miles de núcleos sencillos (aquí, una muestra)", { ancla: "start", tam: 13, peso: 700 });
+        const cpu = [];
+        for (let i = 0; i < 8; i++) cpu.push(RN.svg("rect", { x: 50 + (i % 4) * 100, y: 72 + Math.floor(i / 4) * 90, width: 80, height: 70, rx: 8, fill: "#fff", stroke: K.borde, "stroke-width": 1.5 }, g));
+        const gpu = [];
+        for (let i = 0; i < 128; i++) gpu.push(RN.svg("rect", { x: 552 + (i % 16) * 25, y: 66 + Math.floor(i / 16) * 22, width: 19, height: 15, rx: 3, fill: "#fff", stroke: K.borde }, g));
+        RN.svg("rect", { x: 50, y: 244, width: 380, height: 8, rx: 4, fill: "#E4E7EB" }, g);
+        const barra = RN.svg("rect", { x: 50, y: 244, width: 0, height: 8, rx: 4, fill: K.acento }, g);
+        const tC = D.texto(g, 245, 276, "", { tam: 13, peso: 700 });
+        const tG = D.texto(g, 750, 272, "", { tam: 13, peso: 700 });
+        D.texto(g, 500, 336, "GPU, TPU o FPGA: máximo rendimiento y más operaciones por vatio… a un precio alto (una A100 supera los 10.000 €; en la nube, 3-30 €/h)", { tam: 12, color: C.ink2 });
+        let t = -1;
+        function pinta() {
+          const olas = 8, dur = 0.35;
+          if (t < 0) { barra.setAttribute("width", 0); tC.textContent = "mismo trabajo: ≈ 1 s (orientativo)"; tG.textContent = "≈ 10 ms (10-100× más rápido)"; cpu.forEach(function (r) { r.setAttribute("fill", "#fff"); }); gpu.forEach(function (r) { r.setAttribute("fill", "#fff"); }); return; }
+          const ola = Math.floor(t / dur);
+          const fase = (t % dur) / dur, on = ola < olas && fase < 0.75;
+          cpu.forEach(function (r) { r.setAttribute("fill", on ? K.acentoL : "#fff"); r.setAttribute("stroke", ola < olas ? K.acento : K.borde); });
+          barra.setAttribute("width", 380 * Math.min(1, t / (olas * dur)));
+          gpu.forEach(function (r, i) { const on = i < 64 && t < dur; r.setAttribute("fill", on ? K.acento : (i < 64 && t >= dur ? C.ok : "#fff")); });
+          tC.textContent = ola < olas ? "lote de 64 en oleadas de 8: " + (ola + 1) + " de 8" : "hecho en 8 oleadas: ≈ 1 s (orientativo)";
+          tG.textContent = t < dur ? "64 a la vez…" : "hecho en una sola oleada: ≈ 10 ms";
+        }
+        pinta();
+        return {
+          accion: ["Enviar un lote de 64 peticiones", "Enviar un lote de 64 peticiones"],
+          pie: "Las redes neuronales son sobre todo multiplicaciones de matrices: la GPU las reparte entre miles de núcleos. Encaja con deep learning pesado y latencia estricta.",
+          unaVez: true,
+          activa: function () { t = 0; pinta(); },
+          paso: function (dt) { if (t >= 0 && t < 8 * 0.35 + 1.5) { t += dt; pinta(); } }
+        };
+      }
+    };
+    const INFO = {
+      mono: { n: "Monolítico", v: ["Simple: un código, un proceso, un log.", "Fácil de depurar: el error está en un solo sitio.", "Con FastAPI o Flask, un servidor en menos de 50 líneas (o con BentoML)."], d: ["Escalar obliga a replicar todo.", "Cada cambio redespliega el sistema entero y una librería puede romper otro modelo."], e: "Proyectos pequeños o fases iniciales, carga estable y equipo pequeño. Regla: empezad con un monolito y evolucionad cuando haga falta." },
+      micro: { n: "Microservicios", v: ["Escalado granular: solo lo que lo necesita.", "Cada servicio se actualiza (y hasta se programa en otro lenguaje) por separado."], d: ["Muchas piezas que vigilar: trazas distribuidas con Jaeger o Zipkin.", "Cada salto de red suma latencia.", "Exige orquestación: Kubernetes, Istio/Envoy, Kafka/RabbitMQ, una pasarela API."], e: "Sistemas grandes con varios equipos (Netflix, Uber, Spotify). Los microservicios no eliminan la complejidad: la redistribuyen." },
+      serverless: { n: "Serverless", v: ["Se paga solo el tiempo de ejecución.", "Escala solo ante los picos… y hasta cero."], d: ["Arranque en frío al activar la función.", "Límites típicos: 5-15 min por ejecución, paquetes de 50-250 MB, hasta 10 GB de memoria.", "Menos control del entorno (sin GPU)."], e: "Modelos pequeños y ligeros con carga variable o esporádica (una ResNet-50 de ~100 MB cabe; BERT large, de más de 1 GB, no)." },
+      cont: { n: "Contenedores", v: ["Portabilidad: la misma imagen funciona igual en todas partes.", "Aislamiento: cada modelo con sus versiones, sin conflictos."], d: ["Con muchos contenedores hace falta un orquestador (Kubernetes).", "Ligera sobrecarga de recursos.", "Curva de aprendizaje (Pods, Deployments, Services…)."], e: "Cuando se necesita portabilidad y equilibrio entre flexibilidad y gestión. Para servir modelos en Kubernetes: KServe o Seldon Core." },
+      gpu: { n: "Especializado", v: ["Máximo rendimiento: de 10 a 100 veces más rápido que una CPU en modelos grandes.", "Eficiencia energética: más operaciones por vatio."], d: ["Coste elevado: hardware, refrigeración y energía.", "Drivers, CUDA, cuDNN y framework deben encajar."], e: "Deep learning pesado y latencia baja estricta, con volumen que justifique la inversión y un equipo que sepa optimizar." }
+    };
+    const TABLA = [["mono", "Monolítico", "Baja", "Baja", "Inicio / simple"], ["micro", "Microservicios", "Alta", "Alta", "Sistemas grandes"], ["serverless", "Serverless", "Automática", "Media", "Cargas variables"], ["cont", "Contenedores", "Alta", "Media-alta", "Portabilidad"], ["gpu", "Especializado", "Media", "Alta", "Alto rendimiento"]];
+    const tb = $("t-tabla").querySelector("tbody");
+    TABLA.forEach(function (f) {
+      const tr = RN.el("tr", { "data-t": f[0] }, tb);
+      f.slice(1).forEach(function (c, i) { const td = RN.el("td", null, tr); td.innerHTML = i === 0 ? "<strong>" + c + "</strong>" : c; });
+    });
+    let activo = false;
+    function elige(id) {
+      tipo = id; activo = false;
+      while (capa.firstChild) capa.removeChild(capa.firstChild);
+      fl.vaciar();
+      escena = ESCENAS[id](capa);
+      svg.setAttribute("aria-label", "Diagrama animado del servidor " + INFO[id].n.toLowerCase());
+      $("t-accion").textContent = escena.accion[0];
+      $("t-pie").textContent = escena.pie;
+      const inf = INFO[id];
+      $("t-ven").innerHTML = "<h3>Ventajas</h3><ul>" + inf.v.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>";
+      $("t-des").innerHTML = "<h3>Desventajas</h3><ul>" + inf.d.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>";
+      $("t-enc").innerHTML = "<h3>Cuándo encaja</h3><p>" + inf.e + "</p>";
+      Array.from(tb.rows).forEach(function (tr) { tr.classList.toggle("sel", tr.dataset.t === id); });
+    }
+    const seg = D.seg($("t-tipo"), [["mono", "Monolítico"], ["micro", "Microservicios"], ["serverless", "Serverless"], ["cont", "Contenedores"], ["gpu", "Especializado"]], "mono", elige, "Tipo de servidor");
+    $("t-accion").addEventListener("click", function () {
+      if (!escena) return;
+      if (escena.unaVez) { escena.activa(true); return; }
+      activo = !activo; escena.activa(activo);
+      $("t-accion").textContent = escena.accion[activo ? 1 : 0];
+    });
+    elige("mono");
+    bucle(function (dt) { if (escena) escena.paso(dt); fl.paso(dt); }, svg.parentNode);
+  });
+
+  // =====================================================================================
+  // 8 · Serverless y arranque en frío
+  tab("serverless", function () {
+    const VOL = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
+    const MEM = 2, DUR = 0.15, PGBS = 0.0000167, PINV = 0.2e-6, PPROV = 0.0000042, KEEP = 600;
+    let patron = "picos";
+    const PAT = {
+      estable: function (h) { return 1 + 0.1 * Math.sin(2 * Math.PI * h / 24); },
+      picos: function (h) { const gss = function (c, s, a) { return a * Math.exp(-0.5 * Math.pow((h - c) / s, 2)); }; return 0.25 + gss(9, 0.35, 6) + gss(14, 0.3, 4) + gss(21, 0.4, 8); },
+      esporadico: (function () {
+        const r = RN.rng(77), ini = [];
+        for (let i = 0; i < 9; i++) ini.push(r() * 24);
+        return function (h) { return ini.some(function (a) { return h >= a && h < a + 0.07; }) ? 1 : 0; };
+      })()
+    };
+    const kc = $("sl-kpis");
+    const kN = kpi(kc, "sk-n", "Peticiones"), kF = kpi(kc, "sk-f", "Arranques en frío"), k50 = kpi(kc, "sk-50", "Latencia p50"), k99 = kpi(kc, "sk-99", "Latencia p99"), kS = kpi(kc, "sk-s", "Coste/día serverless"), kD = kpi(kc, "sk-d", "Coste/día siempre encendido");
+    let res = null;
+    const g1 = RN.grafica($("sl-g1"), {
+      alto: 230, x: { min: 0, max: 24, titulo: "hora del día", fmt: function (v) { return RN.fmt(v, 0) + " h"; } }, y: { min: 0, max: 10, titulo: "peticiones / 10 min" },
+      extras: function (ctx, g) {
+        if (!res) return;
+        const Y = g.h - g.m.b - 7;
+        res.frios.filter(function (f, i) { return i % Math.ceil(res.frios.length / 1500) === 0; }).forEach(function (f) { ctx.beginPath(); ctx.arc(g.sx(f[0]), Y, 4, 0, 7); ctx.fillStyle = C.s2; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = "#fff"; ctx.stroke(); });
+      }
+    });
+    const g2 = RN.grafica($("sl-g2"), { alto: 280, hover: false, x: { min: 0, max: 24, titulo: "hora del día", fmt: function (v) { return RN.fmt(v, 0) + " h"; } }, y: { min: 50, max: 20000, log: true, titulo: "latencia (ms, escala log.)" } });
+    const g3 = RN.grafica($("sl-g3"), {
+      alto: 280, hover: false, x: { min: 2, max: 6, titulo: "peticiones al día (escala log.)", marcas: [2, 3, 4, 5, 6], fmt: function (v) { return RN.fmtN(Math.pow(10, v)); } },
+      y: { min: 0.0001, max: 100, log: true, titulo: "coste por día (€, escala log.)" }, margen: { r: 34, l: 62 },
+      extras: function (ctx, g) {
+        if (!res) return;
+        ctx.save(); ctx.font = "600 12px system-ui, sans-serif";
+        const eq = res.equilibrio;
+        if (eq > 100 && eq < 1e6) {
+          const X = g.sx(Math.log10(eq)), Y = g.sy(res.costeSrv);
+          ctx.strokeStyle = C.ink2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(X, g.m.t); ctx.lineTo(X, g.h - g.m.b); ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle = C.ink; ctx.textAlign = X > g.w - 170 ? "right" : "left"; ctx.textBaseline = "bottom";
+          ctx.fillText("equilibrio ≈ " + RN.fmtN(eq) + "/día", X + (X > g.w - 170 ? -6 : 6), Y - 8);
+        }
+        const X = g.sx(Math.log10(res.n || 100)), Y = g.sy(Math.max(0.0001, res.costeSL));
+        ctx.beginPath(); ctx.arc(X, Y, 6, 0, 7); ctx.fillStyle = C.s1; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+        ctx.fillStyle = C.ink; ctx.textAlign = X > g.w - 120 ? "right" : "left"; ctx.textBaseline = "top";
+        ctx.fillText("simulado", X + (X > g.w - 120 ? -10 : 10), Y + 6);
+        ctx.restore();
+      }
+    });
+    function simula() {
+      const vol = VOL[+$("sl-vol").value], frio = +$("sl-frio").value, prov = $("sl-prov").checked, precioSrv = +$("sl-srv").value;
+      const rng = RN.rng(1234 + vol);
+      const f = PAT[patron], w = [];
+      let sw = 0;
+      for (let m = 0; m < 1440; m++) { const v = f((m + 0.5) / 60); w.push(v); sw += v; }
+      let inst = prov ? [{ libre: 0, ult: 0, prov: true }] : [];
+      const lats = [], frios = [], calientes = [], bins = new Array(144).fill(0);
+      let n = 0, seg = 0;
+      for (let m = 0; m < 1440; m++) {
+        const k = D.poisson(rng, vol * w[m] / sw);
+        if (!k) continue;
+        const ts = [];
+        for (let i = 0; i < k; i++) ts.push(m * 60 + rng() * 60);
+        ts.sort(function (a, b) { return a - b; });
+        for (let i = 0; i < k; i++) {
+          const t = ts[i];
+          let mejor = null;
+          for (let j = 0; j < inst.length; j++) {
+            const it = inst[j];
+            if (it.muerta) continue;
+            if (!it.prov && it.libre <= t && t - it.ult > KEEP) { it.muerta = true; continue; }
+            if (it.libre <= t && (!mejor || it.ult > mejor.ult)) mejor = it;
+          }
+          const d = DUR * Math.exp(0.18 * RN.normal(rng));
+          let l;
+          if (mejor) { l = d; mejor.libre = t + d; mejor.ult = t + d; }
+          else { l = frio * (0.8 + 0.4 * rng()) + d; inst.push({ libre: t + l, ult: t + l }); frios.push([t / 3600, l * 1000]); }
+          seg += l; n++;
+          lats.push(l * 1000);
+          bins[Math.floor(m / 10)]++;
+          if (rng() < 550 / Math.max(550, vol)) calientes.push([t / 3600, l * 1000]);
+        }
+        if (m % 30 === 0) inst = inst.filter(function (it) { return !it.muerta; });
+      }
+      const ord = Float64Array.from(lats).sort();
+      const q = function (p) { return ord.length ? ord[Math.min(ord.length - 1, Math.floor(p * ord.length))] : NaN; };
+      const fijoProv = prov ? MEM * 86400 * PPROV : 0;
+      const porPet = DUR * MEM * PGBS + PINV;
+      res = {
+        n: n, frios: frios, p50: q(0.5), p99: q(0.99),
+        costeSL: seg * MEM * PGBS + n * PINV + fijoProv,
+        costeSrv: precioSrv * 24, porPet: porPet, fijoProv: fijoProv,
+        equilibrio: Math.max(0, (precioSrv * 24 - fijoProv) / porPet),
+        calientes: calientes.filter(function (p) { return p[1] < frio * 700; }),
+        bins: bins
+      };
+      // gráficas
+      const mx = Math.max.apply(null, bins);
+      g1.op.y.max = bonito(Math.max(5, mx * 1.1));
+      g1.dibujar([{ nombre: "peticiones", color: C.s1, tipo: "area", puntos: bins.map(function (b, i) { return [(i + 0.5) / 6, b]; }) }]);
+      g2.dibujar([
+        { nombre: "caliente", color: C.s1, tipo: "puntos", radio: 4, puntos: res.calientes },
+        { nombre: "frío", color: C.s2, tipo: "puntos", radio: 4.5, puntos: frios.filter(function (f, i) { return i % Math.ceil(frios.length / 400) === 0; }) }
+      ]);
+      const sl = [], sv = [];
+      for (let e = 2; e <= 6.001; e += 0.05) { const v = Math.pow(10, e); sl.push([e, v * porPet + fijoProv]); sv.push([e, precioSrv * 24]); }
+      g3.dibujar([{ nombre: "serverless", color: C.s1, puntos: sl }, { nombre: "siempre encendido", color: C.s2, puntos: sv }]);
+      kN.v.textContent = RN.fmtN(n);
+      kF.v.textContent = RN.fmtN(frios.length) + " (" + RN.fmt(n ? 100 * frios.length / n : 0, frios.length && 100 * frios.length / n < 1 ? 2 : 0) + " %)";
+      kF.classList.toggle("alerta", n && frios.length / n > 0.05);
+      k50.v.textContent = D.ms(res.p50);
+      k99.v.textContent = D.ms(res.p99); k99.classList.toggle("alerta", res.p99 > 1000);
+      kS.v.textContent = D.euros(res.costeSL, res.costeSL < 0.1 ? 3 : 2);
+      kD.v.textContent = D.euros(res.costeSrv, 2);
+      kS.classList.toggle("alerta", res.costeSL > res.costeSrv);
+      kD.classList.toggle("alerta", res.costeSrv > res.costeSL);
+      $("sl-volo").textContent = RN.fmtN(vol);
+      $("sl-frioo").textContent = RN.fmt(frio, 1) + " s";
+      $("sl-nota").innerHTML = "<strong>Supuestos orientativos:</strong> función de 2 GB que tarda ~150 ms; 0,0000167 € por GB·s y 0,20 € por millón de invocaciones (del orden de las tarifas públicas de AWS Lambda; varían por región y proveedor); una instancia ociosa se apaga a los 10 min; cada instancia atiende una petición a la vez; la instancia aprovisionada cuesta ≈ " + D.euros(MEM * 86400 * PPROV, 2) + " al día.";
+    }
+    D.seg($("sl-patron"), [["estable", "Estable"], ["picos", "Con picos"], ["esporadico", "Esporádico"]], "picos", function (v) { patron = v; simula(); }, "Patrón de tráfico");
+    $("sl-vol").value = 7;
+    ["sl-vol", "sl-frio"].forEach(function (id) { $(id).addEventListener("input", simula); });
+    ["sl-srv", "sl-prov"].forEach(function (id) { $(id).addEventListener("change", simula); });
+    simula();
+  });
+
+  // =====================================================================================
+  // 9 · Checklist de decisión
+  tab("elegir", function () {
+    const PREG = [
+      { id: "lat", t: "Latencia", s: "¿tiempo real estricto?", ops: [["estricta", "Tiempo real estricto"], ["tolerante", "Puede esperar"]] },
+      { id: "carga", t: "Carga", s: "¿estable o con picos?", ops: [["estable", "Estable"], ["picos", "Picos impredecibles"]] },
+      { id: "rec", t: "Recursos", s: "presupuesto y equipo", ops: [["pocos", "Limitados"], ["muchos", "Equipo con MLOps"]] },
+      { id: "disp", t: "Disponibilidad", s: "¿24/7 sin fallos?", ops: [["critica", "24/7 crítica"], ["normal", "Admite cortes"]] },
+      { id: "seg", t: "Seguridad", s: "¿datos regulados?", ops: [["regulados", "Regulados"], ["normales", "No sensibles"]] },
+      { id: "mod", t: "Modelo", s: "tamaño (de las notas)", ops: [["ligero", "Ligero"], ["grande", "Grande, con GPU"]] }
+    ];
+    const TIPOS = ["Monolítico", "Microservicios", "Serverless", "Contenedores", "Especializado"];
+    const PUNT = {
+      "lat.estricta": [1, 0, -3, 1, 3], "lat.tolerante": [0, 0, 2, 0, -1],
+      "carga.estable": [2, 0, -1, 1, 1], "carga.picos": [-2, 1, 3, 2, -1],
+      "rec.pocos": [3, -3, 2, -1, -3], "rec.muchos": [0, 2, 0, 2, 1],
+      "disp.critica": [-2, 1, 1, 2, 0], "disp.normal": [1, 0, 0, 0, 0],
+      "seg.regulados": [1, 0, -2, 1, 1], "seg.normales": [0, 0, 1, 0, 0],
+      "mod.ligero": [1, 0, 2, 0, -3], "mod.grande": [-1, 0, -3, 1, 3]
+    };
+    const RAZ = {
+      "lat.estricta": { 2: "el arranque en frío rompe la latencia", 4: "la GPU responde en milisegundos", 0: "sin saltos de red internos", 3: "réplicas dedicadas siempre calientes" },
+      "lat.tolerante": { 2: "un arranque en frío ocasional se tolera", 4: "pagar hardware para ganar milisegundos no compensa" },
+      "carga.estable": { 0: "carga predecible: un servidor dedicado rinde más por euro", 2: "con uso continuo, el pago por uso sale caro", 3: "réplicas fijas, fáciles de dimensionar", 4: "hardware dedicado bien aprovechado" },
+      "carga.picos": { 2: "escala sola con la demanda (y hasta cero)", 3: "Kubernetes añade réplicas con el autoescalado (HPA)", 0: "escalar obliga a replicar todo", 1: "escala solo el servicio saturado", 4: "el hardware dedicado no crece al ritmo de los picos" },
+      "rec.pocos": { 0: "simple: un código, un proceso, un log", 2: "sin servidores que administrar", 1: "exige equipo de plataforma y orquestación", 4: "hardware caro y drivers delicados", 3: "Kubernetes tiene una curva de aprendizaje" },
+      "rec.muchos": { 1: "cada equipo despliega y escala su servicio", 3: "el equipo puede operar Kubernetes", 4: "hay quien domine CUDA y la optimización" },
+      "disp.critica": { 3: "réplicas, health checks y despliegues sin corte", 0: "cada actualización redespliega todo", 1: "un fallo no tumba todo el sistema", 2: "alta disponibilidad gestionada por el proveedor" },
+      "disp.normal": { 0: "un corte breve al actualizar es aceptable" },
+      "seg.regulados": { 2: "menos control del entorno y de dónde se ejecuta", 0: "todo bajo control y fácil de auditar", 3: "aislamiento y despliegue donde exija la norma", 4: "puede ir en un centro de datos propio" },
+      "seg.normales": { 2: "sin restricciones sobre dónde se ejecuta" },
+      "mod.ligero": { 2: "cabe en los límites de una función", 4: "una GPU para un modelo pequeño es tirar dinero", 0: "basta una CPU" },
+      "mod.grande": { 2: "límites de tamaño y memoria, y sin GPU", 4: "GPU o TPU para inferencia pesada", 3: "contenedores con GPU dentro del clúster", 0: "replicar un monolito con GPU es caro" }
+    };
+    const ESCN = [
+      ["Detección de fraude en un banco", { lat: "estricta", carga: "estable", rec: "muchos", disp: "critica", seg: "regulados", mod: "grande" }],
+      ["Recomendador en Black Friday", { lat: "tolerante", carga: "picos", rec: "muchos", disp: "critica", seg: "normales", mod: "grande" }],
+      ["Prototipo de una startup", { lat: "tolerante", carga: "estable", rec: "pocos", disp: "normal", seg: "normales", mod: "ligero" }],
+      ["Clasificador interno: 10 peticiones al día", { lat: "tolerante", carga: "picos", rec: "pocos", disp: "normal", seg: "normales", mod: "ligero" }],
+      ["Visión por computador sobre vídeo en directo", { lat: "estricta", carga: "estable", rec: "muchos", disp: "critica", seg: "normales", mod: "grande" }]
+    ];
+    const sel = $("e-esc");
+    ESCN.forEach(function (e, i) { RN.el("option", { value: i }, sel, e[0]); });
+    RN.el("option", { value: "-1" }, sel, "Respuestas propias");
+    const resp = Object.assign({}, ESCN[0][1]);
+    const segs = {};
+    const cont = $("e-preg");
+    PREG.forEach(function (p) {
+      const q = RN.el("div", { class: "q" }, cont);
+      const et = RN.el("div", { class: "etq" }, q); et.innerHTML = p.t + "<small>" + p.s + "</small>";
+      const s = RN.el("div", null, q);
+      segs[p.id] = D.seg(s, p.ops, resp[p.id], function (v) { resp[p.id] = v; sel.value = "-1"; calcula(); }, p.t);
+    });
+    const svg = D.prepara($("e-svg"), 600, 380, "Encaje orientativo de cada tipo de servidor según las respuestas");
+    D.texto(svg, 20, 18, "Encaje orientativo con tus respuestas", { ancla: "start", tam: 13, peso: 700, color: C.ink2 });
+    const filas = TIPOS.map(function (n, i) {
+      const g = RN.svg("g", {}, svg);
+      g.fondo = RN.svg("rect", { x: 8, y: -30, width: 584, height: 62, rx: 10, fill: "#fff", stroke: "none" }, g);
+      g.pos = D.texto(g, 26, 0, "", { tam: 16, peso: 800, color: C.ink2 });
+      g.nom = D.texto(g, 48, -12, n, { ancla: "start", tam: 15, peso: 700 });
+      g.pista = RN.svg("rect", { x: 48, y: 4, width: 520, height: 14, rx: 7, fill: "#EDF0F3" }, g);
+      g.barra = RN.svg("rect", { x: 48, y: 4, width: 10, height: 14, rx: 7, fill: C.s1 }, g);
+      g.chip = D.texto(g, 568, -12, "", { ancla: "end", tam: 12, peso: 700, color: K.acento });
+      g.y = 60 + i * 66; g.yObj = g.y; g.w = 10; g.wObj = 10;
+      return g;
+    });
+    let punt = [0, 0, 0, 0, 0];
+    function calcula() {
+      punt = [0, 0, 0, 0, 0];
+      PREG.forEach(function (p) { const d = PUNT[p.id + "." + resp[p.id]]; d.forEach(function (v, i) { punt[i] += v; }); });
+      const orden = punt.map(function (v, i) { return i; }).sort(function (a, b) { return punt[b] - punt[a]; });
+      const mn = Math.min.apply(null, punt), mx = Math.max.apply(null, punt);
+      orden.forEach(function (i, r) {
+        const g = filas[i];
+        g.yObj = 60 + r * 66;
+        g.wObj = 30 + 490 * (punt[i] - mn + 1) / (mx - mn + 1);
+        g.pos.textContent = (r + 1) + ".º";
+        g.barra.setAttribute("fill", r === 0 ? K.acento : r === 1 ? C.s1 : "#9AA5B1");
+        g.fondo.setAttribute("fill", r === 0 ? K.acentoL : "#fff");
+        g.chip.textContent = r === 0 ? "mejor encaje" : "";
+      });
+      // porqués de los dos primeros
+      const caja = $("e-porque");
+      caja.innerHTML = "";
+      orden.slice(0, 2).forEach(function (i, r) {
+        const d = RN.el("div", { class: "box" + (r === 0 ? " acento" : "") }, caja);
+        RN.el("h3", null, d, (r + 1) + ".º " + TIPOS[i]);
+        const ul = RN.el("ul", { class: "razones" }, d);
+        PREG.forEach(function (p) {
+          const clave = p.id + "." + resp[p.id], v = PUNT[clave][i], txt = RAZ[clave] && RAZ[clave][i];
+          if (txt && v !== 0) RN.el("li", { class: v > 0 ? "mas" : "menos" }, ul, txt);
+        });
+        if (!ul.children.length) RN.el("li", null, ul, "sin razones fuertes a favor ni en contra");
+      });
+      if (reducido) filas.forEach(function (g) { g.y = g.yObj; g.w = g.wObj; pinta(g); });
+    }
+    function pinta(g) { g.setAttribute("transform", "translate(0," + g.y.toFixed(1) + ")"); g.barra.setAttribute("width", g.w.toFixed(1)); }
+    sel.addEventListener("change", function () {
+      const k = +sel.value;
+      if (k < 0) return;
+      Object.assign(resp, ESCN[k][1]);
+      PREG.forEach(function (p) { segs[p.id].poner(resp[p.id], false); });
+      calcula();
+    });
+    calcula();
+    filas.forEach(function (g) { g.y = g.yObj; g.w = g.wObj; pinta(g); });
+    bucle(function (dt) {
+      const a = Math.min(1, dt * 8);
+      filas.forEach(function (g) { g.y += (g.yObj - g.y) * a; g.w += (g.wObj - g.w) * a; pinta(g); });
+    }, svg.parentNode);
+  });
+
+})();
+</script>
+</body>
+</html>

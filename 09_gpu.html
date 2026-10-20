@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 9 · I · Big Data: aceleración con GPU — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  .escena svg { user-select: none; }
+  .celda-c { cursor: pointer; }
+  .tabla.compacta td, .tabla.compacta th { padding: .35rem .55rem; }
+  .tabla td.n b { font-family: var(--mono); }
+  .dos-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 1rem; align-items: start; }
+  .ctl .seg { margin-top: .1rem; align-self: flex-start; }
+  .estado { font-weight: 700; padding: .55rem .9rem; border-radius: 8px; margin: .6rem 0; }
+  .estado.ok { background: var(--ok-l); color: var(--ok); border-left: 4px solid #43A047; }
+  .estado.bad { background: var(--bad-l); color: var(--bad); border-left: 4px solid var(--bad); }
+  .lista-check { list-style: none; margin-left: 0 !important; }
+  .lista-check li { padding-left: 1.7rem; position: relative; }
+  .lista-check li::before { content: "✓"; position: absolute; left: .25rem; top: 0; color: var(--acento); font-weight: 800; }
+  pre.code { white-space: pre; }
+  pre.code .linea { display: block; padding: 0 .3rem; border-radius: 4px; transition: background .2s; }
+  pre.code .linea.hl { background: rgba(255,203,107,.22); }
+  .info-hilo { font-family: var(--mono); font-size: .9rem; background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: .6rem .8rem; line-height: 1.6; }
+  .info-hilo b { color: var(--acento); }
+  .pasos code { font-size: .82rem; }
+  .kpi .v.peq { font-size: 1.15rem; }
+  .kpi .v.ok { color: var(--ok); }
+  .kpi .v.bad { color: var(--bad); }
+  input.valor-num { width: 9rem; font-family: var(--mono); }
+  .cajas-cmd pre.code { font-size: .8rem; margin: .3rem 0 0; }
+  .cajas-cmd .box p { font-size: .92rem; margin-bottom: .3rem; }
+</style>
+</head>
+<body class="bloque-esc" data-pagina="09_gpu.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 9 · I</span>Big Data: aceleración con GPU</h1>
+  <p>Por qué la GPU entrena las redes mucho más deprisa que la CPU, qué software la hace utilizable y cómo conseguir que no se quede esperando datos ni sin memoria.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-bigdata" aria-controls="p-bigdata" aria-selected="true">1 · Big Data</button>
+  <button class="tab" role="tab" id="t-coste" aria-controls="p-coste" aria-selected="false">2 · Coste</button>
+  <button class="tab" role="tab" id="t-cpugpu" aria-controls="p-cpugpu" aria-selected="false">3 · CPU y GPU</button>
+  <button class="tab" role="tab" id="t-matrices" aria-controls="p-matrices" aria-selected="false">4 · Matrices</button>
+  <button class="tab" role="tab" id="t-cuda" aria-controls="p-cuda" aria-selected="false">5 · CUDA</button>
+  <button class="tab" role="tab" id="t-datos" aria-controls="p-datos" aria-selected="false">6 · Lectura de datos</button>
+  <button class="tab" role="tab" id="t-vram" aria-controls="p-vram" aria-selected="false">7 · Lote y VRAM</button>
+  <button class="tab" role="tab" id="t-config" aria-controls="p-config" aria-selected="false">8 · Puesta a punto</button>
+  <button class="tab" role="tab" id="t-resumen" aria-controls="p-resumen" aria-selected="false">9 · Resumen</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 · BIG DATA -->
+  <section id="p-bigdata" class="panel">
+    <div class="card">
+      <h2>Big Data: el desafío de las 4V</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Las aproximaciones tradicionales se quedan pequeñas: hay muchísimos datos, de orígenes muy distintos, que llegan sin parar y no siempre son fiables.</p>
+      <div class="escena"><svg id="bd-4v" aria-label="Las cuatro V del Big Data, cada una con una pequeña animación: volumen, variedad, velocidad y veracidad"></svg></div>
+    </div>
+    <div class="card">
+      <h2>Tres tipos de datos</h2>
+      <p class="lead">La variedad de formatos exige arquitecturas neuronales más flexibles y complejas.</p>
+      <div class="escena"><svg id="bd-tipos" aria-label="Ejemplos de datos estructurados (una tabla), semiestructurados (JSON, XML y un log) y no estructurados (una imagen, audio y texto libre)"></svg></div>
+      <ul>
+        <li><strong>Estructurados</strong>: filas y columnas con un significado fijo (bases de datos relacionales).</li>
+        <li><strong>Semiestructurados</strong>: llevan etiquetas o claves, pero cada registro puede tener una forma distinta.</li>
+        <li><strong>No estructurados</strong>: píxeles, muestras de sonido o palabras sin esquema; la red tiene que descubrir por sí misma las características.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> el deep learning trabaja sobre todo con datos no estructurados y en volúmenes enormes. Por eso necesita hardware especializado.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 · COSTE -->
+  <section id="p-coste" class="panel">
+    <div class="card">
+      <h2>Los modelos no paran de crecer</h2>
+      <p class="lead">Número de parámetros de algunas redes conocidas. De LeNet-5 (1998) a GPT-3 (2020) el tamaño se multiplica por casi tres millones.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Eje vertical</span>
+          <div class="seg" id="cs-escala" role="group" aria-label="Escala del eje vertical"><button type="button" data-v="log" aria-pressed="true">Logarítmico</button><button type="button" data-v="lin" aria-pressed="false">Lineal</button></div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="t">GPT-3 / LeNet-5</div><div class="v" id="cs-ratio">—</div></div>
+          <div class="kpi"><div class="t">Pesos de GPT-3 en FP32</div><div class="v" id="cs-mem">—</div></div>
+        </div>
+      </div>
+      <canvas id="cs-cv" class="lienzo" aria-label="Número de parámetros de LeNet-5, AlexNet, VGG-16, BERT-large, GPT-2 y GPT-3 según su año de publicación"></canvas>
+      <p class="pie">Pasa el ratón por un punto para ver el detalle. Con el eje lineal, todos menos GPT-3 quedan aplastados contra el cero: por eso se usa la escala logarítmica.</p>
+      <div class="dos-cols">
+        <div class="box acento">
+          <h3>Problemas actuales</h3>
+          <ul>
+            <li>Las redes son cada vez más complejas y grandes.</li>
+            <li>Necesitan grandes volúmenes de datos para aprender.</li>
+            <li>El tiempo de entrenamiento crece muy deprisa.</li>
+            <li>Los ordenadores domésticos (CPU) resultan insuficientes.</li>
+          </ul>
+        </div>
+        <div>
+          <table class="tabla compacta" id="cs-tabla">
+            <thead><tr><th>Modelo</th><th class="n">Año</th><th class="n">Parámetros</th><th class="n">Solo los pesos (FP32)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p class="pie">Cada parámetro en 32 bits ocupa 4 bytes. Entrenar necesita bastante más memoria: gradientes, estado del optimizador y activaciones (pestaña 7).</p>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> más parámetros y más datos multiplican las operaciones. Con una CPU el entrenamiento se eterniza: hace falta hardware que calcule en paralelo, la GPU, que reduce los tiempos de semanas a horas.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 · CPU vs GPU -->
+  <section id="p-cpugpu" class="panel">
+    <div class="card">
+      <h2>Pocos núcleos potentes frente a miles de núcleos sencillos</h2>
+      <div class="meta"><span class="tag illus">Simulación simplificada</span></div>
+      <p class="lead">La misma cola de tareas en los dos chips. Cada núcleo de la CPU termina antes su tarea, pero la GPU termina muchas más a la vez.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Tipo de trabajo</span>
+          <div class="seg" id="cg-modo" role="group" aria-label="Tipo de trabajo"><button type="button" data-v="indep" aria-pressed="true">512 tareas independientes</button><button type="button" data-v="cadena" aria-pressed="false">16 tareas encadenadas</button></div>
+        </div>
+        <button class="btn" id="cg-play" type="button">▶ Reproducir</button>
+        <button class="btn gris" id="cg-reset" type="button">Reiniciar</button>
+      </div>
+      <canvas id="cg-cv" class="lienzo" aria-label="Simulación: una CPU con 8 núcleos y una GPU con 512 núcleos procesan la misma cola de tareas"></canvas>
+      <table class="tabla compacta" id="cg-tabla" style="margin-top:.8rem">
+        <thead><tr><th></th><th class="n">Latencia de una tarea</th><th class="n">Caudal máximo</th><th class="n">Tiempo total</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <ul>
+        <li>Con <strong>tareas independientes</strong> (como las celdas de una matriz) la GPU arrasa: trabaja en todas a la vez.</li>
+        <li>Con <strong>tareas encadenadas</strong> (lógica «if-else», cada paso necesita el anterior) solo puede trabajar un núcleo, y la CPU, más rápida por núcleo, gana.</li>
+      </ul>
+      <p class="pie">Velocidades supuestas para ilustrar la idea (u.t. = unidades de tiempo). Una CPU de escritorio tiene del orden de 4 a 32 núcleos; una GPU actual, miles.</p>
+      <div class="clave"><strong>Idea clave:</strong> la CPU minimiza la <strong>latencia</strong> (cada tarea acaba pronto); la GPU maximiza el <strong>caudal</strong> (throughput: tareas terminadas por unidad de tiempo). Entrenar una red es, sobre todo, trabajo paralelo.</div>
+    </div>
+    <div class="card">
+      <h2>CPU y GPU no compiten: colaboran</h2>
+      <p class="lead">La GPU no funciona sola: necesita un host, la CPU, que le envíe instrucciones y datos a su memoria.</p>
+      <div class="escena"><svg id="cg-roles" aria-label="Esquema: la CPU (host) dirige y prepara los datos; la GPU (device) hace el cálculo pesado; entre ambas viajan instrucciones, datos y resultados"></svg></div>
+      <div class="dos-cols" style="margin-top:.8rem">
+        <div class="bien"><strong>✓ Ventajas de la GPU</strong>
+          <ul>
+            <li>Paralelismo masivo: miles de operaciones simultáneas.</li>
+            <li>Rendimiento numérico superior en cálculo matricial.</li>
+            <li>Eficiencia energética: mejor rendimiento por vatio en cargas paralelas.</li>
+            <li>Escalabilidad para Big Data.</li>
+          </ul>
+        </div>
+        <div class="mal"><strong>✗ Inconvenientes</strong>
+          <ul>
+            <li>Tareas secuenciales: rinde mal con lógica compleja «if-else».</li>
+            <li>Complejidad: requiere programación específica (CUDA).</li>
+            <li>Memoria limitada: la VRAM es fija, un problema con modelos gigantes.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 · MATRICES -->
+  <section id="p-matrices" class="panel">
+    <div class="card">
+      <h2>Cada celda es una fila por una columna</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Para obtener C = A × B se multiplica una fila de A por una columna de B, elemento a elemento, y se suma. Pasa el ratón por una celda de C.</p>
+      <div class="controles">
+        <button class="btn" id="mm-cpu" type="button">▶ Celda a celda (CPU)</button>
+        <button class="btn" id="mm-gpu" type="button">▶ Todas a la vez (GPU)</button>
+        <button class="btn gris" id="mm-nuevos" type="button">Nuevos números</button>
+      </div>
+      <div class="escena"><svg id="mm-svg" aria-label="Multiplicación de matrices A por B: cada celda de C es el producto de una fila de A por una columna de B"></svg></div>
+      <div class="clave"><strong>Idea clave:</strong> no hace falta conocer C[0][0] para calcular C[0][1]. Cada celda es independiente de las demás, así que se pueden calcular todas a la vez. Ahí está la ventaja de la GPU.</div>
+    </div>
+    <div class="card">
+      <h2>De 50 × 50 a millones de celdas</h2>
+      <div class="meta"><span class="tag illus">Modelo de tiempo simplificado</span></div>
+      <p class="lead">Una matriz resultado de 50 × 50 son 2500 operaciones independientes. La CPU las hace de pocas en pocas; la GPU lanza 2500 hilos a la vez.</p>
+      <div class="controles">
+        <div class="ctl"><label for="mr-n">Tamaño n (matrices n × n)</label><input id="mr-n" type="range" min="4" max="64" step="1" value="50"><output id="mr-no">50</output></div>
+        <div class="ctl"><label for="mr-c">Núcleos de la CPU</label><input id="mr-c" type="range" min="1" max="16" step="1" value="8"><output id="mr-co">8</output></div>
+        <div class="ctl"><label for="mr-g">Hilos simultáneos en la GPU</label><input id="mr-g" type="range" min="0" max="7" step="1" value="5"><output id="mr-go">2500</output></div>
+        <button class="btn" id="mr-play" type="button">▶ Reproducir</button>
+        <button class="btn gris" id="mr-reset" type="button">Reiniciar</button>
+      </div>
+      <canvas id="mr-cv" class="lienzo" aria-label="Carrera: la matriz resultado se rellena por oleadas en la CPU y en la GPU"></canvas>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Celdas independientes</div><div class="v" id="mr-k1">—</div></div>
+        <div class="kpi"><div class="t">Oleadas CPU</div><div class="v" id="mr-k2">—</div></div>
+        <div class="kpi"><div class="t">Oleadas GPU</div><div class="v" id="mr-k3">—</div></div>
+        <div class="kpi"><div class="t">Aceleración de la GPU</div><div class="v" id="mr-k4">—</div></div>
+      </div>
+      <h3>Tiempo según el modelo, para cada tamaño</h3>
+      <canvas id="mr-graf" class="lienzo" aria-label="Tiempo en pasos frente al tamaño n para la CPU y la GPU, en escala logarítmica"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>CPU</span><span><i style="background:var(--s3)"></i>GPU</span><span><i class="punto" style="background:var(--ink)"></i>tamaño elegido</span></div>
+      <p class="pie">Supuestos del modelo: una celda cuesta n pasos (n multiplicaciones y sumas) en un núcleo de CPU y 4n en un núcleo de GPU, que es más sencillo. Cuando n² supera el número de hilos, también la GPU necesita varias oleadas. El reloj de la animación se acelera cuando un lado ha terminado.</p>
+    </div>
+    <div class="card">
+      <h2>Medición real: el coste crece como n³</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Este navegador multiplica de verdad matrices n × n (en la CPU, con un solo hilo). Al doblar n, el tiempo se multiplica por unos 8.</p>
+      <div class="controles">
+        <button class="btn" id="md-medir" type="button">↻ Medir otra vez</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">n = 128</div><div class="v peq" id="md-k1">—</div></div>
+          <div class="kpi"><div class="t">n = 256</div><div class="v peq" id="md-k2">—</div></div>
+          <div class="kpi"><div class="t">Doblar n multiplica por</div><div class="v peq" id="md-k3">—</div></div>
+          <div class="kpi"><div class="t">n = 10.000 (extrapolado)</div><div class="v peq" id="md-k4">—</div></div>
+        </div>
+      </div>
+      <canvas id="md-cv" class="lienzo" aria-label="Tiempo medido de una multiplicación de matrices frente a n, con un ajuste proporcional a n al cubo"></canvas>
+      <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>tiempo medido en este navegador</span><span><i style="background:var(--s2)"></i>ajuste ∝ n³</span></div>
+      <p class="pie">Los tiempos dependen de tu ordenador y de lo que esté haciendo en ese momento. La extrapolación a n = 10.000 usa el ajuste ∝ n³.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 · CUDA -->
+  <section id="p-cuda" class="panel">
+    <div class="card">
+      <h2>La pila de software: de Keras a los núcleos</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Tu código no habla directamente con la GPU: cada capa traduce la petición para la capa de abajo.</p>
+      <div class="controles"><button class="btn" id="cu-play" type="button">▶ Enviar una operación</button></div>
+      <div class="escena"><svg id="cu-pila" aria-label="Pila de software: Keras, TensorFlow o PyTorch, cuDNN, CUDA, controlador y GPU; una operación baja por la pila y el resultado vuelve"></svg></div>
+      <div class="dos-cols" style="margin-top:.8rem">
+        <div class="box"><h3>CUDA (NVIDIA, 2006)</h3><p>Permitió usar la GPU para cálculo general, no solo gráficos. Es una extensión del lenguaje C con una API propia que divide las tareas en bloques de hilos.</p></div>
+        <div class="box"><h3>cuDNN</h3><p>Librería sobre CUDA para deep learning: convoluciones, activaciones y retropropagación muy optimizadas. Una «caja negra» eficiente que TensorFlow y PyTorch usan por dentro.</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Un kernel: una malla de bloques de hilos</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Un kernel es la función que ejecuta cada hilo. Para C = A × B de 32 × 32, cada uno de los 1024 hilos calcula una celda. Pasa el ratón por una celda.</p>
+      <div class="controles"><button class="btn" id="ck-play" type="button">▶ Ejecutar el kernel</button><button class="btn gris" id="ck-reset" type="button">Reiniciar</button></div>
+      <div class="dos-cols">
+        <div class="escena"><svg id="ck-svg" aria-label="Matriz de 32 por 32 dividida en 16 bloques de 8 por 8 hilos, repartidos entre 4 multiprocesadores"></svg></div>
+        <div>
+          <pre class="code" id="ck-code" style="font-size:.78rem"></pre>
+          <div class="info-hilo" id="ck-info"></div>
+          <p class="pie">Los hilos de un bloque se ejecutan en grupos de 32 (warps): un bloque de 8 × 8 = 64 hilos son 2 warps. Los bloques se reparten entre los multiprocesadores (SM) de la GPU.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Memoria del host frente a memoria del device</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">CPU y GPU tienen memorias separadas. Programando en CUDA, eres tú quien mueve los datos de una a otra.</p>
+      <div class="controles"><button class="btn" id="hd-paso" type="button">Paso ▸</button><button class="btn" id="hd-play" type="button">▶ Reproducir</button><button class="btn gris" id="hd-reset" type="button">Reiniciar</button></div>
+      <div class="escena"><svg id="hd-svg" aria-label="El host (CPU y RAM) y el device (GPU y VRAM) unidos por el bus PCIe; los datos se copian a la GPU, se calcula y el resultado vuelve"></svg></div>
+      <ol class="pasos" id="hd-pasos">
+        <li>Reservar memoria en la GPU: <code>cudaMalloc(&amp;dA, bytes)</code></li>
+        <li>Copiar A y B de la RAM a la VRAM: <code>cudaMemcpy(dA, A, bytes, cudaMemcpyHostToDevice)</code></li>
+        <li>Lanzar el kernel con miles de hilos: <code>matmul&lt;&lt;&lt;bloques, hilos&gt;&gt;&gt;(dA, dB, dC, n)</code></li>
+        <li>Traer el resultado de la VRAM a la RAM: <code>cudaMemcpy(C, dC, bytes, cudaMemcpyDeviceToHost)</code></li>
+        <li>Liberar la memoria de la GPU: <code>cudaFree(dA)</code></li>
+      </ol>
+      <div class="dos-cols">
+        <div class="mal"><strong>Lo difícil de CUDA</strong>
+          <ul>
+            <li>Conocimientos avanzados de C/C++.</li>
+            <li>Gestión manual de la memoria (host frente a device).</li>
+            <li>Entender el hardware: núcleos, warps…</li>
+            <li>Error típico: un cuello de botella por mover mal los datos.</li>
+          </ul>
+        </div>
+        <div class="bien"><strong>La solución: librerías que lo esconden</strong>
+          <ul>
+            <li>cuDNN da las operaciones de las redes ya optimizadas.</li>
+            <li>TensorFlow y PyTorch la usan por dentro.</li>
+            <li>Con Keras no escribes ni una línea de CUDA.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> CUDA convirtió la tarjeta gráfica en una calculadora paralela de uso general, y cuDNN la puso al alcance del deep learning. El stack estándar es CUDA + cuDNN, debajo de tu framework.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 · LECTURA DE DATOS -->
+  <section id="p-datos" class="panel">
+    <div class="card">
+      <h2>El ciclo de procesamiento típico</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">La GPU calcula rapidísimo, pero antes tiene que recibir los datos. Mover datos de la CPU a la GPU es caro.</p>
+      <div class="escena"><svg id="ld-ciclo" aria-label="Ciclo: la CPU lee del disco a la RAM, copia a la VRAM, la GPU ejecuta los kernels y los resultados vuelven a la RAM"></svg></div>
+      <ol class="pasos" id="ld-pasos">
+        <li><strong>Preparación:</strong> la CPU lee del disco a la RAM.</li>
+        <li><strong>Transferencia:</strong> copia de la RAM (host) a la VRAM (device).</li>
+        <li><strong>Ejecución:</strong> la GPU procesa (kernels CUDA).</li>
+        <li><strong>Retorno:</strong> copia de los resultados de la VRAM a la RAM.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>¿Cuánto tiempo pasa la GPU esperando?</h2>
+      <div class="meta"><span class="tag illus">Simulación</span></div>
+      <p class="lead">Cronograma de varios lotes. Sin precarga, la GPU espera mientras la CPU lee el siguiente lote; con buffers, el siguiente lote se prepara mientras se procesa el actual.</p>
+      <div class="controles">
+        <div class="ctl"><label for="ld-l">Lectura y preproceso (CPU)</label><input id="ld-l" type="range" min="1" max="12" step="0.5" value="6"><output id="ld-lo">6 u.t.</output></div>
+        <div class="ctl"><label for="ld-x">Copia RAM → VRAM</label><input id="ld-x" type="range" min="0" max="4" step="0.5" value="1"><output id="ld-xo">1 u.t.</output></div>
+        <div class="ctl"><label for="ld-c">Cómputo en la GPU</label><input id="ld-c" type="range" min="1" max="12" step="0.5" value="4"><output id="ld-co">4 u.t.</output></div>
+        <div class="ctl"><label for="ld-h">Hilos de carga (num_workers)</label><input id="ld-h" type="range" min="1" max="4" step="1" value="1"><output id="ld-ho">1</output></div>
+        <div class="ctl"><label for="ld-b">Tamaño de lote</label><input id="ld-b" type="range" min="0" max="4" step="1" value="2"><output id="ld-bo">64</output></div>
+        <button class="btn" id="ld-play" type="button">▶ Reproducir</button>
+      </div>
+      <canvas id="ld-cv" class="lienzo" aria-label="Cronograma de la CPU, la copia y la GPU sin precarga y con precarga, con los tiempos en que la GPU está ociosa"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>CPU lee y prepara un lote</span><span><i style="background:var(--s4)"></i>copia RAM → VRAM</span><span><i style="background:var(--s3)"></i>GPU calcula</span><span><i style="background:repeating-linear-gradient(45deg,#E57373 0 2px,#FFEBEE 2px 5px);height:10px;width:16px"></i>GPU ociosa, esperando datos</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Uso de GPU sin precarga</div><div class="v" id="ld-k1">—</div></div>
+        <div class="kpi"><div class="t">Uso de GPU con precarga</div><div class="v" id="ld-k2">—</div></div>
+        <div class="kpi"><div class="t">Ejemplos / u.t. sin precarga</div><div class="v" id="ld-k3">—</div></div>
+        <div class="kpi"><div class="t">Ejemplos / u.t. con precarga</div><div class="v" id="ld-k4">—</div></div>
+      </div>
+      <p class="pie">Tiempos de lectura, copia y cómputo para un lote de 64; con otros lotes se escalan en proporción, y cada paso añade un coste fijo (lanzar kernels, sincronizar). La fila «GPU-Util» imita la columna del mismo nombre de <code>nvidia-smi</code>: si fluctúa mucho, el cuello de botella está en la CPU o el disco.</p>
+      <div class="dos-cols">
+        <div class="box"><h3>Hardware</h3>
+          <ul class="lista-check">
+            <li>Discos SSD/NVMe: esenciales para leer rápido.</li>
+            <li>RAM del host suficiente: evitar la paginación a disco.</li>
+            <li>CPU con varios hilos para preprocesar mientras la GPU entrena.</li>
+          </ul>
+        </div>
+        <div class="box"><h3>Software</h3>
+          <ul class="lista-check">
+            <li>Lote al máximo que permita la VRAM.</li>
+            <li>Buffers: preparar el siguiente lote durante el actual.</li>
+            <li>Formatos binarios (TFRecord) o más <code>num_workers</code> en el DataLoader de PyTorch.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> a menudo el cuello de botella no es la GPU, sino la carga de datos. El objetivo es que la GPU nunca espere (0 % ociosa).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 · VRAM -->
+  <section id="p-vram" class="panel">
+    <div class="card">
+      <h2>¿Cuánto cabe en la memoria de la GPU?</h2>
+      <div class="meta"><span class="tag real">Cálculo real (aritmética de memoria)</span></div>
+      <p class="lead">La VRAM se reparte entre los pesos, sus gradientes, el estado del optimizador y las activaciones. Solo las activaciones crecen con el tamaño del lote.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Memoria de la GPU</span>
+          <div class="seg" id="vr-cap" role="group" aria-label="Memoria de la GPU"><button type="button" data-v="8" aria-pressed="false">8 GB</button><button type="button" data-v="16" aria-pressed="true">16 GB</button><button type="button" data-v="24" aria-pressed="false">24 GB</button><button type="button" data-v="80" aria-pressed="false">80 GB</button></div>
+        </div>
+        <div class="ctl"><label for="vr-mod">Modelo (parámetros)</label>
+          <select id="vr-mod">
+            <option value="5e6">Red pequeña · 5 M</option>
+            <option value="25.6e6" selected>ResNet-50 · 25,6 M</option>
+            <option value="110e6">BERT-base · 110 M</option>
+            <option value="340e6">BERT-large · 340 M</option>
+            <option value="1.5e9">GPT-2 · 1500 M</option>
+            <option value="6.7e9">LLaMA 7B · ≈ 6700 M</option>
+          </select>
+        </div>
+        <div class="ctl"><label for="vr-opt">Optimizador</label>
+          <select id="vr-opt"><option value="0">SGD</option><option value="4">SGD con momento</option><option value="8" selected>Adam</option></select>
+        </div>
+        <div class="ctl"><span class="etq">Precisión</span>
+          <div class="seg" id="vr-prec" role="group" aria-label="Precisión numérica"><button type="button" data-v="32" aria-pressed="true">FP32</button><button type="button" data-v="16" aria-pressed="false">Mixta (FP16)</button></div>
+        </div>
+        <div class="ctl"><label for="vr-act">Activaciones por ejemplo</label><input id="vr-act" type="range" min="1" max="200" step="1" value="40"><output id="vr-acto">40 MB</output></div>
+        <div class="ctl"><label for="vr-b">Tamaño de lote</label><input id="vr-b" type="range" min="1" max="512" step="1" value="128"><output id="vr-bo">128</output></div>
+      </div>
+      <div class="escena"><svg id="vr-svg" aria-label="Barra de la memoria de la GPU llenada por pesos, gradientes, optimizador, activaciones y reserva"></svg></div>
+      <div id="vr-estado" class="estado ok">—</div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Memoria necesaria</div><div class="v peq" id="vr-k1">—</div></div>
+        <div class="kpi"><div class="t">Margen libre</div><div class="v peq" id="vr-k2">—</div></div>
+        <div class="kpi"><div class="t">Lote máximo en FP32</div><div class="v peq" id="vr-k3">—</div></div>
+        <div class="kpi"><div class="t">Lote máximo con precisión mixta</div><div class="v peq" id="vr-k4">—</div></div>
+      </div>
+      <canvas id="vr-cv" class="lienzo" aria-label="Memoria total necesaria frente al tamaño de lote, con la capacidad de la GPU como línea horizontal"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s3)"></i>memoria total necesaria</span><span><i style="background:var(--ink2)"></i>capacidad de la GPU</span><span><i class="punto" style="background:var(--ink)"></i>lote elegido</span></div>
+      <div class="formula" id="vr-form"></div>
+      <p class="pie">Supuestos: 4 bytes por peso y por gradiente; el optimizador guarda 0 (SGD), 1 (momento) o 2 (Adam) valores de 4 bytes por peso; 0,5 GB de reserva para el contexto de CUDA (aproximado). Las activaciones por ejemplo dependen de la red y del tamaño de la entrada: elige el valor. Con precisión mixta las activaciones van en 16 bits (la mitad) y los pesos maestros siguen en 32.</p>
+      <div class="clave"><strong>Idea clave:</strong> el lote se ajusta al máximo que permita la VRAM para mantener ocupados los miles de núcleos. Si el modelo no cabe ni con lote 1, hay que repartirlo entre varias GPU (parte II del tema).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 · PUESTA A PUNTO -->
+  <section id="p-config" class="panel">
+    <div class="card">
+      <h2>Una cadena de dependencias: si falla un eslabón, se usa la CPU</h2>
+      <p class="lead">Para que Python hable con la tarjeta gráfica hacen falta cinco piezas compatibles entre sí.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Instalación</span>
+          <div class="seg" id="cf-modo" role="group" aria-label="Tipo de instalación"><button type="button" data-v="ok" aria-pressed="true">Versiones compatibles (CUDA 11.8)</button><button type="button" data-v="mal" aria-pressed="false">CUDA 12.x con un TensorFlow que solo admite 11.8</button></div>
+        </div>
+      </div>
+      <div class="escena"><svg id="cf-svg" aria-label="Cadena: GPU NVIDIA, controlador, CUDA Toolkit, cuDNN y framework; si un eslabón es incompatible, el cálculo cae en la CPU"></svg></div>
+      <div class="dos-cols" style="margin-top:.6rem">
+        <div><h3>Comprobar que se ve la GPU</h3><pre class="code" id="cf-term"></pre></div>
+        <div class="cajas-cmd">
+          <h3>Instalar sin romper nada</h3>
+          <div class="box"><p><strong>Conda</strong>: CUDA y cuDNN dentro del entorno virtual, sin tocar los controladores del sistema.</p>
+<pre class="code">conda create -n tf_gpu python=3.9
+conda install -c conda-forge cudatoolkit=11.8 cudnn=8.1</pre></div>
+          <div class="box" style="margin-top:.5rem"><p><strong>PyTorch</strong>: nunca solo <code>pip install torch</code>; indica la URL con los binarios de CUDA.</p>
+<pre class="code">pip install torch torchvision \
+    --index-url https://download.pytorch.org/whl/cu118</pre></div>
+          <div class="box" style="margin-top:.5rem"><p><strong>TensorFlow</strong> en Linux o en WSL2 (Windows); Keras usará la GPU sin cambiar el código:</p>
+<pre class="code">pip install tensorflow[and-cuda]</pre></div>
+        </div>
+      </div>
+      <div class="nota"><strong>Windows:</strong> TensorFlow dejó de dar soporte nativo a la GPU en Windows después de la versión 2.10. Con WSL2 se ejecuta un núcleo de Linux real dentro de Windows y se siguen las guías de Linux.</div>
+    </div>
+    <div class="card">
+      <h2>Keras lo hace solo; PyTorch es explícito</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Si Keras ve una GPU, la usa sin cambiar el código. En PyTorch hay que mover a mano el modelo y los datos a la memoria de vídeo.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Framework</span>
+          <div class="seg" id="kp-fw" role="group" aria-label="Framework"><button type="button" data-v="pt" aria-pressed="true">PyTorch</button><button type="button" data-v="keras" aria-pressed="false">Keras</button></div>
+        </div>
+        <button class="btn" id="kp-paso" type="button">Paso ▸</button>
+        <button class="btn gris" id="kp-reset" type="button">Reiniciar</button>
+      </div>
+      <div class="dos-cols">
+        <pre class="code" id="kp-code"></pre>
+        <div class="escena"><svg id="kp-svg" aria-label="La RAM de la CPU y la VRAM de la GPU; el modelo y el lote de datos viajan a la GPU"></svg></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Precisión mixta: 16 bits donde basta</h2>
+      <div class="meta"><span class="tag real">Cálculo real (redondeo IEEE 754)</span></div>
+      <p class="lead">Las GPU modernas (RTX) tienen Tensor Cores para cálculos en 16 bits. Un número en FP16 ocupa la mitad y pierde algo de precisión.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Ejemplos</span>
+          <div class="seg" id="mp-ej" role="group" aria-label="Valores de ejemplo"><button type="button" data-v="3.141592653589793" aria-pressed="true">π</button><button type="button" data-v="0.1" aria-pressed="false">0,1</button><button type="button" data-v="1e-8" aria-pressed="false">0,00000001</button><button type="button" data-v="65504" aria-pressed="false">65.504</button><button type="button" data-v="70000" aria-pressed="false">70.000</button></div>
+        </div>
+        <div class="ctl"><label for="mp-v">O escribe un número</label><input id="mp-v" class="valor-num" type="text" value="3,141592653589793" inputmode="decimal"></div>
+      </div>
+      <div class="escena"><svg id="mp-svg" aria-label="Bits del número en 32 bits (signo, exponente de 8 bits y mantisa de 23) y en 16 bits (signo, exponente de 5 bits y mantisa de 10)"></svg></div>
+<pre class="code"><span class="com"># En Keras / TensorFlow</span>
+<span class="kw">from</span> tensorflow.keras <span class="kw">import</span> mixed_precision
+mixed_precision.<span class="fn">set_global_policy</span>(<span class="str">'mixed_float16'</span>)</pre>
+      <ul>
+        <li>Con la política <code>mixed_float16</code>, las operaciones y las activaciones van en 16 bits y los pesos se guardan en 32: se gana velocidad y memoria sin perder precisión notable.</li>
+        <li>FP16 tiene poco rango: por encima de 65.504 se desborda y los números muy pequeños (como algunos gradientes) se vuelven 0. Por eso, con esta política, Keras escala la pérdida automáticamente.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> si tienes una GPU RTX, activa <code>mixed_float16</code>: reduce el uso de VRAM a la mitad y puede duplicar la velocidad.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9 · RESUMEN -->
+  <section id="p-resumen" class="panel">
+    <div class="card">
+      <h2>Aceleración con GPU en una imagen</h2>
+      <p class="lead">Tres conceptos clave y tres factores de éxito.</p>
+      <div class="escena"><svg id="rs-svg" aria-label="Infografía: paralelismo masivo, arquitectura GPU para caudal y CPU para latencia, CUDA y cuDNN; minimizar transferencias, maximizar el lote y hardware equilibrado"></svg></div>
+      <div class="dos-cols" style="margin-top:.8rem">
+        <div class="box acento"><h3>Lista para el desarrollador</h3>
+          <ul class="lista-check">
+            <li>Verificar la compatibilidad CUDA ↔ framework.</li>
+            <li>Usar un entorno virtual (conda o venv) para aislar cuDNN.</li>
+            <li>PyTorch: instalar con el <code>--index-url</code> correcto.</li>
+            <li>TensorFlow en Windows (versiones posteriores a la 2.10): WSL2.</li>
+            <li>Código: activar <code>mixed_float16</code> si la GPU es RTX.</li>
+            <li>DataLoader: ajustar <code>num_workers</code> y <code>prefetch_factor</code>.</li>
+          </ul>
+        </div>
+        <div class="box acento"><h3>Vigilar el entrenamiento</h3>
+          <p>En otra terminal, <code>watch -n 1 nvidia-smi</code> muestra cada segundo:</p>
+          <ul>
+            <li><strong>GPU-Util</strong>: % del tiempo que la GPU está calculando. Si fluctúa mucho, hay un cuello de botella en la CPU o el disco.</li>
+            <li><strong>Memory-Usage</strong>: VRAM ocupada.</li>
+          </ul>
+          <p>Las mejoras de cuDNN y del hardware reducen el entrenamiento de días a horas: conviene mantener controladores y librerías al día.</p>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> la GPU acelera porque las redes son multiplicaciones de matrices, que se pueden hacer en paralelo. Pero solo rinde si la alimentas bien: pocas transferencias, lotes grandes y un hardware equilibrado alrededor.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, S = RN.svg;
+  const $ = function (id) { return document.getElementById(id); };
+  const AC = RN.acento();            // naranja del bloque
+  const ACL = "#FFE9D6";             // tinte claro del acento
+  const OCIO = "#E57373";            // rayado de «GPU ociosa»
+
+  // ------------------------------------------------------------------ utilidades
+  function txt(p, x, y, s, o) {
+    const a = { x: x, y: y, "font-size": 14, fill: C.ink };
+    if (o) for (const k in o) a[k] = o[k];
+    a.text = s;
+    return S("text", a, p);
+  }
+  function rect(p, x, y, w, h, o) {
+    const a = { x: x, y: y, width: Math.max(0, w), height: Math.max(0, h), rx: 8 };
+    if (o) for (const k in o) a[k] = o[k];
+    return S("rect", a, p);
+  }
+  function vaciar(e) { while (e.firstChild) e.removeChild(e.firstChild); }
+  function caja(svg, vb, etiqueta) { svg.setAttribute("viewBox", vb); svg.setAttribute("role", "img"); if (etiqueta) svg.setAttribute("aria-label", etiqueta); }
+  function segmentado(id, fn) {
+    const bs = Array.from($(id).querySelectorAll("button"));
+    bs.forEach(function (b) {
+      b.addEventListener("click", function () {
+        bs.forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        fn(b.dataset.v, b);
+      });
+    });
+  }
+  function rr(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function fuente(ctx, px, peso) { ctx.font = (peso || 400) + " " + px + "px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"; }
+  function num(x, d) { return Number.isFinite(x) ? x.toLocaleString("es-ES", { maximumFractionDigits: d === undefined ? 2 : d }) : "—"; }
+  function fmtBytes(b) {
+    if (b < 1e6) return num(b / 1e3, 1) + " KB";
+    if (b < 1e9) return num(b / 1e6, b < 1e7 ? 1 : 0) + " MB";
+    return num(b / 1e9, b < 1e10 ? 2 : (b < 1e11 ? 1 : 0)) + " GB";
+  }
+  // Bucle de animación ambiental (se congela si la pestaña está oculta). Con movimiento reducido, un fotograma fijo.
+  function ambiente(paso, el, tFijo) {
+    if (RN.reducirMovimiento) { paso(0, tFijo || 1.5); return null; }
+    const a = RN.anima(function (dt, t) { paso(dt, t); }, el);
+    a.iniciar();
+    return a;
+  }
+  function rayado(ctx, x, y, w, h) {
+    if (w <= 0.5) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = "#FFEBEE"; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = OCIO; ctx.lineWidth = 1.4;
+    for (let k = -h; k < w; k += 6) { ctx.beginPath(); ctx.moveTo(x + k, y + h); ctx.lineTo(x + k + h, y); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // ===================================================================== 1 · BIG DATA
+  (function () {
+    const svg = $("bd-4v");
+    caja(svg, "0 0 1000 300");
+    const W = 232, GAP = (1000 - 20 - 4 * W) / 3;
+    const pan = [["Volumen", "Cantidad masiva de datos", "generados constantemente."],
+      ["Variedad", "Orígenes diversos: redes", "sociales, sensores, finanzas."],
+      ["Velocidad", "Ritmo de generación", "sin precedentes."],
+      ["Veracidad", "Incertidumbre y calidad", "de los datos."]];
+    const G = pan.map(function (p, k) {
+      const g = S("g", { transform: "translate(" + (10 + k * (W + GAP)) + ",10)" }, svg);
+      rect(g, 0, 0, W, 280, { fill: "#fff", stroke: "#E4E7EB", rx: 12 });
+      txt(g, 18, 34, p[0], { "font-size": 19, "font-weight": 800 });
+      S("line", { x1: 18, y1: 43, x2: 52, y2: 43, stroke: AC, "stroke-width": 3, "stroke-linecap": "round" }, g);
+      txt(g, 18, 250, p[1], { "font-size": 13.5, fill: C.ink2 });
+      txt(g, 18, 268, p[2], { "font-size": 13.5, fill: C.ink2 });
+      return g;
+    });
+
+    // --- Volumen: bloques que se apilan y se comprimen ×1000
+    const UNI = ["KB", "MB", "GB", "TB", "PB"];
+    const gV = G[0];
+    const chips = UNI.map(function (u, i) {
+      const x = 18 + i * 40;
+      return {
+        r: rect(gV, x, 56, 36, 22, { rx: 11, fill: "#F5F7FA", stroke: "#E4E7EB" }),
+        t: txt(gV, x + 18, 71.5, u, { "font-size": 12.5, "font-weight": 700, "text-anchor": "middle", fill: C.ink2 })
+      };
+    });
+    const x1000 = txt(gV, W / 2, 110, "× 1000", { "font-size": 16, "font-weight": 800, "text-anchor": "middle", fill: AC, opacity: 0 });
+    const BL = 19, BG = 5, NC = 8, NR = 4, bx0 = (W - (NC * (BL + BG) - BG)) / 2, yB = 228;
+    const blq = [];
+    for (let k = 0; k < NC * NR; k++) {
+      const x = bx0 + (k % NC) * (BL + BG), y = yB - (Math.floor(k / NC) + 1) * (BL + BG) + BG;
+      blq.push({ x: x, y: y, e: rect(gV, x, y, BL, BL, { rx: 4, fill: C.s1, opacity: 0 }) });
+    }
+    let vU = 0, vF = "llenar", vT = 0;
+    const PASO = 0.075, NB = NC * NR;
+    function volumen(dt) {
+      vT += dt;
+      if (vF === "llenar" && vT > NB * PASO + 0.7) { vF = "comprimir"; vT = 0; }
+      else if (vF === "comprimir" && vT > 0.95) { vF = "llenar"; vT = 0; vU = (vU + 1) % UNI.length; }
+      const cmp = vF === "comprimir" ? RN.suave(Math.min(1, vT / 0.8)) : 0;
+      blq.forEach(function (b, k) {
+        let x = b.x, y = b.y, op;
+        if (vF === "llenar") {
+          const c = k === 0 ? 1 : RN.limita((vT - k * PASO) / 0.22, 0, 1);
+          y = b.y - 24 * (1 - c) * (1 - c); op = c;
+        } else {
+          x = RN.lerp(b.x, blq[0].x, cmp); y = RN.lerp(b.y, blq[0].y, cmp); op = k === 0 ? 1 : 1 - cmp;
+        }
+        b.e.setAttribute("x", x.toFixed(1)); b.e.setAttribute("y", y.toFixed(1)); b.e.setAttribute("opacity", op.toFixed(2));
+      });
+      const act = vF === "comprimir" && cmp > 0.5 ? (vU + 1) % UNI.length : vU;
+      chips.forEach(function (c, i) {
+        const on = i === act;
+        c.r.setAttribute("fill", on ? AC : "#F5F7FA"); c.r.setAttribute("stroke", on ? AC : "#E4E7EB");
+        c.t.setAttribute("fill", on ? "#fff" : C.ink2);
+      });
+      x1000.setAttribute("opacity", vF === "comprimir" ? Math.sin(Math.PI * Math.min(1, vT / 0.95)).toFixed(2) : 0);
+    }
+
+    // --- Variedad: tres fuentes con formas distintas que acaban en el mismo almacén
+    const gVa = G[1];
+    const fu = [{ y: 82, c: C.s5, e: "redes" }, { y: 136, c: C.s3, e: "sensores" }, { y: 190, c: C.s4, e: "finanzas" }];
+    fu.forEach(function (f, i) {
+      S("circle", { cx: 38, cy: f.y, r: 17, fill: "#F5F7FA", stroke: "#CFD8DC" }, gVa);
+      const gi = S("g", { transform: "translate(38," + f.y + ")" }, gVa);
+      if (i === 0) S("path", { d: "M-9,-7 h18 a2,2 0 0 1 2,2 v9 a2,2 0 0 1 -2,2 h-9 l-5,5 v-5 h-4 a2,2 0 0 1 -2,-2 v-9 a2,2 0 0 1 2,-2 z", fill: "none", stroke: f.c, "stroke-width": 2, "stroke-linejoin": "round" }, gi);
+      if (i === 1) {
+        S("circle", { cx: 0, cy: 2, r: 3, fill: f.c }, gi);
+        S("path", { d: "M-6,-4 a8,8 0 0 0 0,12 M6,-4 a8,8 0 0 1 0,12 M-10,-8 a13,13 0 0 0 0,20 M10,-8 a13,13 0 0 1 0,20", fill: "none", stroke: f.c, "stroke-width": 2, "stroke-linecap": "round" }, gi);
+      }
+      if (i === 2) [[-8, 4], [-2, 8], [4, 12]].forEach(function (b) { rect(gi, b[0], 7 - b[1], 4.5, b[1], { rx: 1, fill: f.c }); });
+      txt(gVa, 38, f.y + 31, f.e, { "font-size": 12, "text-anchor": "middle", fill: C.ink2 });
+    });
+    const part = [];
+    for (let i = 0; i < 18; i++) {
+      const k = i % 3, g = S("g", { opacity: 0 }, gVa);
+      if (k === 0) S("circle", { r: 5, fill: C.s5 }, g);
+      else if (k === 1) S("path", { d: "M0,-6 L5.5,4 L-5.5,4 Z", fill: C.s3 }, g);
+      else rect(g, -4.5, -4.5, 9, 9, { rx: 1.5, fill: C.s4 });
+      part.push({ g: g, k: k, off: ((i * 7) % 18) / 18 });
+    }
+    S("path", { d: "M166,112 v50 a24,7 0 0 0 48,0 v-50", fill: "#F5F7FA", stroke: C.ink2, "stroke-width": 1.5 }, gVa);
+    S("ellipse", { cx: 190, cy: 112, rx: 24, ry: 7, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 }, gVa);
+    txt(gVa, 190, 190, "datos", { "font-size": 12.5, "text-anchor": "middle", fill: C.ink2 });
+    function variedad(t) {
+      part.forEach(function (p) {
+        const f = fu[p.k], u = (t * 0.33 + p.off) % 1;
+        const x0 = 58, y0 = f.y, x1 = 122, y1 = f.y, x2 = 182, y2 = 138;
+        const x = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * x1 + u * u * x2;
+        const y = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * y1 + u * u * y2;
+        const op = u < 0.12 ? u / 0.12 : u > 0.82 ? Math.max(0, (0.97 - u) / 0.15) : 1;
+        p.g.setAttribute("transform", "translate(" + x.toFixed(1) + "," + y.toFixed(1) + ")");
+        p.g.setAttribute("opacity", op.toFixed(2));
+      });
+    }
+
+    // --- Velocidad: velocímetro y flujo de paquetes
+    const gVe = G[2];
+    const gc = { x: 116, y: 120, r: 48 };
+    function arco(cx, cy, r, a0, a1) {
+      const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      return "M" + x0.toFixed(1) + "," + y0.toFixed(1) + " A" + r + "," + r + " 0 " + (a1 - a0 > Math.PI ? 1 : 0) + " 1 " + x1.toFixed(1) + "," + y1.toFixed(1);
+    }
+    S("path", { d: arco(gc.x, gc.y, gc.r, Math.PI, 2 * Math.PI), fill: "none", stroke: "#E4E7EB", "stroke-width": 10, "stroke-linecap": "round" }, gVe);
+    const arcoV = S("path", { fill: "none", stroke: AC, "stroke-width": 10, "stroke-linecap": "round" }, gVe);
+    const aguja = S("line", { x1: gc.x, y1: gc.y, x2: gc.x, y2: gc.y - 30, stroke: C.ink, "stroke-width": 3, "stroke-linecap": "round" }, gVe);
+    S("circle", { cx: gc.x, cy: gc.y, r: 5, fill: C.ink }, gVe);
+    const carriles = [162, 186, 210].map(function (y, i) {
+      S("line", { x1: 18, y1: y, x2: W - 18, y2: y, stroke: "#EEF1F4", "stroke-width": 2 }, gVe);
+      const items = [];
+      for (let j = 0; j < 4; j++) {
+        const g = S("g", { opacity: 0 }, gVe);
+        S("line", { x1: -26, y1: 0, x2: 0, y2: 0, stroke: C.s1, "stroke-width": 3, opacity: 0.3, "stroke-linecap": "round" }, g);
+        rect(g, -2, -4.5, 14, 9, { rx: 4.5, fill: C.s1 });
+        items.push(g);
+      }
+      return { y: y, v: [0.95, 1.3, 1.1][i], items: items, off: i * 0.13 };
+    });
+    function velocidad(t) {
+      const v = 0.86 + 0.06 * Math.sin(t * 2.3) + 0.03 * Math.sin(t * 7.1);
+      const a = Math.PI + Math.PI * v;
+      arcoV.setAttribute("d", arco(gc.x, gc.y, gc.r, Math.PI, a));
+      aguja.setAttribute("x2", (gc.x + (gc.r - 12) * Math.cos(a)).toFixed(1));
+      aguja.setAttribute("y2", (gc.y + (gc.r - 12) * Math.sin(a)).toFixed(1));
+      carriles.forEach(function (c) {
+        c.items.forEach(function (g, j) {
+          const u = (t * c.v + c.off + j / 4) % 1, x = 32 + u * (W - 64);
+          g.setAttribute("transform", "translate(" + x.toFixed(1) + "," + c.y + ")");
+          g.setAttribute("opacity", (u < 0.1 ? u / 0.1 : u > 0.9 ? (1 - u) / 0.1 : 1).toFixed(2));
+        });
+      });
+    }
+
+    // --- Veracidad: un escáner revisa la tabla y marca celdas dudosas
+    const gVr = G[3];
+    const CW = 34, CH = 17, CG = 4, NCv = 5, NRv = 6, vx0 = (W - (NCv * (CW + CG) - CG)) / 2, vy0 = 60;
+    const probl = { 3: "?", 8: "!", 14: "≠", 17: "?", 21: "×2", 27: "!" };
+    const rngV = RN.rng(11);
+    const celdas = [];
+    for (let k = 0; k < NCv * NRv; k++) {
+      const x = vx0 + (k % NCv) * (CW + CG), y = vy0 + Math.floor(k / NCv) * (CH + CG);
+      const r = rect(gVr, x, y, CW, CH, { rx: 3, fill: "#F5F7FA", stroke: "#E4E7EB" });
+      if (probl[k] !== "?") S("line", { x1: x + 5, y1: y + CH / 2, x2: x + 13 + rngV() * 14, y2: y + CH / 2, stroke: "#B0BEC5", "stroke-width": 3, "stroke-linecap": "round" }, gVr);
+      const s = probl[k] ? txt(gVr, x + CW - 9, y + CH / 2 + 4.5, probl[k], { "font-size": 12.5, "font-weight": 800, "text-anchor": "middle", fill: "#7A5A00", opacity: 0 }) : null;
+      celdas.push({ x: x, r: r, s: s });
+    }
+    const esc = S("line", { x1: vx0, x2: vx0, y1: vy0 - 6, y2: vy0 + NRv * (CH + CG) + 2, stroke: AC, "stroke-width": 2.5 }, gVr);
+    txt(gVr, 18, 206, "? falta  ! atípico", { "font-size": 12.5, fill: C.ink2 });
+    txt(gVr, 18, 224, "≠ incoherente ×2 repetido", { "font-size": 12.5, fill: C.ink2 });
+    function veracidad(t) {
+      const T = t % 5.2, ancho = NCv * (CW + CG) + 4;
+      const xs = vx0 - 4 + RN.limita(T / 2.6, 0, 1) * ancho;
+      esc.setAttribute("x1", xs.toFixed(1)); esc.setAttribute("x2", xs.toFixed(1));
+      esc.setAttribute("opacity", T < 2.7 ? 1 : 0);
+      celdas.forEach(function (c) {
+        if (!c.s) return;
+        const on = T < 2.6 ? xs > c.x + CW / 2 : T < 4.6;
+        c.r.setAttribute("fill", on ? "#FFF8E1" : "#F5F7FA");
+        c.r.setAttribute("stroke", on ? "#F0B400" : "#E4E7EB");
+        c.s.setAttribute("opacity", on ? 1 : 0);
+      });
+    }
+
+    // --- Tipos de datos
+    const st = $("bd-tipos");
+    caja(st, "0 0 1000 322");
+    [{ x: 10, t: "Estructurados", s: "Bases de datos relacionales, tablas" },
+      { x: 340, t: "Semiestructurados", s: "XML, JSON, logs de sistema" },
+      { x: 670, t: "No estructurados", s: "Imágenes, audio, texto libre" }].forEach(function (c) {
+      rect(st, c.x, 10, 320, 238, { fill: "#fff", stroke: "#E4E7EB", rx: 12 });
+      txt(st, c.x + 18, 40, c.t, { "font-size": 18, "font-weight": 800 });
+      txt(st, c.x + 18, 61, c.s, { "font-size": 13.5, fill: C.ink2 });
+    });
+    const tab = [["id", "edad", "ciudad", "importe €"], ["1", "34", "Madrid", "120,50"], ["2", "51", "Sevilla", "89,90"], ["3", "27", "Bilbao", "45,00"], ["4", "42", "Valencia", "230,10"]];
+    const anchos = [36, 50, 92, 106];
+    tab.forEach(function (f, i) {
+      let x = 28;
+      f.forEach(function (v, j) {
+        rect(st, x, 80 + i * 30, anchos[j], 30, { rx: 0, fill: i === 0 ? "#EEF1F4" : "#fff", stroke: "#D5DBE1" });
+        txt(st, x + 8, 80 + i * 30 + 20, v, { "font-size": 13, "font-weight": i === 0 ? 700 : 400, fill: i === 0 ? C.ink2 : C.ink });
+        x += anchos[j];
+      });
+    });
+    ['{ "usuario": "ana",', '  "edad": 34,', '  "compras": [', '    { "id": 7, "total": 120.5 } ] }', '<pedido id="7" estado="ok"/>', '10:31:07 INFO login usuario=ana'].forEach(function (l, i) {
+      txt(st, 356, 96 + i * 25, l, { "font-size": 13, "font-family": "ui-monospace, Menlo, Consolas, monospace", fill: i < 4 ? C.ink : C.ink2, style: "white-space:pre" });
+    });
+    const pix = ["0000000000", "0067776000", "0480004800", "0000005800", "0000387000", "0000058600", "0000000860", "0560000860", "0078888700", "0000000000"];
+    pix.forEach(function (f, i) {
+      for (let j = 0; j < 10; j++) rect(st, 690 + j * 8, 78 + i * 8, 8, 8, { rx: 0, fill: RN.mezcla("#ffffff", "#1F2933", +f[j] / 9) });
+    });
+    rect(st, 690, 78, 80, 80, { rx: 0, fill: "none", stroke: "#CFD8DC" });
+    txt(st, 730, 176, "imagen", { "font-size": 12.5, "text-anchor": "middle", fill: C.ink2 });
+    const onda = S("path", { fill: "none", stroke: C.s1, "stroke-width": 2, "stroke-linejoin": "round" }, st);
+    txt(st, 888, 176, "audio", { "font-size": 12.5, "text-anchor": "middle", fill: C.ink2 });
+    txt(st, 690, 204, "«El envío llegó tarde, pero", { "font-size": 13.5, "font-style": "italic", fill: C.ink });
+    txt(st, 690, 223, "la atención fue genial»", { "font-size": 13.5, "font-style": "italic", fill: C.ink });
+    function audio(t) {
+      let d = "";
+      for (let x = 792; x <= 984; x += 3) {
+        const e = Math.sin(Math.PI * (x - 792) / 192);
+        const y = 118 + 26 * e * Math.sin(x / 7 + t * 5) * (0.55 + 0.45 * Math.sin(x / 29 - t * 1.3));
+        d += (d ? " L" : "M") + x + "," + y.toFixed(1);
+      }
+      onda.setAttribute("d", d);
+    }
+    const defs = S("defs", {}, st);
+    const lg = S("linearGradient", { id: "bd-grad", x1: "0", x2: "1", y1: "0", y2: "0" }, defs);
+    S("stop", { offset: "0", "stop-color": C.s1 }, lg); S("stop", { offset: "1", "stop-color": AC }, lg);
+    S("line", { x1: 34, y1: 292, x2: 966, y2: 292, stroke: "url(#bd-grad)", "stroke-width": 3 }, st);
+    S("path", { d: "M24,292 l12,-6 v12 z", fill: C.s1 }, st);
+    S("path", { d: "M976,292 l-12,-6 v12 z", fill: AC }, st);
+    txt(st, 24, 315, "más estructura", { "font-size": 13.5, fill: C.ink2, "font-weight": 700 });
+    txt(st, 976, 315, "menos estructura", { "font-size": 13.5, fill: C.ink2, "font-weight": 700, "text-anchor": "end" });
+    rect(st, 734, 258, 192, 24, { rx: 12, fill: AC });
+    txt(st, 830, 275, "el grueso del deep learning", { "font-size": 13, "font-weight": 700, fill: "#fff", "text-anchor": "middle" });
+
+    ambiente(function (dt, t) { volumen(dt); variedad(t); velocidad(t); veracidad(t); audio(t); }, svg, 2.2);
+  })();
+
+  // ===================================================================== 2 · COSTE DE ENTRENAR
+  (function () {
+    const M = [
+      { n: "LeNet-5", a: 1998, p: 6e4, e: "≈ 60 mil", pos: [10, -12, "left"] },
+      { n: "AlexNet", a: 2012, p: 6e7, e: "≈ 60 M", pos: [-11, -9, "right"] },
+      { n: "VGG-16", a: 2014, p: 1.38e8, e: "≈ 138 M", pos: [10, 18, "left"] },
+      { n: "BERT-large", a: 2018, p: 3.4e8, e: "≈ 340 M", pos: [-11, -13, "right"] },
+      { n: "GPT-2", a: 2019, p: 1.5e9, e: "1500 M", pos: [10, 17, "left"] },
+      { n: "GPT-3", a: 2020, p: 1.75e11, e: "175.000 M", pos: [-12, -2, "right"] }
+    ];
+    const fmtP = function (v) {
+      if (v >= 1e12) return RN.fmtN(v / 1e12) + " billón";
+      return v < 1e6 ? RN.fmtN(v / 1e3) + " mil" : RN.fmtN(v / 1e6) + " M";
+    };
+    let log = true, hov = -1;
+    function opY() {
+      return log ? { min: 1e4, max: 1e12, log: true, titulo: "parámetros (escala logarítmica)", fmt: fmtP }
+        : { min: 0, max: 2e11, titulo: "parámetros (escala lineal)", fmt: function (v) { return v === 0 ? "0" : RN.fmtN(v / 1e6) + " M"; } };
+    }
+    const cv = $("cs-cv");
+    const g = RN.grafica(cv, {
+      alto: 360, hover: false, margen: { l: 92, r: 24, t: 20, b: 46 },
+      x: { min: 1995, max: 2023, titulo: "año de publicación", fmt: function (v) { return String(Math.round(v)); } },
+      y: opY(),
+      extras: function (ctx, g) {
+        ctx.save();
+        ctx.strokeStyle = C.axis; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        M.forEach(function (m, i) { const X = g.sx(m.a), Y = g.sy(m.p); if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); });
+        ctx.stroke(); ctx.setLineDash([]);
+        M.forEach(function (m, i) {
+          ctx.beginPath(); ctx.arc(g.sx(m.a), g.sy(m.p), i === hov ? 8 : 6, 0, 2 * Math.PI);
+          ctx.fillStyle = C.s1; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+        });
+        fuente(ctx, 13, 600); ctx.fillStyle = C.ink; ctx.textBaseline = "middle";
+        M.forEach(function (m) {
+          if (!log && m.p < 1e10) return;
+          ctx.textAlign = m.pos[2];
+          ctx.fillText(m.n + " · " + m.e, g.sx(m.a) + m.pos[0], g.sy(m.p) + m.pos[1]);
+        });
+        if (!log) {
+          fuente(ctx, 13); ctx.fillStyle = C.ink2; ctx.textAlign = "left";
+          ctx.fillText("LeNet-5, AlexNet, VGG-16, BERT-large y GPT-2: aplastados contra el cero", g.sx(1996), g.sy(0) - 16);
+        }
+        ctx.restore();
+      }
+    });
+    g.dibujar([]);
+    segmentado("cs-escala", function (v) { log = v === "log"; g.op.y = opY(); g.dibujar(); });
+    cv.addEventListener("mousemove", function (ev) {
+      const r = cv.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top;
+      let best = -1, bd = 18;
+      M.forEach(function (m, i) { const d = Math.hypot(g.sx(m.a) - px, g.sy(m.p) - py); if (d < bd) { bd = d; best = i; } });
+      if (best !== hov) { hov = best; g.dibujar(); }
+      if (best >= 0) {
+        const m = M[best];
+        RN.tip.mostrar("<b>" + m.n + "</b> (" + m.a + ")<br>" + m.e + " parámetros<br>Pesos en FP32: <b>" + fmtBytes(m.p * 4) + "</b>", ev.clientX, ev.clientY);
+      } else RN.tip.ocultar();
+    });
+    cv.addEventListener("mouseleave", function () { hov = -1; RN.tip.ocultar(); g.dibujar(); });
+    const tb = $("cs-tabla").querySelector("tbody");
+    M.forEach(function (m) {
+      const tr = RN.el("tr", null, tb);
+      RN.el("td", null, tr, m.n);
+      RN.el("td", { class: "n" }, tr, String(m.a));
+      RN.el("td", { class: "n" }, tr, m.e);
+      RN.el("td", { class: "n" }, tr, fmtBytes(m.p * 4));
+    });
+    $("cs-ratio").textContent = "× " + num(M[5].p / M[0].p / 1e6, 1) + " mill.";
+    $("cs-mem").textContent = fmtBytes(M[5].p * 4);
+  })();
+
+  // ===================================================================== 3 · CPU frente a GPU
+  (function () {
+    const cv = $("cg-cv");
+    const CPU = { nuc: 8, dur: 1, col: C.s1, claro: "#E4EEFA" };
+    const GPU = { nuc: 512, dur: 4, col: C.s3, claro: "#DDF3EA", cols: 32, filas: 16 };
+    const MOD = { indep: { N: 512, r0: 2, r1: 12, tA: 4.4 }, cadena: { N: 16, r0: 4, r1: 14, tA: 16.5 } };
+    let modo = "indep", t = 2.6;
+    function total(ch) { const N = MOD[modo].N; return modo === "indep" ? Math.ceil(N / ch.nuc) * ch.dur : N * ch.dur; }
+    function fin() { return Math.max(total(CPU), total(GPU)); }
+    function estado(ch) {
+      const N = MOD[modo].N;
+      if (t >= total(ch) - 1e-9) return { hechas: N, activos: 0, fr: 0, fin: true };
+      if (modo === "indep") {
+        const ol = Math.floor(t / ch.dur), hechas = Math.min(N, ol * ch.nuc);
+        return { hechas: hechas, activos: Math.min(ch.nuc, N - hechas), fr: t / ch.dur - ol, fin: false };
+      }
+      const hechas = Math.floor(t / ch.dur);
+      return { hechas: hechas, activos: 1, fr: t / ch.dur - hechas, fin: false };
+    }
+    function ritmo() { const m = MOD[modo], u = RN.limita((t - m.tA) / 3, 0, 1); return m.r0 + (m.r1 - m.r0) * u * u * (3 - 2 * u); }
+    function pines(ctx, x, y, w, h) {
+      ctx.strokeStyle = "#B0BEC5"; ctx.lineWidth = 2;
+      for (let k = 1; k < 12; k++) {
+        const px = x + w * k / 12, py = y + h * k / 12;
+        ctx.beginPath(); ctx.moveTo(px, y - 7); ctx.lineTo(px, y); ctx.moveTo(px, y + h); ctx.lineTo(px, y + h + 7);
+        ctx.moveTo(x - 7, py); ctx.lineTo(x, py); ctx.moveTo(x + w, py); ctx.lineTo(x + w + 7, py); ctx.stroke();
+      }
+    }
+    function dibuja() {
+      const L = RN.lienzo(cv, 376), ctx = L.ctx, w = L.w, h = L.h;
+      ctx.fillStyle = C.surface; ctx.fillRect(0, 0, w, h);
+      const mitad = w / 2, N = MOD[modo].N;
+      ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mitad, 16); ctx.lineTo(mitad, h - 16); ctx.stroke();
+      [CPU, GPU].forEach(function (ch, k) {
+        const cx = k * mitad + mitad / 2, e = estado(ch);
+        ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+        fuente(ctx, 17, 700); ctx.fillStyle = C.ink;
+        ctx.fillText(k ? "GPU · 512 núcleos sencillos" : "CPU · 8 núcleos potentes", cx, 30);
+        fuente(ctx, 13); ctx.fillStyle = C.ink2;
+        ctx.fillText(k ? "cada tarea tarda 4 u.t. (núcleo más lento)" : "cada tarea tarda 1 u.t. (núcleo rápido)", cx, 50);
+        const cw = Math.min(mitad - 70, 420), chH = 200, chx = cx - cw / 2, chy = 72;
+        pines(ctx, chx, chy, cw, chH);
+        rr(ctx, chx, chy, cw, chH, 14); ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = "#90A4AE"; ctx.lineWidth = 2; ctx.stroke();
+        if (!k) {
+          const pad = 16, gap = 12, cachH = 40;
+          const nw = (cw - 2 * pad - 3 * gap) / 4, nh = (chH - 2 * pad - 2 * gap - cachH) / 2;
+          for (let i = 0; i < 8; i++) {
+            const x = chx + pad + (i % 4) * (nw + gap), y = chy + pad + Math.floor(i / 4) * (nh + gap);
+            const act = i < e.activos;
+            rr(ctx, x, y, nw, nh, 8); ctx.fillStyle = ch.claro; ctx.fill();
+            if (act) { ctx.save(); rr(ctx, x, y, nw, nh, 8); ctx.clip(); ctx.fillStyle = ch.col; ctx.fillRect(x, y + nh * (1 - e.fr), nw, nh * e.fr); ctx.restore(); }
+            rr(ctx, x, y, nw, nh, 8); ctx.strokeStyle = act ? ch.col : "#B0BEC5"; ctx.lineWidth = act ? 2 : 1.2; ctx.stroke();
+            fuente(ctx, 12.5, 600); ctx.fillStyle = act && e.fr > 0.55 ? "#fff" : C.ink2;
+            ctx.fillText("núcleo " + (i + 1), x + nw / 2, y + nh / 2 + 4);
+          }
+          const yc = chy + chH - pad - cachH;
+          rr(ctx, chx + pad, yc, cw - 2 * pad, cachH, 8); ctx.fillStyle = "#EEF1F4"; ctx.fill();
+          fuente(ctx, 13); ctx.fillStyle = C.ink2; ctx.fillText("caché grande y lógica de control compleja", cx, yc + cachH / 2 + 4.5);
+        } else {
+          const pad = 14, ctrlH = 22;
+          const cel = Math.min((cw - 2 * pad) / GPU.cols, (chH - 2 * pad - ctrlH - 6) / GPU.filas);
+          const gx = cx - cel * GPU.cols / 2, gy = chy + pad;
+          for (let i = 0; i < GPU.nuc; i++) {
+            const x = gx + (i % GPU.cols) * cel, y = gy + Math.floor(i / GPU.cols) * cel;
+            const act = i < e.activos;
+            ctx.fillStyle = act ? RN.mezcla(ch.claro, ch.col, 0.2 + 0.8 * e.fr) : ch.claro;
+            ctx.fillRect(x + 1, y + 1, cel - 2, cel - 2);
+          }
+          const yc = chy + chH - pad - ctrlH;
+          rr(ctx, chx + pad, yc, cw - 2 * pad, ctrlH, 6); ctx.fillStyle = "#EEF1F4"; ctx.fill();
+          fuente(ctx, 12.5); ctx.fillStyle = C.ink2; ctx.fillText("control y caché pequeños", cx, yc + ctrlH / 2 + 4.5);
+        }
+        const by = chy + chH + 40;
+        fuente(ctx, 13.5, 600); ctx.fillStyle = C.ink; ctx.textAlign = "left";
+        ctx.fillText("Tareas terminadas: " + RN.fmtN(e.hechas) + " de " + RN.fmtN(N), chx, by - 9);
+        ctx.textAlign = "right"; ctx.fillStyle = e.fin ? C.ok : C.ink2;
+        ctx.fillText(e.fin ? "✓ terminado en " + RN.fmtN(total(ch)) + " u.t." : "t = " + RN.fmt(t, 1) + " u.t.", chx + cw, by - 9);
+        rr(ctx, chx, by, cw, 14, 7); ctx.fillStyle = "#ECEFF1"; ctx.fill();
+        if (e.hechas > 0) { rr(ctx, chx, by, Math.max(14, cw * e.hechas / N), 14, 7); ctx.fillStyle = ch.col; ctx.fill(); }
+        if (modo === "cadena") {
+          fuente(ctx, 13); ctx.fillStyle = C.ink2; ctx.textAlign = "center";
+          ctx.fillText("Cada tarea necesita el resultado de la anterior: solo trabaja un núcleo", cx, by + 38);
+        }
+      });
+      if (ritmo() > MOD[modo].r0 * 1.5 && t < fin()) {
+        fuente(ctx, 12.5, 600); ctx.fillStyle = C.ink2; ctx.textAlign = "center";
+        ctx.fillText("⏩ reloj de la animación acelerado", mitad, h - 12);
+      }
+    }
+    const tabla = $("cg-tabla").querySelector("tbody");
+    function pintaTabla() {
+      vaciar(tabla);
+      [["CPU", CPU], ["GPU", GPU]].forEach(function (f) {
+        const ch = f[1], caudal = modo === "indep" ? ch.nuc / ch.dur : 1 / ch.dur;
+        const tr = RN.el("tr", null, tabla);
+        RN.el("td", null, tr).innerHTML = "<strong>" + f[0] + "</strong>";
+        RN.el("td", { class: "n" }, tr, RN.fmtN(ch.dur) + " u.t.");
+        RN.el("td", { class: "n" }, tr, num(caudal, 2) + (caudal === 1 ? " tarea/u.t." : " tareas/u.t."));
+        const gana = total(ch) <= total(ch === CPU ? GPU : CPU);
+        RN.el("td", { class: "n" }, tr).innerHTML = (gana ? "<b>" : "") + RN.fmtN(total(ch)) + " u.t." + (gana ? " · gana</b>" : "");
+      });
+    }
+    const anim = RN.anima(function (dt) {
+      t = Math.min(fin(), t + dt * ritmo());
+      dibuja();
+      if (t >= fin()) return false;
+    }, cv);
+    const btn = $("cg-play");
+    btn.addEventListener("click", function () { if (!anim.activo && t >= fin()) t = 0; });
+    RN.botonPlay(btn, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    $("cg-reset").addEventListener("click", function () { anim.parar(); t = 0; dibuja(); });
+    segmentado("cg-modo", function (v) { anim.parar(); modo = v; t = 0; pintaTabla(); dibuja(); });
+    RN.alCambiarTam(cv, dibuja);
+    pintaTabla();
+
+    // --- Papeles de CPU y GPU
+    const sv = $("cg-roles");
+    caja(sv, "0 0 1000 262");
+    function lado(x, titulo, sub, lista, col, esGPU) {
+      rect(sv, x, 14, 370, 234, { rx: 14, fill: "#fff", stroke: "#E4E7EB" });
+      rect(sv, x + 20, 32, 58, 58, { rx: 10, fill: RN.mezcla("#ffffff", col, 0.14), stroke: col, "stroke-width": 2 });
+      if (esGPU) { for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) rect(sv, x + 26 + j * 8, 38 + i * 8, 6, 6, { rx: 1, fill: col }); }
+      else txt(sv, x + 49, 66, "CPU", { "font-size": 15, "font-weight": 800, fill: col, "text-anchor": "middle" });
+      txt(sv, x + 94, 56, titulo, { "font-size": 18, "font-weight": 800 });
+      txt(sv, x + 94, 79, sub, { "font-size": 14, fill: C.ink2, "font-style": "italic" });
+      lista.forEach(function (l, i) {
+        S("circle", { cx: x + 30, cy: 124 + i * 30, r: 4, fill: col }, sv);
+        txt(sv, x + 44, 129 + i * 30, l, { "font-size": 14.5 });
+      });
+    }
+    lado(14, "CPU · host", "«director de orquesta»", ["Sistema operativo y recursos", "Lee los datos del disco a la RAM", "Lógica secuencial y compleja", "Preprocesa y carga los lotes"], C.s1, false);
+    lado(616, "GPU · device", "«el músculo»", ["Miles de operaciones a la vez", "Multiplicación de matrices", "El entrenamiento pesado", "Memoria propia: la VRAM"], C.s3, true);
+    S("defs", {}, sv).innerHTML = '<marker id="cg-fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="' + C.ink2 + '"/></marker>';
+    S("line", { x1: 392, y1: 104, x2: 604, y2: 104, stroke: C.ink2, "stroke-width": 2, "marker-end": "url(#cg-fl)" }, sv);
+    S("line", { x1: 604, y1: 168, x2: 392, y2: 168, stroke: C.ink2, "stroke-width": 2, "marker-end": "url(#cg-fl)" }, sv);
+    txt(sv, 498, 92, "instrucciones y datos", { "font-size": 14, "text-anchor": "middle", "font-weight": 700 });
+    txt(sv, 498, 156, "resultados", { "font-size": 14, "text-anchor": "middle", "font-weight": 700 });
+    txt(sv, 498, 214, "Objetivo: minimizar los", { "font-size": 13, "text-anchor": "middle", fill: C.ink2 });
+    txt(sv, 498, 232, "tiempos muertos al transferir", { "font-size": 13, "text-anchor": "middle", fill: C.ink2 });
+    const paq = [0, 1].map(function (k) { return rect(sv, 0, k ? 162 : 98, 16, 12, { rx: 3, fill: k ? C.s3 : C.s4, opacity: 0 }); });
+    ambiente(function (dt, tt) {
+      paq.forEach(function (p, k) {
+        const u = (tt * 0.45 + k * 0.5) % 1, x = k ? 588 - u * 186 : 396 + u * 186;
+        p.setAttribute("x", x.toFixed(1));
+        p.setAttribute("opacity", (u < 0.1 ? u / 0.1 : u > 0.9 ? (1 - u) / 0.1 : 1).toFixed(2));
+      });
+    }, sv, 0.6);
+  })();
+
+  // ===================================================================== 4 · MATRICES
+  // --- 4.1 Cada celda es fila × columna (cálculo real con números pequeños)
+  (function () {
+    const svg = $("mm-svg");
+    caja(svg, "0 0 1000 446");
+    const n = 4, c = 46, P = { A: [170, 230], B: [390, 30], C: [390, 230] };
+    let A, B, Cm, lleno, sel = [0, 1], foco = "uno", tok = 0, semilla = 3, pasos = 0, ocupado = false, modoTxt = "Pasa el ratón por una celda de C";
+    const cel = { A: [], B: [], C: [] };
+    function mat(f) { const m = []; for (let i = 0; i < n; i++) { m.push([]); for (let j = 0; j < n; j++) m[i].push(f(i, j)); } return m; }
+    function nuevos() {
+      const r = RN.rng(semilla);
+      A = mat(function () { return Math.floor(r() * 7) - 2; });
+      B = mat(function () { return Math.floor(r() * 7) - 2; });
+      Cm = mat(function (i, j) { let s = 0; for (let k = 0; k < n; k++) s += A[i][k] * B[k][j]; return s; });
+      lleno = mat(function (i, j) { return i === sel[0] && j === sel[1]; });
+      pasos = 0;
+    }
+    ["A", "B", "C"].forEach(function (m) {
+      for (let i = 0; i < n; i++) {
+        cel[m].push([]);
+        for (let j = 0; j < n; j++) {
+          const x = P[m][0] + j * c, y = P[m][1] + i * c;
+          const g = S("g", m === "C" ? { class: "celda-c" } : {}, svg);
+          const r = rect(g, x + 2, y + 2, c - 4, c - 4, { rx: 6, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.5 });
+          const t = txt(g, x + c / 2, y + c / 2 + 6, "", { "font-size": 17, "font-weight": 700, "text-anchor": "middle" });
+          cel[m][i].push({ r: r, t: t });
+          if (m === "C") {
+            const fij = function () { if (!ocupado) { sel = [i, j]; lleno[i][j] = true; foco = "uno"; pinta(); } };
+            g.addEventListener("mouseenter", fij); g.addEventListener("click", fij);
+          }
+        }
+      }
+    });
+    for (let k = 0; k < n; k++) {
+      txt(svg, P.A[0] - 12, P.A[1] + k * c + c / 2 + 5, String(k), { "font-size": 13, fill: C.muted, "text-anchor": "end" });
+      txt(svg, P.B[0] + k * c + c / 2, P.B[1] - 8, String(k), { "font-size": 13, fill: C.muted, "text-anchor": "middle" });
+    }
+    txt(svg, P.A[0] - 12, P.A[1] - 8, "fila", { "font-size": 12.5, fill: C.muted, "text-anchor": "end" });
+    txt(svg, P.B[0] - 10, P.B[1] - 8, "columna", { "font-size": 12.5, fill: C.muted, "text-anchor": "end" });
+    txt(svg, P.A[0] + 2 * c, 438, "A (4 × 4)", { "font-size": 15, "font-weight": 800, "text-anchor": "middle" });
+    txt(svg, P.C[0] + 2 * c, 438, "C = A × B", { "font-size": 15, "font-weight": 800, "text-anchor": "middle" });
+    txt(svg, P.B[0] - 16, P.B[1] + 2 * c + 5, "B (4 × 4)", { "font-size": 15, "font-weight": 800, "text-anchor": "end" });
+    // panel derecho
+    const X = 618;
+    txt(svg, X, 58, "Celdas calculadas", { "font-size": 14, fill: C.ink2 });
+    txt(svg, X + 200, 58, "Pasos de tiempo", { "font-size": 14, fill: C.ink2 });
+    const kCel = txt(svg, X, 94, "", { "font-size": 28, "font-weight": 800 });
+    const kPas = txt(svg, X + 200, 94, "", { "font-size": 28, "font-weight": 800 });
+    const kModo = txt(svg, X, 134, "", { "font-size": 14.5, fill: C.ink2 });
+    S("line", { x1: X, y1: 196, x2: 984, y2: 196, stroke: C.grid }, svg);
+    const f1 = txt(svg, X, 254, "", { "font-size": 16, "font-weight": 700 });
+    const f2 = txt(svg, X, 300, "", { "font-size": 18 });
+    const f3 = txt(svg, X, 348, "", { "font-size": 24, "font-weight": 800, fill: AC });
+    txt(svg, X, 396, "Solo usa la fila y la columna: ninguna", { "font-size": 14, fill: C.ink2 });
+    txt(svg, X, 416, "otra celda de C. Es independiente.", { "font-size": 14, fill: C.ink2 });
+    const par = function (v) { return v < 0 ? "(−" + (-v) + ")" : String(v); };
+    const signo = function (v) { return v < 0 ? "−" + (-v) : String(v); };
+    function pinta() {
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        const todas = foco === "todas";
+        const a = cel.A[i][j], b = cel.B[i][j], cc = cel.C[i][j];
+        const onA = todas || (foco === "uno" && i === sel[0]), onB = todas || (foco === "uno" && j === sel[1]);
+        a.r.setAttribute("fill", onA ? ACL : "#fff"); a.r.setAttribute("stroke", onA ? AC : "#CFD8DC"); a.t.textContent = signo(A[i][j]);
+        b.r.setAttribute("fill", onB ? ACL : "#fff"); b.r.setAttribute("stroke", onB ? AC : "#CFD8DC"); b.t.textContent = signo(B[i][j]);
+        const esSel = foco === "uno" && i === sel[0] && j === sel[1];
+        const enCurso = todas || esSel;
+        cc.r.setAttribute("fill", enCurso ? AC : (lleno[i][j] ? RN.mezcla("#ffffff", C.s3, 0.18) : "#F5F7FA"));
+        cc.r.setAttribute("stroke", enCurso ? AC : (lleno[i][j] ? C.s3 : "#CFD8DC"));
+        cc.t.textContent = lleno[i][j] ? signo(Cm[i][j]) : (todas ? "…" : "?");
+        cc.t.setAttribute("fill", enCurso ? "#fff" : (lleno[i][j] ? C.ink : C.muted));
+      }
+      let cnt = 0; lleno.forEach(function (f) { f.forEach(function (v) { if (v) cnt++; }); });
+      kCel.textContent = cnt + " de " + n * n;
+      kPas.textContent = String(pasos);
+      kModo.textContent = modoTxt;
+      const i = sel[0], j = sel[1];
+      f1.textContent = "C[" + i + "][" + j + "] = fila " + i + " de A · columna " + j + " de B";
+      f2.textContent = "= " + A[i].map(function (v, k) { return par(v) + "·" + par(B[k][j]); }).join(" + ");
+      f3.textContent = "= " + signo(Cm[i][j]);
+    }
+    async function animaCPU() {
+      const mi = ++tok; ocupado = true;
+      lleno = mat(function () { return false; }); pasos = 0; modoTxt = "CPU: una celda detrás de otra";
+      for (let k = 0; k < n * n; k++) {
+        sel = [Math.floor(k / n), k % n]; foco = "uno"; pinta();
+        await RN.espera(RN.reducirMovimiento ? 0 : 380); if (mi !== tok) return;
+        lleno[sel[0]][sel[1]] = true; pasos++; pinta();
+        await RN.espera(RN.reducirMovimiento ? 0 : 110); if (mi !== tok) return;
+      }
+      ocupado = false;
+    }
+    async function animaGPU() {
+      const mi = ++tok; ocupado = true;
+      lleno = mat(function () { return false; }); pasos = 0; modoTxt = "GPU: un hilo por celda, todas a la vez";
+      foco = "todas"; pinta();
+      await RN.espera(RN.reducirMovimiento ? 0 : 1000); if (mi !== tok) return;
+      lleno = mat(function () { return true; }); pasos = 1; foco = "uno"; pinta();
+      ocupado = false;
+    }
+    $("mm-cpu").addEventListener("click", animaCPU);
+    $("mm-gpu").addEventListener("click", animaGPU);
+    $("mm-nuevos").addEventListener("click", function () { tok++; ocupado = false; semilla += 7; nuevos(); foco = "uno"; modoTxt = "Pasa el ratón por una celda de C"; pinta(); });
+    nuevos(); pinta();
+  })();
+
+  // --- 4.2 Carrera CPU frente a GPU con un modelo de tiempo simple
+  (function () {
+    const cv = $("mr-cv");
+    const GOP = [128, 256, 512, 1024, 2048, 2500, 4096, 10240];
+    const FG = 4, T1 = 1.6, DUR2 = 5;
+    let n = 50, nc = 8, ng = 2500, ts = 0, tr = 0, r0 = 1, kA = 0;
+    function tiempos() { const oc = Math.ceil(n * n / nc), og = Math.ceil(n * n / ng); return { oc: oc, og: og, cpu: oc * n, gpu: og * n * FG }; }
+    function prepara() {
+      const T = tiempos(), a = Math.min(T.cpu, T.gpu), b = Math.max(T.cpu, T.gpu), resto = b - a;
+      r0 = a / T1; kA = 0;
+      if (resto > r0 * DUR2) {
+        let lo = 1e-6, hi = 30;
+        for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (r0 * (Math.exp(m * DUR2) - 1) / m > resto) hi = m; else lo = m; }
+        kA = (lo + hi) / 2;
+      }
+    }
+    function ritmo() { return tr < T1 || !kA ? r0 : r0 * Math.exp(kA * (tr - T1)); }
+    function fin() { const T = tiempos(); return Math.max(T.cpu, T.gpu); }
+    function lado(ctx, x0, ww, h, titulo, sub, nuc, factor, col) {
+      const d = n * factor, total = Math.ceil(n * n / nuc) * d, N = n * n;
+      const terminado = ts >= total - 1e-9;
+      const ol = Math.floor(ts / d), fr = ts / d - ol;
+      const hechas = terminado ? N : Math.min(N, ol * nuc), act = terminado ? 0 : Math.min(nuc, N - hechas);
+      const cx = x0 + ww / 2;
+      ctx.textAlign = "center"; fuente(ctx, 16, 700); ctx.fillStyle = C.ink; ctx.fillText(titulo, cx, 26);
+      fuente(ctx, 13); ctx.fillStyle = C.ink2; ctx.fillText(sub, cx, 45);
+      const L = Math.min(ww - 40, h - 128), cl = L / n, gx = cx - L / 2, gy = 60;
+      ctx.fillStyle = "#EEF1F4"; ctx.fillRect(gx, gy, L, L);
+      const claro = RN.mezcla("#ffffff", col, 0.18), gap = cl >= 5 ? 1 : 0;
+      ctx.fillStyle = col;
+      for (let k = 0; k < hechas; k++) ctx.fillRect(gx + (k % n) * cl + gap / 2, gy + Math.floor(k / n) * cl + gap / 2, cl - gap, cl - gap);
+      ctx.fillStyle = RN.mezcla(claro, AC, 0.25 + 0.6 * fr);
+      for (let k = hechas; k < hechas + act; k++) ctx.fillRect(gx + (k % n) * cl + gap / 2, gy + Math.floor(k / n) * cl + gap / 2, cl - gap, cl - gap);
+      ctx.strokeStyle = "#B0BEC5"; ctx.lineWidth = 1; ctx.strokeRect(gx - 0.5, gy - 0.5, L + 1, L + 1);
+      const W = Math.ceil(N / nuc), olA = terminado ? W : Math.min(W, ol + 1);
+      fuente(ctx, 13.5, 600); ctx.fillStyle = C.ink;
+      ctx.fillText("oleada " + RN.fmtN(olA) + " de " + RN.fmtN(W) + " · " + RN.fmtN(hechas) + " de " + RN.fmtN(N) + " celdas", cx, gy + L + 26);
+      ctx.fillStyle = terminado ? C.ok : C.ink2;
+      ctx.fillText(terminado ? "✓ terminado: " + RN.fmtN(total) + " pasos" : "t = " + RN.fmtN(ts) + " pasos", cx, gy + L + 48);
+    }
+    function dibuja() {
+      const Lz = RN.lienzo(cv, 430), ctx = Lz.ctx, w = Lz.w, h = Lz.h;
+      ctx.fillStyle = C.surface; ctx.fillRect(0, 0, w, h);
+      lado(ctx, 0, w / 2, h, "CPU · " + nc + (nc === 1 ? " núcleo" : " núcleos"), "1 celda = " + n + " pasos", nc, 1, C.s1);
+      lado(ctx, w / 2, w / 2, h, "GPU · " + RN.fmtN(ng) + " hilos a la vez", "1 celda = " + 4 * n + " pasos (núcleo más lento)", ng, FG, C.s3);
+      ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(w / 2, 14); ctx.lineTo(w / 2, h - 14); ctx.stroke();
+      const r = ritmo() / r0;
+      if (r > 1.5 && ts < fin()) { fuente(ctx, 12.5, 600); ctx.fillStyle = C.ink2; ctx.textAlign = "center"; ctx.fillText("⏩ reloj de la animación × " + RN.fmtN(r), w / 2, h - 6); }
+    }
+    const graf = RN.grafica($("mr-graf"), {
+      alto: 280, margen: { l: 80 },
+      x: { min: 4, max: 64, titulo: "tamaño n", fmtTip: function (v) { return RN.fmtN(v); } },
+      y: { min: 1, max: 1e6, log: true, titulo: "tiempo (pasos, escala log.)", fmt: function (v) { return RN.fmtN(v); }, fmtTip: function (v) { return RN.fmtN(v) + " pasos"; } }
+    });
+    function pintaGraf() {
+      const pc = [], pg = [];
+      for (let m = 4; m <= 64; m++) { pc.push([m, Math.ceil(m * m / nc) * m]); pg.push([m, Math.ceil(m * m / ng) * m * FG]); }
+      const T = tiempos();
+      graf.dibujar([
+        { nombre: "CPU", color: C.s1, puntos: pc },
+        { nombre: "GPU", color: C.s3, puntos: pg },
+        { tipo: "puntos", color: C.ink, radio: 5, puntos: [[n, T.cpu], [n, T.gpu]] }
+      ]);
+    }
+    function kpis() {
+      const T = tiempos(), ac = T.cpu / T.gpu;
+      $("mr-k1").textContent = RN.fmtN(n * n);
+      $("mr-k2").textContent = RN.fmtN(T.oc);
+      $("mr-k3").textContent = RN.fmtN(T.og);
+      $("mr-k4").textContent = ac >= 1 ? "× " + num(ac, 1) : "no: la CPU, × " + num(1 / ac, 1);
+    }
+    function todo() { anim.parar(); ts = 0; tr = 0; prepara(); kpis(); pintaGraf(); ts = fin(); dibuja(); }
+    const anim = RN.anima(function (dt) {
+      tr += dt; ts = Math.min(fin(), ts + dt * ritmo());
+      dibuja();
+      if (ts >= fin()) return false;
+    }, cv);
+    const btn = $("mr-play");
+    btn.addEventListener("click", function () { if (!anim.activo && ts >= fin()) { ts = 0; tr = 0; } });
+    RN.botonPlay(btn, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    $("mr-reset").addEventListener("click", function () { anim.parar(); ts = 0; tr = 0; dibuja(); });
+    $("mr-n").addEventListener("input", function (e) { n = +e.target.value; $("mr-no").textContent = n; todo(); });
+    $("mr-c").addEventListener("input", function (e) { nc = +e.target.value; $("mr-co").textContent = nc; todo(); });
+    $("mr-g").addEventListener("input", function (e) { ng = GOP[+e.target.value]; $("mr-go").textContent = RN.fmtN(ng); todo(); });
+    RN.alCambiarTam(cv, dibuja);
+    prepara(); kpis(); pintaGraf();
+    ts = 0.42 * Math.min(tiempos().cpu, tiempos().gpu) + 0.06 * fin(); // estado inicial a mitad de carrera
+    dibuja();
+  })();
+
+  // --- 4.3 Medición real del tiempo de una multiplicación
+  (function () {
+    const cv = $("md-cv");
+    const TAM = [48, 64, 96, 128, 160, 192, 224, 256, 320];
+    let med = [], coef = 0, midiendo = false, hecho = false;
+    const g = RN.grafica(cv, {
+      alto: 300, margen: { l: 64 },
+      x: { min: 0, max: 340, titulo: "tamaño n (matrices n × n)", fmtTip: function (v) { return RN.fmtN(v); } },
+      y: { min: 0, max: 40, titulo: "tiempo (ms)", fmtTip: function (v) { return RN.fmt(v, 2) + " ms"; } },
+      extras: function (ctx, g) {
+        if (!midiendo) return;
+        fuente(ctx, 14, 600); ctx.fillStyle = C.ink2; ctx.textAlign = "left"; ctx.textBaseline = "top";
+        ctx.fillText("Midiendo… n = " + (TAM[med.length] || ""), g.sx(10), g.m.t + 8);
+      }
+    });
+    function matmul(a, b, c, n) {
+      c.fill(0);
+      for (let i = 0; i < n; i++) {
+        const ri = i * n;
+        for (let k = 0; k < n; k++) { const v = a[ri + k], rk = k * n; for (let j = 0; j < n; j++) c[ri + j] += v * b[rk + j]; }
+      }
+    }
+    function ajusta() {
+      let sn = 0, sd = 0;
+      med.forEach(function (p) { const n3 = p[0] * p[0] * p[0]; sn += p[1] * n3; sd += n3 * n3; });
+      coef = sd ? sn / sd : 0;
+    }
+    function dur(ms) {
+      const s = ms / 1000;
+      if (s < 90) return "≈ " + num(s, 0) + " s";
+      if (s < 5400) return "≈ " + num(s / 60, 0) + " min";
+      return "≈ " + num(s / 3600, 1) + " h";
+    }
+    function pinta() {
+      const ymax = med.length ? Math.max.apply(null, med.map(function (p) { return p[1]; }).concat([coef * 340 * 340 * 340])) * 1.12 : 40;
+      g.op.y.max = Math.max(1, ymax);
+      const curva = [];
+      if (coef) for (let n = 0; n <= 340; n += 5) curva.push([n, coef * n * n * n]);
+      g.dibujar([
+        { nombre: "ajuste ∝ n³", color: C.s2, puntos: curva },
+        { tipo: "puntos", color: C.s1, radio: 6, puntos: med.slice() }
+      ]);
+      const t = function (n) { const p = med.find(function (q) { return q[0] === n; }); return p ? p[1] : null; };
+      const a = t(128), b = t(256);
+      $("md-k1").textContent = a ? RN.fmt(a, 2) + " ms" : "—";
+      $("md-k2").textContent = b ? RN.fmt(b, 1) + " ms" : "—";
+      $("md-k3").textContent = a && b ? "× " + RN.fmt(b / a, 1) : "—";
+      $("md-k4").textContent = hecho && coef ? dur(coef * 1e12) : "—";
+    }
+    function medir() {
+      if (midiendo) return;
+      midiendo = true; hecho = false; med = []; coef = 0; pinta();
+      const r = RN.rng(5);
+      let idx = 0;
+      function siguiente() {
+        if (idx >= TAM.length) { midiendo = false; hecho = true; ajusta(); pinta(); return; }
+        const n = TAM[idx++], a = new Float64Array(n * n), b = new Float64Array(n * n), c = new Float64Array(n * n);
+        for (let i = 0; i < n * n; i++) { a[i] = r() - 0.5; b[i] = r() - 0.5; }
+        matmul(a, b, c, n);
+        let reps = 0, t1;
+        const t0 = performance.now();
+        do { matmul(a, b, c, n); reps++; t1 = performance.now(); } while (t1 - t0 < 30 && reps < 400);
+        med.push([n, (t1 - t0) / reps]);
+        ajusta(); pinta();
+        setTimeout(siguiente, 20);
+      }
+      setTimeout(siguiente, 40);
+    }
+    $("md-medir").addEventListener("click", medir);
+    document.addEventListener("rn:pestana", function (e) { if (e.detail.id === "p-matrices" && !hecho && !midiendo) setTimeout(medir, 200); });
+    pinta();
+  })();
+
+  // ===================================================================== 5 · CUDA Y cuDNN
+  // --- 5.1 La pila de software
+  (function () {
+    const svg = $("cu-pila");
+    caja(svg, "0 0 1000 400");
+    const CAP = [
+      { n: "Tu código (Keras)", d: "Capas y modelos: lo que escribes tú", v: "model.fit(x, y)" },
+      { n: "TensorFlow / PyTorch", d: "Tensores, grafo de computación y gradientes automáticos", v: "MatMul, Conv2D, ReLU" },
+      { n: "cuDNN", d: "Primitivas para redes: convolución, activaciones, retropropagación", v: "cudnnConvolutionForward()" },
+      { n: "CUDA", d: "Plataforma de NVIDIA: kernels, bloques de hilos, memoria de la GPU", v: "kernel<<<bloques, hilos>>>" },
+      { n: "Controlador (driver)", d: "Comunica el sistema operativo con la tarjeta", v: "órdenes para la tarjeta" },
+      { n: "GPU NVIDIA", d: "Miles de núcleos ejecutan los hilos en paralelo", v: "" }
+    ];
+    const FH = 56, FG = 10, Y0 = 8;
+    S("line", { x1: 40, y1: Y0 + FH / 2, x2: 40, y2: Y0 + 5 * (FH + FG) + FH / 2, stroke: "#CFD8DC", "stroke-width": 3 }, svg);
+    const filas = CAP.map(function (c, k) {
+      const y = Y0 + k * (FH + FG);
+      const r = rect(svg, 70, y, 916, FH, { rx: 10, fill: "#fff", stroke: "#E4E7EB", "stroke-width": 1.5 });
+      const ci = S("circle", { cx: 40, cy: y + FH / 2, r: 17, fill: "#fff", stroke: "#B0BEC5", "stroke-width": 2 }, svg);
+      txt(svg, 40, y + FH / 2 + 5, String(k + 1), { "font-size": 14, "font-weight": 800, "text-anchor": "middle", fill: C.ink2 });
+      txt(svg, 90, y + 24, c.n, { "font-size": 16, "font-weight": 800 });
+      txt(svg, 90, y + 44, c.d, { "font-size": 13.5, fill: C.ink2 });
+      let b = null, bt = null;
+      if (k < 5) {
+        b = rect(svg, 700, y + 10, 274, FH - 20, { rx: 18, fill: "#0F1B2D" });
+        bt = txt(svg, 837, y + FH / 2 + 5, c.v, { "font-size": 13.5, "font-family": "ui-monospace, Menlo, Consolas, monospace", fill: "#E3EAF2", "text-anchor": "middle" });
+      }
+      return { r: r, ci: ci, b: b, bt: bt, y: y };
+    });
+    const nuc = [];
+    const yG = filas[5].y + 10;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 30; j++) nuc.push(rect(svg, 702 + j * 9, yG + i * 9, 7, 7, { rx: 1.5, fill: "#DDF3EA" }));
+    const ficha = S("circle", { cx: 40, cy: filas[0].y + FH / 2, r: 9, fill: AC, stroke: "#fff", "stroke-width": 2.5, opacity: 0 }, svg);
+    let tok = 0;
+    function marca(k, todo) {
+      filas.forEach(function (f, i) {
+        const on = i === k;
+        f.r.setAttribute("stroke", on ? AC : "#E4E7EB"); f.r.setAttribute("fill", on ? ACL : "#fff");
+        f.ci.setAttribute("stroke", on ? AC : "#B0BEC5");
+        if (f.b) { const op = todo || on ? 1 : 0.28; f.b.setAttribute("opacity", op); f.bt.setAttribute("opacity", op); }
+      });
+    }
+    function nucleos(u) { nuc.forEach(function (r, i) { const umbral = ((i * 37) % 120) / 120 * 0.7; r.setAttribute("fill", u > umbral ? RN.mezcla("#DDF3EA", C.s3, Math.min(1, (u - umbral) * 4)) : "#DDF3EA"); }); }
+    async function mover(y1, ms) { const y0 = +ficha.getAttribute("cy"); await RN.tween(ms, function (u) { ficha.setAttribute("cy", RN.lerp(y0, y1, u).toFixed(1)); }); }
+    async function enviar() {
+      const mi = ++tok;
+      filas.forEach(function (f, i) { if (f.bt) f.bt.textContent = CAP[i].v; });
+      ficha.setAttribute("cy", filas[0].y + FH / 2); ficha.setAttribute("opacity", 1); nucleos(0);
+      for (let k = 0; k < 6; k++) {
+        if (k) await mover(filas[k].y + FH / 2, 380);
+        if (mi !== tok) return;
+        marca(k, false);
+        if (k === 5) await RN.tween(1200, nucleos, function (u) { return u; });
+        else await RN.espera(RN.reducirMovimiento ? 0 : 560);
+        if (mi !== tok) return;
+      }
+      for (let k = 4; k >= 0; k--) {
+        await mover(filas[k].y + FH / 2, 220); if (mi !== tok) return;
+        marca(k, false); filas[k].bt.textContent = k === 0 ? "pérdida y métricas ✓" : "↑ resultado";
+        await RN.espera(RN.reducirMovimiento ? 0 : 200); if (mi !== tok) return;
+      }
+      await RN.espera(RN.reducirMovimiento ? 0 : 900); if (mi !== tok) return;
+      ficha.setAttribute("opacity", 0); nucleos(0); marca(-1, true);
+      filas.forEach(function (f, i) { if (f.bt) f.bt.textContent = CAP[i].v; });
+    }
+    $("cu-play").addEventListener("click", enviar);
+    marca(-1, true);
+  })();
+
+  // --- 5.2 La malla de bloques e hilos de un kernel
+  (function () {
+    const svg = $("ck-svg");
+    caja(svg, "0 0 560 514");
+    const N = 32, BD = 8, NB = N / BD, cl = 13, gx = 72, gy = 34, NSM = 4;
+    let tk = 1.5, sel = [19, 13];
+    txt(svg, 280, 20, "C (32 × 32) = 4 × 4 bloques de 8 × 8 hilos", { "font-size": 15, "font-weight": 700, "text-anchor": "middle" });
+    const celdas = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const r = rect(svg, gx + j * cl + 0.5, gy + i * cl + 0.5, cl - 1, cl - 1, { rx: 1.5, fill: "#F5F7FA" });
+      r.addEventListener("mouseenter", function () { sel = [i, j]; pinta(); });
+      celdas.push(r);
+    }
+    for (let k = 0; k <= NB; k++) {
+      S("line", { x1: gx + k * BD * cl, y1: gy, x2: gx + k * BD * cl, y2: gy + N * cl, stroke: C.ink2, "stroke-width": 1.5, "pointer-events": "none" }, svg);
+      S("line", { x1: gx, y1: gy + k * BD * cl, x2: gx + N * cl, y2: gy + k * BD * cl, stroke: C.ink2, "stroke-width": 1.5, "pointer-events": "none" }, svg);
+    }
+    const marcoB = rect(svg, 0, 0, BD * cl, BD * cl, { rx: 0, fill: "none", stroke: AC, "stroke-width": 3.5, "pointer-events": "none" });
+    const marcoH = rect(svg, 0, 0, cl, cl, { rx: 2, fill: "none", stroke: C.ink, "stroke-width": 2.5, "pointer-events": "none" });
+    const ySM = gy + N * cl + 14, wSM = (N * cl - (NSM - 1) * 8) / NSM;
+    const sms = [];
+    for (let s = 0; s < NSM; s++) {
+      const x = gx + s * (wSM + 8);
+      const r = rect(svg, x, ySM, wSM, 46, { rx: 8, fill: "#fff", stroke: "#B0BEC5", "stroke-width": 1.5 });
+      txt(svg, x + 9, ySM + 19, "SM " + s, { "font-size": 14.5, "font-weight": 800 });
+      const t = txt(svg, x + 9, ySM + 38, "", { "font-size": 13.5, fill: C.ink2 });
+      sms.push({ r: r, t: t });
+    }
+    const hecho = RN.mezcla("#ffffff", C.s3, 0.5);
+    function pinta() {
+      const ola = Math.floor(tk), fr = tk - ola;
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+        const b = Math.floor(i / BD) * NB + Math.floor(j / BD), w = Math.floor(b / NSM);
+        let f = "#F5F7FA";
+        if (w < ola) f = hecho; else if (w === ola) f = RN.mezcla(ACL, AC, 0.15 + 0.6 * fr);
+        celdas[i * N + j].setAttribute("fill", f);
+      }
+      sms.forEach(function (s, k) {
+        const b = ola * NSM + k, act = ola < NB * NB / NSM;
+        s.r.setAttribute("stroke", act ? AC : "#B0BEC5"); s.r.setAttribute("fill", act ? ACL : "#fff");
+        s.t.textContent = act ? "bloque (" + (b % NB) + ", " + Math.floor(b / NB) + ")" : "libre";
+      });
+      const i = sel[0], j = sel[1], by = Math.floor(i / BD), bx = Math.floor(j / BD), ty = i % BD, tx = j % BD;
+      marcoB.setAttribute("x", gx + bx * BD * cl); marcoB.setAttribute("y", gy + by * BD * cl);
+      marcoH.setAttribute("x", gx + j * cl); marcoH.setAttribute("y", gy + i * cl);
+      $("ck-info").innerHTML = "blockIdx = (x <b>" + bx + "</b>, y <b>" + by + "</b>) &nbsp;·&nbsp; threadIdx = (x <b>" + tx + "</b>, y <b>" + ty + "</b>)<br>" +
+        "fila = " + by + "·8 + " + ty + " = <b>" + i + "</b> &nbsp;·&nbsp; col = " + bx + "·8 + " + tx + " = <b>" + j + "</b><br>" +
+        "Calcula C[" + i + "][" + j + "] con 32 multiplicaciones y sumas.";
+    }
+    const code = [
+      ['<span class="kw">__global__ void</span> <span class="fn">matmul</span>(<span class="kw">float</span> *A, <span class="kw">float</span> *B, <span class="kw">float</span> *C, <span class="kw">int</span> n) {', 0],
+      ['  <span class="kw">int</span> fila = blockIdx.y * blockDim.y + threadIdx.y;', 1],
+      ['  <span class="kw">int</span> col  = blockIdx.x * blockDim.x + threadIdx.x;', 1],
+      ['  <span class="kw">if</span> (fila &lt; n &amp;&amp; col &lt; n) {', 0],
+      ['    <span class="kw">float</span> suma = <span class="num">0.0f</span>;', 0],
+      ['    <span class="kw">for</span> (<span class="kw">int</span> k = <span class="num">0</span>; k &lt; n; k++)', 0],
+      ['      suma += A[fila * n + k] * B[k * n + col];', 0],
+      ['    C[fila * n + col] = suma;', 0],
+      ['  }', 0], ['}', 0],
+      ['<span class="com">// 4 × 4 bloques de 8 × 8 hilos (uno por celda)</span>', 0],
+      ['dim3 hilos(<span class="num">8</span>, <span class="num">8</span>), bloques(<span class="num">4</span>, <span class="num">4</span>);', 0],
+      ['<span class="fn">matmul</span>&lt;&lt;&lt;bloques, hilos&gt;&gt;&gt;(dA, dB, dC, <span class="num">32</span>);', 0]
+    ];
+    $("ck-code").innerHTML = code.map(function (l) { return '<span class="linea' + (l[1] ? " hl" : "") + '">' + l[0] + "</span>"; }).join("");
+    const anim = RN.anima(function (dt) {
+      tk = Math.min(NB * NB / NSM, tk + dt * 1.1);
+      pinta();
+      if (tk >= NB * NB / NSM) return false;
+    }, svg);
+    const btn = $("ck-play");
+    btn.addEventListener("click", function () { if (!anim.activo && tk >= NB * NB / NSM) tk = 0; });
+    RN.botonPlay(btn, anim, ["▶ Ejecutar el kernel", "⏸ Pausa"]);
+    $("ck-reset").addEventListener("click", function () { anim.parar(); tk = 0; pinta(); });
+    pinta();
+  })();
+
+  // --- 5.3 Memoria del host frente a la del device
+  (function () {
+    const svg = $("hd-svg");
+    caja(svg, "0 0 1000 268");
+    const COL = { A: C.s1, B: C.s7, C: C.s3 };
+    rect(svg, 14, 12, 384, 244, { rx: 14, fill: "#fff", stroke: "#E4E7EB" });
+    rect(svg, 602, 12, 384, 244, { rx: 14, fill: "#fff", stroke: "#E4E7EB" });
+    txt(svg, 34, 42, "Host: CPU + RAM", { "font-size": 17, "font-weight": 800 });
+    txt(svg, 622, 42, "Device: GPU + VRAM", { "font-size": 17, "font-weight": 800 });
+    txt(svg, 34, 66, "RAM", { "font-size": 13, fill: C.ink2, "font-weight": 700 });
+    txt(svg, 622, 66, "VRAM", { "font-size": 13, fill: C.ink2, "font-weight": 700 });
+    rect(svg, 300, 84, 76, 76, { rx: 10, fill: RN.mezcla("#ffffff", C.s1, 0.12), stroke: C.s1, "stroke-width": 2 });
+    txt(svg, 338, 128, "CPU", { "font-size": 16, "font-weight": 800, "text-anchor": "middle", fill: C.s1 });
+    const nucG = [];
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) nucG.push(rect(svg, 852 + j * 14, 80 + i * 14, 11, 11, { rx: 2, fill: "#DDF3EA" }));
+    txt(svg, 908, 210, "núcleos de la GPU", { "font-size": 12.5, fill: C.ink2, "text-anchor": "middle" });
+    S("line", { x1: 398, y1: 122, x2: 602, y2: 122, stroke: "#B0BEC5", "stroke-width": 3 }, svg);
+    S("line", { x1: 398, y1: 152, x2: 602, y2: 152, stroke: "#B0BEC5", "stroke-width": 3 }, svg);
+    txt(svg, 500, 110, "bus PCIe", { "font-size": 13.5, fill: C.ink2, "text-anchor": "middle", "font-weight": 700 });
+    function bloque(nombre, col) {
+      const g = S("g", {}, svg);
+      rect(g, 0, 0, 200, 32, { rx: 6, fill: RN.mezcla("#ffffff", col, 0.14), stroke: col, "stroke-width": 1.5 });
+      txt(g, 12, 21, nombre, { "font-size": 14, "font-weight": 800, fill: C.ink });
+      for (let k = 0; k < 8; k++) rect(g, 58 + k * 17, 9, 13, 14, { rx: 2, fill: col, opacity: 0.35 + 0.08 * ((k * 5) % 8) });
+      return g;
+    }
+    const posH = { A: [34, 80], B: [34, 124], C: [34, 168] }, posD = { A: [622, 80], B: [622, 124], C: [622, 168] };
+    const huecoH = rect(svg, posH.C[0], posH.C[1], 200, 32, { rx: 6, fill: "none", stroke: "#B0BEC5", "stroke-dasharray": "5 4" });
+    txt(svg, posH.C[0] + 100, posH.C[1] + 21, "C (vacía)", { "font-size": 13, fill: C.muted, "text-anchor": "middle" });
+    const huecos = ["A", "B", "C"].map(function (k) { return rect(svg, posD[k][0], posD[k][1], 200, 32, { rx: 6, fill: "#F5F7FA", stroke: "#B0BEC5", "stroke-dasharray": "5 4" }); });
+    const etqH = ["dA", "dB", "dC"].map(function (k, i) { return txt(svg, posD.A[0] + 100, posD.A[1] + 21 + i * 44, k + " reservada", { "font-size": 13, fill: C.muted, "text-anchor": "middle" }); });
+    const vacia = txt(svg, 722, 140, "VRAM vacía", { "font-size": 14, fill: C.muted, "text-anchor": "middle" });
+    const hA = bloque("A", COL.A), hB = bloque("B", COL.B), hC = bloque("C", COL.C);
+    const dA = bloque("dA", COL.A), dB = bloque("dB", COL.B), dC = bloque("dC", COL.C);
+    const pon = function (g, p, op) { g.setAttribute("transform", "translate(" + p[0] + "," + p[1] + ")"); g.setAttribute("opacity", op); };
+    const lis = Array.from($("hd-pasos").children);
+    let p = 0, tok = 0;
+    function estatico() {
+      pon(hA, posH.A, 1); pon(hB, posH.B, 1); pon(hC, posH.C, p >= 4 ? 1 : 0);
+      huecoH.setAttribute("opacity", p >= 4 ? 0 : 1);
+      const reservada = p >= 1 && p < 5;
+      huecos.forEach(function (h) { h.setAttribute("opacity", reservada ? 1 : 0); });
+      etqH.forEach(function (e, i) { e.setAttribute("opacity", reservada && (i === 2 ? p < 3 : p < 2) ? 1 : 0); });
+      vacia.setAttribute("opacity", reservada ? 0 : 1);
+      pon(dA, posD.A, reservada && p >= 2 ? 1 : 0); pon(dB, posD.B, reservada && p >= 2 ? 1 : 0); pon(dC, posD.C, reservada && p >= 3 ? 1 : 0);
+      nucG.forEach(function (r) { r.setAttribute("fill", "#DDF3EA"); });
+      lis.forEach(function (li, k) { li.classList.toggle("hecho", k < p); li.classList.remove("activo"); });
+    }
+    async function vuela(g, de, a, ms) {
+      g.setAttribute("opacity", 1);
+      await RN.tween(ms, function (u) { pon(g, [RN.lerp(de[0], a[0], u), RN.lerp(de[1], a[1], u) - Math.sin(Math.PI * u) * 26], 1); });
+    }
+    async function paso() {
+      if (p >= 5) { p = 0; estatico(); return; }
+      const mi = ++tok, k = p;
+      lis.forEach(function (li, i) { li.classList.toggle("activo", i === k); });
+      if (k === 0) { await RN.espera(RN.reducirMovimiento ? 0 : 450); }
+      else if (k === 1) { await Promise.all([vuela(dA, posH.A, posD.A, 900), vuela(dB, posH.B, posD.B, 900)]); }
+      else if (k === 2) {
+        await RN.tween(1300, function (u) { nucG.forEach(function (r, i) { r.setAttribute("fill", RN.mezcla("#DDF3EA", C.s3, 0.5 + 0.5 * Math.sin(u * 14 + i * 0.9))); }); }, function (u) { return u; });
+        if (mi !== tok) return;
+        pon(dC, posD.C, 1);
+      }
+      else if (k === 3) { await vuela(hC, posD.C, posH.C, 900); }
+      else if (k === 4) { await RN.espera(RN.reducirMovimiento ? 0 : 450); }
+      if (mi !== tok) return;
+      p = k + 1; estatico();
+    }
+    let corrida = 0;
+    $("hd-paso").addEventListener("click", function () { corrida++; paso(); });
+    $("hd-play").addEventListener("click", async function () {
+      const mi = ++corrida;
+      if (p >= 5) { p = 0; estatico(); }
+      while (mi === corrida && p < 5) {
+        await paso();
+        if (mi !== corrida) return;
+        await RN.espera(RN.reducirMovimiento ? 0 : 350);
+      }
+    });
+    $("hd-reset").addEventListener("click", function () { corrida++; tok++; p = 0; estatico(); });
+    estatico();
+  })();
+
+  // ===================================================================== 6 · LECTURA DE DATOS
+  // --- 6.1 El ciclo disco → RAM → VRAM → GPU → vuelta
+  (function () {
+    const svg = $("ld-ciclo");
+    caja(svg, "0 0 1000 250");
+    const BX = [20, 280, 540, 800], BW = 180, BY = 64, BH = 92, CY = BY + BH / 2;
+    const NOM = [["Disco", "SSD / NVMe"], ["RAM", "memoria del host"], ["VRAM", "memoria de la GPU"], ["GPU", "miles de núcleos"]];
+    [[20, 460, "Host (CPU)"], [540, 980, "Device (GPU)"]].forEach(function (b) {
+      S("path", { d: "M" + b[0] + ",46 v-8 h" + (b[1] - b[0]) + " v8", fill: "none", stroke: C.ink2, "stroke-width": 1.5 }, svg);
+      txt(svg, (b[0] + b[1]) / 2, 28, b[2], { "font-size": 14.5, "font-weight": 800, "text-anchor": "middle", fill: C.ink2 });
+    });
+    S("defs", {}, svg).innerHTML = '<marker id="ld-fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="' + C.ink2 + '"/></marker>';
+    const nucG = [];
+    const cajas = NOM.map(function (nm, i) {
+      const x = BX[i];
+      const r = rect(svg, x, BY, BW, BH, { rx: 12, fill: "#fff", stroke: "#CFD8DC", "stroke-width": 1.5 });
+      txt(svg, x + 66, BY + 42, nm[0], { "font-size": 17, "font-weight": 800 });
+      txt(svg, x + 66, BY + 62, nm[1], { "font-size": 12.5, fill: C.ink2 });
+      const ix = x + 34, iy = CY;
+      if (i === 0) {
+        S("path", { d: "M" + (ix - 16) + "," + (iy - 12) + " v24 a16,5 0 0 0 32,0 v-24", fill: "#F5F7FA", stroke: C.ink2, "stroke-width": 1.5 }, svg);
+        S("ellipse", { cx: ix, cy: iy - 12, rx: 16, ry: 5, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 }, svg);
+      } else if (i < 3) {
+        const col = i === 1 ? C.s1 : C.s3;
+        rect(svg, ix - 20, iy - 11, 40, 20, { rx: 3, fill: RN.mezcla("#ffffff", col, 0.15), stroke: col, "stroke-width": 1.5 });
+        for (let k = 0; k < 3; k++) rect(svg, ix - 15 + k * 11, iy - 7, 8, 9, { rx: 1, fill: col });
+        for (let k = 0; k < 7; k++) S("line", { x1: ix - 17 + k * 5.5, y1: iy + 9, x2: ix - 17 + k * 5.5, y2: iy + 14, stroke: col, "stroke-width": 1.5 }, svg);
+      } else {
+        for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) nucG.push(rect(svg, ix - 18 + b * 9.5, iy - 18 + a * 9.5, 7.5, 7.5, { rx: 1.5, fill: "#DDF3EA" }));
+      }
+      return r;
+    });
+    const mid = [0, 1, 2].map(function (i) {
+      const a = BX[i] + BW + 6, b = BX[i + 1] - 6;
+      S("line", { x1: a, y1: CY, x2: b, y2: CY, stroke: C.ink2, "stroke-width": 2, "marker-end": "url(#ld-fl)" }, svg);
+      return (a + b) / 2;
+    });
+    S("path", { d: "M630," + (BY + BH + 2) + " V198 Q630,212 616,212 H384 Q370,212 370,198 V" + (BY + BH + 6), fill: "none", stroke: C.ink2, "stroke-width": 2, "marker-end": "url(#ld-fl)" }, svg);
+    const circ = [];
+    mid.concat([500]).forEach(function (x, i) {
+      const y = i < 3 ? CY - 26 : 212;
+      circ.push(S("circle", { cx: x, cy: y, r: 13, fill: "#fff", stroke: C.ink2, "stroke-width": 2 }, svg));
+      txt(svg, x, y + 5, String(i + 1), { "font-size": 13.5, "font-weight": 800, "text-anchor": "middle" });
+    });
+    txt(svg, 500, 242, "resultados", { "font-size": 13, fill: C.ink2, "text-anchor": "middle" });
+    const paq = rect(svg, 0, 0, 24, 16, { rx: 4, fill: C.s4, stroke: "#fff", "stroke-width": 1.5 });
+    const lis = Array.from($("ld-pasos").children);
+    const DUR = [1.1, 1.0, 1.3, 1.2], TOT = DUR.reduce(function (a, b) { return a + b; }, 0);
+    function ruta4(u) {
+      const P = [[630, BY + BH], [630, 212], [370, 212], [370, BY + BH]];
+      const L = [212 - BY - BH, 260, 212 - BY - BH], tot = L[0] + L[1] + L[2];
+      let d = u * tot, k = 0;
+      while (k < 2 && d > L[k]) { d -= L[k]; k++; }
+      const f = Math.min(1, d / L[k]);
+      return [RN.lerp(P[k][0], P[k + 1][0], f), RN.lerp(P[k][1], P[k + 1][1], f)];
+    }
+    ambiente(function (dt, t) {
+      let T = t % TOT, f = 0;
+      while (f < 3 && T > DUR[f]) { T -= DUR[f]; f++; }
+      const u = RN.suave(Math.min(1, T / (f === 2 ? 0.6 : DUR[f] * 0.85)));
+      let x, y;
+      if (f < 3) { x = RN.lerp(BX[f] + BW - 6, BX[f + 1] + 6, u); y = CY; }
+      else { const p = ruta4(u); x = p[0]; y = p[1]; }
+      paq.setAttribute("x", (x - 12).toFixed(1)); paq.setAttribute("y", (y - 8).toFixed(1));
+      paq.setAttribute("fill", f >= 2 && (f === 3 || u >= 1) ? C.s3 : C.s4);
+      paq.setAttribute("opacity", f === 2 && T > 0.6 ? 0 : 1);
+      nucG.forEach(function (r, i) { r.setAttribute("fill", f === 2 && T > 0.55 ? RN.mezcla("#DDF3EA", C.s3, 0.5 + 0.5 * Math.sin(t * 16 + i * 1.3)) : "#DDF3EA"); });
+      const act = [[0, 1], [1, 2], [2, 3], [2, 1]][f];
+      cajas.forEach(function (r, i) { r.setAttribute("stroke", act.indexOf(i) >= 0 ? AC : "#CFD8DC"); r.setAttribute("stroke-width", act.indexOf(i) >= 0 ? 2.5 : 1.5); });
+      circ.forEach(function (c, i) { c.setAttribute("fill", i === f ? AC : "#fff"); c.setAttribute("stroke", i === f ? AC : C.ink2); });
+      lis.forEach(function (li, i) { li.classList.toggle("activo", i === f); });
+    }, svg, 0.5);
+  })();
+
+  // --- 6.2 Cronograma sin y con precarga
+  (function () {
+    const cv = $("ld-cv");
+    const LOTES = [16, 32, 64, 128, 256];
+    let L = 6, X = 1, Cc = 4, H = 1, B = 64, tPlay = Infinity;
+    const RH = 26;
+    function plan(pre) {
+      const f = B / 64, tL = L * f, tX = 0.5 + X * f, tC = 1 + Cc * f, Q = 2 * H, ev = [];
+      if (!pre) {
+        let t = 0;
+        for (let k = 0; k < 300; k++) { const a = t, b = a + tL, c = b + tX, d = c + tC; ev.push({ cg: [a, b, 0], cp: [b, c], gp: [c, d] }); t = d; }
+      } else {
+        const libre = new Array(H).fill(0);
+        for (let k = 0; k < 300; k++) {
+          const hilo = k % H;
+          const s = Math.max(libre[hilo], k >= Q ? ev[k - Q].gp[0] : 0), e = s + tL;
+          libre[hilo] = e;
+          const cs = Math.max(e, k ? ev[k - 1].cp[1] : 0, k >= 2 ? ev[k - 2].gp[1] : 0), ce = cs + tX;
+          const gs = Math.max(ce, k ? ev[k - 1].gp[1] : 0), ge = gs + tC;
+          ev.push({ cg: [s, e, hilo], cp: [cs, ce], gp: [gs, ge] });
+        }
+      }
+      const fin = ev[ev.length - 1].gp[1];
+      let ocup = 0; ev.forEach(function (e) { ocup += e.gp[1] - e.gp[0]; });
+      return { ev: ev, util: ocup / fin, caudal: B * ev.length / fin, ciclo: tL + tX + tC };
+    }
+    function altura() { return 8 + 2 * (26 + 30 + 18) + (3 + H + 2) * RH + 40; }
+    let ps, pp, T;
+    function calcula() {
+      ps = plan(false); pp = plan(true);
+      T = RN.limita(Math.ceil(4.5 * ps.ciclo / 10) * 10, 40, 240);
+      $("ld-k1").textContent = num(ps.util * 100, 0) + " %";
+      $("ld-k2").textContent = num(pp.util * 100, 0) + " %";
+      $("ld-k3").textContent = num(ps.caudal, 1);
+      $("ld-k4").textContent = num(pp.caudal, 1);
+    }
+    function dibuja() {
+      const Lz = RN.lienzo(cv, altura()), ctx = Lz.ctx, w = Lz.w, h = Lz.h;
+      ctx.fillStyle = C.surface; ctx.fillRect(0, 0, w, h);
+      const x0 = 172, x1 = w - 18, sx = function (t) { return x0 + t / T * (x1 - x0); };
+      const tp = Math.min(tPlay, T);
+      let y = 8;
+      [[ps, "Sin precarga: todo en serie", false], [pp, "Con precarga: buffers y " + H + (H > 1 ? " hilos" : " hilo") + " de carga", true]].forEach(function (bl) {
+        const p = bl[0], pre = bl[2], ev = p.ev.filter(function (e) { return e.cg[0] < T; });
+        fuente(ctx, 14.5, 700); ctx.fillStyle = C.ink; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.fillText(bl[1], 14, y + 17);
+        y += 26;
+        const filas = [];
+        const nCPU = pre ? H : 1;
+        for (let k = 0; k < nCPU; k++) filas.push({ et: pre && H > 1 ? "CPU · hilo " + (k + 1) : "CPU · lee y prepara", tipo: "cg", hilo: k });
+        filas.push({ et: "Copia RAM → VRAM", tipo: "cp" });
+        filas.push({ et: "GPU · calcula", tipo: "gp" });
+        filas.forEach(function (f, i) {
+          const yy = y + i * RH;
+          ctx.fillStyle = i % 2 ? "#F4F6F8" : "#FFFFFF"; ctx.fillRect(x0, yy, x1 - x0, RH);
+          fuente(ctx, 13); ctx.fillStyle = C.ink2; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+          ctx.fillText(f.et, x0 - 10, yy + RH / 2);
+          const col = f.tipo === "cg" ? C.s1 : f.tipo === "cp" ? C.s4 : C.s3;
+          ev.forEach(function (e, k) {
+            const sg = e[f.tipo];
+            if (f.tipo === "cg" && sg[2] !== f.hilo) return;
+            if (sg[0] >= tp) return;
+            const a = sx(sg[0]), b = sx(Math.min(sg[1], tp));
+            rr(ctx, a + 0.5, yy + 4, Math.max(1.5, b - a - 1), RH - 8, 4); ctx.fillStyle = col; ctx.fill();
+            if (b - a > 18) { fuente(ctx, 12, 700); ctx.fillStyle = f.tipo === "cp" ? C.ink : "#fff"; ctx.textAlign = "center"; ctx.fillText(String(k + 1), (a + b) / 2, yy + RH / 2 + 0.5); }
+          });
+          if (f.tipo === "gp") {
+            let prev = 0;
+            const hueco = function (a, b) {
+              const xa = sx(a), xb = sx(b);
+              rayado(ctx, xa + 0.5, yy + 4, xb - xa - 1, RH - 8);
+              if (xb - xa > 58) { fuente(ctx, 12, 700); ctx.fillStyle = C.bad; ctx.textAlign = "center"; ctx.fillText("ociosa", (xa + xb) / 2, yy + RH / 2 + 0.5); }
+            };
+            ev.forEach(function (e) { const s = Math.min(e.gp[0], tp); if (s > prev + 1e-6) hueco(prev, s); prev = Math.max(prev, Math.min(e.gp[1], tp)); });
+          }
+        });
+        y += filas.length * RH;
+        const yu = y + 6, hu = 26;
+        fuente(ctx, 12.5, 700); ctx.fillStyle = C.ink2; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        ctx.fillText("GPU-Util", x0 - 10, yu + hu / 2);
+        ctx.fillStyle = "#fff"; ctx.fillRect(x0, yu, x1 - x0, hu);
+        ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, yu + 0.5, x1 - x0 - 1, hu);
+        const pts = [], Wv = 3;
+        for (let s = 0; s <= tp + 1e-9; s += T / 320) {
+          const a = Math.max(0, s - Wv), den = s - a;
+          let busy = 0;
+          ev.forEach(function (e) { const o = Math.min(e.gp[1], s) - Math.max(e.gp[0], a); if (o > 0) busy += o; });
+          pts.push([s, den > 0.05 ? busy / den : 0]);
+        }
+        if (pts.length > 1) {
+          ctx.beginPath(); ctx.moveTo(sx(0), yu + hu);
+          pts.forEach(function (q) { ctx.lineTo(sx(q[0]), yu + hu - 2 - q[1] * (hu - 4)); });
+          ctx.lineTo(sx(pts[pts.length - 1][0]), yu + hu); ctx.closePath();
+          ctx.fillStyle = RN.rgba(C.s3, 0.22); ctx.fill();
+          ctx.beginPath();
+          pts.forEach(function (q, i) { const X = sx(q[0]), Y = yu + hu - 2 - q[1] * (hu - 4); if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); });
+          ctx.strokeStyle = C.s3; ctx.lineWidth = 1.8; ctx.stroke();
+        }
+        y = yu + hu + 18;
+      });
+      const paso = T > 120 ? 20 : 10;
+      ctx.strokeStyle = C.axis; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, y - 6); ctx.lineTo(x1, y - 6); ctx.stroke();
+      fuente(ctx, 12); ctx.fillStyle = C.muted; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      for (let t = 0; t <= T + 1e-9; t += paso) { const X = sx(t); ctx.beginPath(); ctx.moveTo(X, y - 6); ctx.lineTo(X, y - 1); ctx.stroke(); ctx.fillText(String(t), X, y + 1); }
+      fuente(ctx, 12.5, 600); ctx.fillStyle = C.ink2; ctx.textAlign = "right"; ctx.fillText("tiempo (u.t.)", x0 - 10, y + 1);
+      if (tPlay < T) { const X = sx(tp); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X, 30); ctx.lineTo(X, y - 6); ctx.stroke(); }
+    }
+    const anim = RN.anima(function (dt) {
+      tPlay = Math.min(T, (tPlay === Infinity ? 0 : tPlay) + dt * T / 7);
+      dibuja();
+      if (tPlay >= T) { tPlay = Infinity; dibuja(); return false; }
+    }, cv);
+    const btn = $("ld-play");
+    btn.addEventListener("click", function () { if (!anim.activo) tPlay = 0; });
+    RN.botonPlay(btn, anim, ["▶ Reproducir", "⏸ Pausa"]);
+    function control(id, fn, fmt) {
+      $(id).addEventListener("input", function (e) { const v = +e.target.value; fn(v); $(id + "o").textContent = fmt(v); calcula(); if (!anim.activo) tPlay = Infinity; dibuja(); });
+    }
+    const ut = function (v) { return num(v, 1) + " u.t."; };
+    control("ld-l", function (v) { L = v; }, ut);
+    control("ld-x", function (v) { X = v; }, ut);
+    control("ld-c", function (v) { Cc = v; }, ut);
+    control("ld-h", function (v) { H = v; }, function (v) { return String(v); });
+    control("ld-b", function (v) { B = LOTES[v]; }, function (v) { return String(LOTES[v]); });
+    calcula();
+    RN.alCambiarTam(cv, dibuja);
+  })();
+
+  // ===================================================================== 7 · LOTE Y VRAM
+  (function () {
+    const svg = $("vr-svg");
+    caja(svg, "0 0 1000 150");
+    let cap = 16, P = 25.6e6, kOpt = 8, mixta = false, act = 40, lote = 128;
+    const RES = 0.5e9;
+    const SEG = [["pesos", C.s1], ["gradientes", C.s7], ["optimizador", C.s4], ["activaciones", C.s3], ["reserva CUDA", "#B0BEC5"]];
+    function calc(b, mx) {
+      const m = mx === undefined ? mixta : mx;
+      const v = [4 * P, 4 * P, kOpt * P, b * act * 1e6 * (m ? 0.5 : 1), RES];
+      return { v: v, total: v[0] + v[1] + v[2] + v[3] + v[4] };
+    }
+    function loteMax(mx) { const fijo = (8 + kOpt) * P + RES, pe = act * 1e6 * (mx ? 0.5 : 1); return Math.floor((cap * 1e9 - fijo) / pe); }
+    function gb(b) { return b < 0.1e9 ? num(b / 1e6, 0) + " MB" : num(b / 1e9, b < 10e9 ? 2 : 1) + " GB"; }
+    function pintaBarra() {
+      vaciar(svg);
+      S("defs", {}, svg).innerHTML = '<pattern id="vr-ray" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="rgba(255,235,238,.55)"/><line x1="0" y1="0" x2="0" y2="7" stroke="#C62828" stroke-width="2.5"/></pattern>';
+      const r = calc(lote), tot = r.total / 1e9;
+      const esc = Math.max(cap * 1.18, tot * 1.04), X0 = 30, X1 = 970, sx = function (g) { return X0 + g / esc * (X1 - X0); };
+      rect(svg, X0, 44, sx(cap) - X0, 48, { rx: 6, fill: "#EEF1F4" });
+      let acc = 0;
+      const etiquetas = [];
+      r.v.forEach(function (b, i) {
+        const g = b / 1e9, a = sx(acc), z = sx(acc + g);
+        rect(svg, a, 44, Math.max(0, z - a - (z - a > 4 ? 1.5 : 0)), 48, { rx: 3, fill: SEG[i][1] });
+        etiquetas.push([a, z, i]);
+        acc += g;
+      });
+      if (tot < cap && sx(cap) - sx(tot) > 110) txt(svg, (sx(tot) + sx(cap)) / 2, 73, "libre · " + gb((cap - tot) * 1e9), { "font-size": 13.5, "font-weight": 700, fill: C.ink2, "text-anchor": "middle" });
+      if (tot > cap) {
+        rect(svg, sx(cap), 40, sx(tot) - sx(cap), 56, { rx: 3, fill: "url(#vr-ray)", stroke: C.bad, "stroke-width": 2 });
+        txt(svg, Math.min(sx(tot), X1), 112, "exceso: " + gb((tot - cap) * 1e9), { "font-size": 13.5, "font-weight": 800, fill: C.bad, "text-anchor": "end" });
+      }
+      etiquetas.forEach(function (e) {
+        const a = e[0], z = e[1], i = e[2], fuera = (a + z) / 2 > sx(cap);
+        if (z - a > 96) txt(svg, (a + z) / 2, 73, SEG[i][0], { "font-size": 13.5, "font-weight": 800, fill: fuera || i === 2 || i === 4 ? C.ink : "#fff", "text-anchor": "middle", stroke: fuera ? "#fff" : "none", "stroke-width": fuera ? 4 : 0, "paint-order": "stroke" });
+      });
+      const xc = sx(cap);
+      S("line", { x1: xc, x2: xc, y1: 30, y2: 102, stroke: C.ink, "stroke-width": 2.5 }, svg);
+      txt(svg, xc, 22, "capacidad: " + cap + " GB", { "font-size": 14, "font-weight": 800, "text-anchor": xc > 860 ? "end" : "middle" });
+      r.v.forEach(function (b, i) {
+        const x = 30 + i * 190;
+        rect(svg, x, 126, 12, 12, { rx: 2, fill: SEG[i][1] });
+        txt(svg, x + 18, 137, SEG[i][0] + " · " + gb(b), { "font-size": 13.5 });
+      });
+    }
+    const graf = RN.grafica($("vr-cv"), {
+      alto: 280, margen: { l: 58 },
+      x: { min: 0, max: 512, titulo: "tamaño de lote", fmtTip: function (v) { return RN.fmtN(v); } },
+      y: { min: 0, max: 24, titulo: "memoria (GB)", fmtTip: function (v) { return num(v, 2) + " GB"; } },
+      extras: function (ctx, g) {
+        const m = loteMax(mixta);
+        if (m >= 1 && m <= 512) {
+          const X = g.sx(m);
+          ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = C.ink2; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(X, g.sy(0)); ctx.lineTo(X, g.sy(cap)); ctx.stroke(); ctx.restore();
+          fuente(ctx, 12.5, 700); ctx.fillStyle = C.ink; ctx.textAlign = X > g.w - 140 ? "right" : "left"; ctx.textBaseline = "bottom";
+          ctx.fillText("lote máximo = " + RN.fmtN(m), X + (X > g.w - 140 ? -6 : 6), g.sy(cap) - 9);
+        }
+      }
+    });
+    function todo() {
+      pintaBarra();
+      const r = calc(lote), tot = r.total / 1e9, m = loteMax(mixta);
+      const est = $("vr-estado");
+      if (tot <= cap) { est.className = "estado ok"; est.textContent = "✓ Cabe: usa " + gb(r.total) + " de " + cap + " GB (" + num(tot / cap * 100, 0) + " %)."; }
+      else if (m < 1) { est.className = "estado bad"; est.textContent = "✗ No cabe ni con un lote de 1: el modelo no cabe en esta GPU. Hay que repartirlo entre varias GPU (parte II)."; }
+      else { est.className = "estado bad"; est.textContent = "✗ Sin memoria («CUDA out of memory»): necesita " + gb(r.total) + ". Baja el lote a " + RN.fmtN(m) + ", usa precisión mixta o acumula gradientes."; }
+      $("vr-k1").textContent = gb(r.total);
+      $("vr-k2").textContent = tot <= cap ? gb((cap - tot) * 1e9) : "−" + gb((tot - cap) * 1e9);
+      $("vr-k2").className = "v peq " + (tot <= cap ? "ok" : "bad");
+      const m32 = loteMax(false), m16 = loteMax(true);
+      $("vr-k3").textContent = m32 >= 1 ? RN.fmtN(m32) : "no cabe";
+      $("vr-k4").textContent = m16 >= 1 ? RN.fmtN(m16) : "no cabe";
+      const v = r.v.map(function (b) { return num(b / 1e9, 2); });
+      $("vr-form").innerHTML = "memoria = " + v[0] + " + " + v[1] + " + " + v[2] + " + " + RN.fmtN(lote) + " × " + num(act * (mixta ? 0.5 : 1) / 1000, 3) + " + " + v[4] + " = <b>" + num(tot, 2) + " GB</b>" +
+        '<span class="com">pesos + gradientes + optimizador + lote × activaciones por ejemplo + reserva</span>';
+      const ymax = Math.max(cap * 1.5, calc(0).total / 1e9 * 1.25);
+      graf.op.y.max = ymax;
+      const pts = [];
+      for (let b = 0; b <= 512; b += 4) pts.push([b, calc(b).total / 1e9]);
+      graf.dibujar([
+        { nombre: "memoria total", color: C.s3, puntos: pts },
+        { nombre: "capacidad", color: C.ink2, discontinua: true, puntos: [[0, cap], [512, cap]] },
+        { tipo: "puntos", color: C.ink, radio: 6, puntos: [[lote, tot]] }
+      ]);
+    }
+    segmentado("vr-cap", function (v) { cap = +v; todo(); });
+    segmentado("vr-prec", function (v) { mixta = v === "16"; todo(); });
+    $("vr-mod").addEventListener("change", function (e) { P = +e.target.value; todo(); });
+    $("vr-opt").addEventListener("change", function (e) { kOpt = +e.target.value; todo(); });
+    $("vr-act").addEventListener("input", function (e) { act = +e.target.value; $("vr-acto").textContent = act + " MB"; todo(); });
+    $("vr-b").addEventListener("input", function (e) { lote = +e.target.value; $("vr-bo").textContent = lote; todo(); });
+    todo();
+  })();
+
+  // ===================================================================== 8 · PUESTA A PUNTO
+  // --- 8.1 La cadena de dependencias
+  (function () {
+    const svg = $("cf-svg");
+    caja(svg, "0 0 1000 286");
+    let mal = false;
+    const ES = [["TensorFlow", "o PyTorch"], ["cuDNN", "8.x"], ["CUDA Toolkit", "11.8"], ["Controlador", "(driver)"], ["GPU", "NVIDIA"]];
+    const XS = ES.map(function (e, i) { return 154 + i * 166; }), BW = 140, Y = 46, BH = 72;
+    rect(svg, 14, Y, 110, BH, { rx: 12, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 });
+    txt(svg, 69, Y + 32, "Python", { "font-size": 15.5, "font-weight": 800, "text-anchor": "middle" });
+    txt(svg, 69, Y + 52, "tu código", { "font-size": 13, fill: C.ink2, "text-anchor": "middle" });
+    const cajas = ES.map(function (e, i) {
+      const r = rect(svg, XS[i], Y, BW, BH, { rx: 12, fill: "#fff", stroke: C.ink2, "stroke-width": 1.5 });
+      txt(svg, XS[i] + BW / 2, Y + 32, e[0], { "font-size": 15.5, "font-weight": 800, "text-anchor": "middle" });
+      const s = txt(svg, XS[i] + BW / 2, Y + 54, e[1], { "font-size": 13.5, fill: C.ink2, "text-anchor": "middle" });
+      return { r: r, s: s };
+    });
+    txt(svg, 540, 24, "cada eslabón tiene que ser compatible con el siguiente", { "font-size": 13.5, fill: C.ink2, "text-anchor": "middle", "font-style": "italic" });
+    const huecos = [124].concat(XS.slice(0, 4).map(function (x) { return x + BW; }));
+    const eslabones = huecos.map(function (x, i) {
+      const g = S("g", {}, svg), cx = x + (i === 0 ? 15 : 13), cy = Y + BH / 2;
+      const a = rect(g, cx - 13, cy - 6, 16, 12, { rx: 6, fill: "none", stroke: C.ink2, "stroke-width": 2.5 });
+      const b = rect(g, cx - 3, cy - 6, 16, 12, { rx: 6, fill: "none", stroke: C.ink2, "stroke-width": 2.5 });
+      return { g: g, a: a, b: b, cx: cx, cy: cy };
+    });
+    const chispa = S("path", { d: "M" + (eslabones[2].cx - 6) + "," + (Y - 4) + " l6,8 l-5,4 l8,10", fill: "none", stroke: C.bad, "stroke-width": 2.5, "stroke-linejoin": "round", opacity: 0 }, svg);
+    const nuc = [];
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 12; b++) nuc.push(rect(svg, XS[4] + 16 + b * 9.2, Y + BH + 10 + a * 9, 7, 7, { rx: 1.5, fill: "#DDF3EA" }));
+    const cpuG = S("g", {}, svg);
+    rect(cpuG, 154, 196, 140, 62, { rx: 12, fill: "#fff", stroke: C.bad, "stroke-width": 2 });
+    txt(cpuG, 224, 222, "CPU", { "font-size": 15.5, "font-weight": 800, "text-anchor": "middle" });
+    txt(cpuG, 224, 243, "mucho más lenta", { "font-size": 13, fill: C.ink2, "text-anchor": "middle" });
+    const desvio = S("line", { x1: 224, y1: Y + BH + 4, x2: 224, y2: 190, stroke: C.bad, "stroke-width": 2.5, "stroke-dasharray": "6 5" }, svg);
+    const msg = txt(svg, 330, 233, "", { "font-size": 15, "font-weight": 700 });
+    const paq = S("circle", { r: 8, fill: AC, stroke: "#fff", "stroke-width": 2 }, svg);
+    function pinta() {
+      cajas.forEach(function (c, i) {
+        const roto = mal && i === 2;
+        c.r.setAttribute("stroke", roto ? C.bad : C.ink2); c.r.setAttribute("stroke-width", roto ? 2.5 : 1.5);
+        c.r.setAttribute("fill", roto ? "#FFEBEE" : "#fff");
+        if (i === 2) { c.s.textContent = mal ? "12.x ✗ incompatible" : "11.8"; c.s.setAttribute("fill", mal ? C.bad : C.ink2); }
+      });
+      const e = eslabones[2];
+      e.a.setAttribute("x", mal ? e.cx - 17 : e.cx - 13); e.b.setAttribute("x", mal ? e.cx + 1 : e.cx - 3);
+      [e.a, e.b].forEach(function (r) { r.setAttribute("stroke", mal ? C.bad : C.ink2); });
+      chispa.setAttribute("opacity", mal ? 1 : 0);
+      cpuG.setAttribute("opacity", mal ? 1 : 0.25);
+      desvio.setAttribute("opacity", mal ? 1 : 0);
+      msg.textContent = mal ? "✗ No encuentra la GPU: entrena en la CPU" : "✓ Cadena completa: el framework usa la GPU";
+      msg.setAttribute("fill", mal ? C.bad : C.ok);
+      const okT = '<span class="kw">&gt;&gt;&gt;</span> <span class="kw">import</span> tensorflow <span class="kw">as</span> tf\n<span class="kw">&gt;&gt;&gt;</span> <span class="fn">print</span>(tf.config.<span class="fn">list_physical_devices</span>(<span class="str">\'GPU\'</span>))\n';
+      $("cf-term").innerHTML = okT + (mal ? "[]\n<span class=\"com\"># Error «DLL not found» o GPU no detectada:\n# el entrenamiento se hará en la CPU.</span>"
+        : "[PhysicalDevice(name='/physical_device:GPU:0',\n                device_type='GPU')]\n<span class=\"com\"># La GPU 0 está visible: Keras la usará sola.</span>");
+    }
+    ambiente(function (dt, t) {
+      const ciclo = 3.2, u = (t % ciclo) / ciclo;
+      let x, y = Y + BH / 2, op = 1;
+      if (!mal) {
+        x = RN.lerp(69, XS[4] + BW / 2, RN.limita(u / 0.7, 0, 1));
+        if (u > 0.7) op = 0;
+        nuc.forEach(function (r, i) { r.setAttribute("fill", u > 0.7 ? RN.mezcla("#DDF3EA", C.s3, 0.5 + 0.5 * Math.sin(t * 15 + i)) : "#DDF3EA"); });
+      } else {
+        const a = RN.limita(u / 0.35, 0, 1), b = RN.limita((u - 0.35) / 0.25, 0, 1);
+        x = RN.lerp(69, 224, a); y = RN.lerp(Y + BH / 2, 228, b);
+        op = u > 0.85 ? 0 : 1;
+        nuc.forEach(function (r) { r.setAttribute("fill", "#EEF1F4"); });
+      }
+      paq.setAttribute("cx", x.toFixed(1)); paq.setAttribute("cy", y.toFixed(1)); paq.setAttribute("opacity", op);
+    }, svg, 2.5);
+    segmentado("cf-modo", function (v) { mal = v === "mal"; pinta(); });
+    pinta();
+  })();
+
+  // --- 8.2 Keras frente a PyTorch
+  (function () {
+    const svg = $("kp-svg");
+    caja(svg, "0 0 520 300");
+    const CODE = {
+      pt: [
+        ['<span class="kw">import</span> torch', 0],
+        ['<span class="com"># 1. Definir el dispositivo</span>', 0],
+        ['device = torch.<span class="fn">device</span>(<span class="str">"cuda"</span> <span class="kw">if</span> torch.cuda.<span class="fn">is_available</span>()', 1],
+        ['                      <span class="kw">else</span> <span class="str">"cpu"</span>)', 1],
+        ['<span class="com"># 2. Mover la arquitectura del modelo</span>', 0],
+        ['model = <span class="fn">MyNeuralNet</span>().<span class="fn">to</span>(device)', 2],
+        ['<span class="com"># 3. Mover los tensores durante el entrenamiento</span>', 0],
+        ['<span class="kw">for</span> data <span class="kw">in</span> loader:', 0],
+        ['    inputs = data[<span class="num">0</span>].<span class="fn">to</span>(device)', 3],
+        ['    labels = data[<span class="num">1</span>].<span class="fn">to</span>(device)', 3],
+        ['    outputs = <span class="fn">model</span>(inputs)', 4]
+      ],
+      keras: [
+        ['<span class="kw">import</span> tensorflow <span class="kw">as</span> tf', 0],
+        ['<span class="fn">print</span>(tf.config.<span class="fn">list_physical_devices</span>(<span class="str">\'GPU\'</span>))', 1],
+        ['model = keras.<span class="fn">Sequential</span>([...])', 0],
+        ['model.<span class="fn">compile</span>(optimizer=<span class="str">"adam"</span>, loss=<span class="str">"mse"</span>)', 0],
+        ['model.<span class="fn">fit</span>(x, y, batch_size=<span class="num">256</span>)', 2],
+        ['<span class="com"># fit mueve modelo y lotes a la GPU sin pedírselo</span>', 2]
+      ]
+    };
+    const DESC = {
+      pt: ["Todo empieza en la RAM de la CPU.", "1 · ¿Hay GPU? device = \"cuda\".", "2 · El modelo viaja a la VRAM.", "3 · Cada lote viaja a la VRAM.", "4 · La propagación se calcula en la GPU."],
+      keras: ["Todo empieza en la RAM de la CPU.", "1 · TensorFlow detecta la GPU.", "2 · fit() lo mueve todo a la VRAM y calcula allí."]
+    };
+    let fw = "pt", paso = 0, tok = 0;
+    rect(svg, 12, 34, 232, 254, { rx: 14, fill: "#fff", stroke: "#E4E7EB" });
+    rect(svg, 276, 34, 232, 254, { rx: 14, fill: "#fff", stroke: "#E4E7EB" });
+    txt(svg, 30, 60, "RAM (CPU)", { "font-size": 15.5, "font-weight": 800 });
+    txt(svg, 294, 60, "VRAM (GPU)", { "font-size": 15.5, "font-weight": 800 });
+    const chip = S("g", { opacity: 0 }, svg);
+    rect(chip, 412, 45, 82, 22, { rx: 11, fill: C.ok });
+    txt(chip, 453, 60, "cuda ✓", { "font-size": 12.5, "font-weight": 800, fill: "#fff", "text-anchor": "middle" });
+    const desc = txt(svg, 260, 20, "", { "font-size": 14, "font-weight": 700, "text-anchor": "middle", fill: C.ink });
+    function item(nombre, col, red) {
+      const g = S("g", {}, svg);
+      rect(g, 0, 0, 160, 50, { rx: 9, fill: RN.mezcla("#ffffff", col, 0.15), stroke: col, "stroke-width": 2 });
+      txt(g, 62, 31, nombre, { "font-size": 15, "font-weight": 800 });
+      if (red) {
+        [[14, 12], [14, 38], [32, 25], [48, 14], [48, 36]].forEach(function (p, i, arr) { if (i < 2) S("line", { x1: p[0], y1: p[1], x2: 32, y2: 25, stroke: col, "stroke-width": 1.5 }, g); if (i > 2) S("line", { x1: 32, y1: 25, x2: p[0], y2: p[1], stroke: col, "stroke-width": 1.5 }, g); });
+        [[14, 12], [14, 38], [32, 25], [48, 14], [48, 36]].forEach(function (p) { S("circle", { cx: p[0], cy: p[1], r: 4.5, fill: "#fff", stroke: col, "stroke-width": 2 }, g); });
+      } else {
+        for (let a = 0; a < 3; a++) for (let b = 0; b < 4; b++) rect(g, 12 + b * 10, 11 + a * 10, 8, 8, { rx: 1.5, fill: col, opacity: 0.45 + 0.15 * ((a + b) % 3) });
+      }
+      return g;
+    }
+    const mod = item("modelo", C.s7, true), lot = item("lote", C.s4, false);
+    const PR = { mod: [48, 86], lot: [48, 156] }, PV = { mod: [312, 86], lot: [312, 156] };
+    const nuc = [];
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 16; b++) nuc.push(rect(svg, 296 + b * 12.2, 226 + a * 12, 9.5, 9.5, { rx: 2, fill: "#DDF3EA" }));
+    txt(svg, 128, 250, "aquí calcularía la CPU", { "font-size": 13, fill: C.muted, "text-anchor": "middle" });
+    const pon = function (g, p) { g.setAttribute("transform", "translate(" + p[0].toFixed(1) + "," + p[1].toFixed(1) + ")"); };
+    function enGPU() {
+      if (fw === "pt") return { mod: paso >= 2, lot: paso >= 3, chip: paso >= 1, calc: paso >= 4 };
+      return { mod: paso >= 2, lot: paso >= 2, chip: paso >= 1, calc: paso >= 2 };
+    }
+    function pinta() {
+      const e = enGPU();
+      pon(mod, e.mod ? PV.mod : PR.mod); pon(lot, e.lot ? PV.lot : PR.lot);
+      chip.setAttribute("opacity", e.chip ? 1 : 0);
+      nuc.forEach(function (r) { r.setAttribute("fill", e.calc ? RN.mezcla("#DDF3EA", C.s3, 0.75) : "#DDF3EA"); });
+      desc.textContent = DESC[fw][paso];
+      $("kp-code").innerHTML = CODE[fw].map(function (l) { return '<span class="linea' + (paso > 0 && l[1] === paso ? " hl" : "") + '">' + l[0] + "</span>"; }).join("");
+    }
+    async function avanza() {
+      const max = DESC[fw].length - 1;
+      if (paso >= max) { paso = 0; pinta(); return; }
+      const mi = ++tok, antes = enGPU();
+      paso++;
+      const despues = enGPU();
+      $("kp-code").innerHTML = CODE[fw].map(function (l) { return '<span class="linea' + (l[1] === paso ? " hl" : "") + '">' + l[0] + "</span>"; }).join("");
+      desc.textContent = DESC[fw][paso];
+      const mueve = [];
+      if (!antes.mod && despues.mod) mueve.push([mod, PR.mod, PV.mod]);
+      if (!antes.lot && despues.lot) mueve.push([lot, PR.lot, PV.lot]);
+      if (mueve.length) await RN.tween(800, function (u) { mueve.forEach(function (m) { pon(m[0], [RN.lerp(m[1][0], m[2][0], u), RN.lerp(m[1][1], m[2][1], u) - Math.sin(Math.PI * u) * 22]); }); });
+      if (mi !== tok) return;
+      if (despues.calc) await RN.tween(900, function (u) { nuc.forEach(function (r, i) { r.setAttribute("fill", RN.mezcla("#DDF3EA", C.s3, 0.5 + 0.5 * Math.sin(u * 16 + i * 0.7))); }); }, function (u) { return u; });
+      if (mi !== tok) return;
+      pinta();
+    }
+    $("kp-paso").addEventListener("click", avanza);
+    $("kp-reset").addEventListener("click", function () { tok++; paso = 0; pinta(); });
+    segmentado("kp-fw", function (v) { tok++; fw = v; paso = 0; pinta(); });
+    pinta();
+  })();
+
+  // --- 8.3 Precisión mixta: bits de FP32 y FP16 (cálculo real)
+  (function () {
+    const svg = $("mp-svg");
+    caja(svg, "0 0 1000 250");
+    const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+    function bits32(x) { f32[0] = x; const b = u32[0]; let s = ""; for (let i = 31; i >= 0; i--) s += (b >>> i) & 1; return { s: s, v: f32[0] }; }
+    function redondeoPar(y) { const f = Math.floor(y), d = y - f; return d > 0.5 ? f + 1 : d < 0.5 ? f : (f % 2 === 0 ? f : f + 1); }
+    function bits16(x) {
+      const sg = x < 0 || (x === 0 && 1 / x < 0) ? 1 : 0, a = Math.abs(x);
+      let e, m, v;
+      if (!Number.isFinite(a)) { e = 31; m = 0; v = Infinity; }
+      else if (a === 0) { e = 0; m = 0; v = 0; }
+      else {
+        let ex = Math.floor(Math.log2(a));
+        if (a / Math.pow(2, ex) >= 2) ex++;
+        if (a / Math.pow(2, ex) < 1) ex--;
+        if (ex < -14) {
+          m = redondeoPar(a / Math.pow(2, -24));
+          if (m >= 1024) { e = 1; m = 0; } else e = 0;
+        } else {
+          m = redondeoPar((a / Math.pow(2, ex) - 1) * 1024);
+          if (m === 1024) { m = 0; ex++; }
+          e = ex + 15;
+        }
+        if (e >= 31) { e = 31; m = 0; }
+        v = e === 31 ? Infinity : e === 0 ? m * Math.pow(2, -24) : (1 + m / 1024) * Math.pow(2, e - 15);
+      }
+      const b = (sg << 15) | (e << 10) | m;
+      let s = ""; for (let i = 15; i >= 0; i--) s += (b >>> i) & 1;
+      return { s: s, v: sg ? -v : v };
+    }
+    const CW = 28.4, X0 = 36;
+    function fila(y, s, nExp, etq) {
+      txt(svg, X0, y - 10, etq, { "font-size": 14.5, "font-weight": 800 });
+      for (let i = 0; i < s.length; i++) {
+        const tipo = i === 0 ? 0 : i <= nExp ? 1 : 2, col = [C.s5, C.s1, C.s3][tipo], uno = s[i] === "1";
+        rect(svg, X0 + i * CW, y, CW - 3, 30, { rx: 4, fill: RN.mezcla("#ffffff", col, uno ? 0.55 : 0.14), stroke: col, "stroke-width": 1 });
+        txt(svg, X0 + i * CW + (CW - 3) / 2, y + 20, s[i], { "font-size": 14, "font-weight": 700, "text-anchor": "middle", "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+      }
+      const grupos = [[0, 1, "signo"], [1, nExp + 1, "exponente (" + nExp + ")"], [nExp + 1, s.length, "mantisa (" + (s.length - nExp - 1) + " bits)"]];
+      grupos.forEach(function (g, k) {
+        const a = X0 + g[0] * CW, b = X0 + g[1] * CW - 3;
+        S("path", { d: "M" + a + "," + (y + 36) + " v4 H" + b + " v-4", fill: "none", stroke: C.muted, "stroke-width": 1.2 }, svg);
+        if (k) txt(svg, (a + b) / 2, y + 55, g[2], { "font-size": 12.5, fill: C.ink2, "text-anchor": "middle" });
+      });
+    }
+    const fmtV = function (v) {
+      if (v === Infinity || v === -Infinity) return (v < 0 ? "−" : "") + "∞";
+      if (v === 0) return "0";
+      const a = Math.abs(v);
+      const s = a >= 1e-4 && a < 1e9 ? String(v) : v.toExponential(6);
+      return s.replace("-", "−").replace(".", ",");
+    };
+    function pinta(x) {
+      vaciar(svg);
+      const a = bits32(x), b = bits16(x);
+      fila(32, a.s, 8, "FP32 (precisión simple) · 32 bits = 4 bytes");
+      txt(svg, X0, 118, "valor guardado: " + fmtV(a.v), { "font-size": 15, "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+      fila(162, b.s, 5, "FP16 (media precisión) · 16 bits = 2 bytes");
+      let nota;
+      if (!Number.isFinite(b.v) && Number.isFinite(x)) nota = "desbordamiento: el máximo de FP16 es 65.504";
+      else if (b.v === 0 && x !== 0) nota = "demasiado pequeño: se convierte en 0";
+      else nota = "error relativo: " + num(Math.abs(b.v - x) / Math.abs(x || 1) * 100, 4) + " %";
+      txt(svg, X0, 244, "valor guardado: " + fmtV(b.v), { "font-size": 15, "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+      txt(svg, 520, 186, "→ la mitad de memoria", { "font-size": 16, "font-weight": 800, fill: AC });
+      txt(svg, 520, 208, "por cada número", { "font-size": 14, fill: C.ink2 });
+      txt(svg, 520, 244, nota, { "font-size": 14.5, "font-weight": 700, fill: /desbord|pequeño/.test(nota) ? C.bad : C.ink });
+    }
+    const inp = $("mp-v");
+    function leer(s) {
+      s = String(s).trim().replace(/\s/g, "").replace("−", "-");
+      if (s.indexOf(",") >= 0) s = s.replace(/\./g, "").replace(",", ".");
+      return Number(s);
+    }
+    segmentado("mp-ej", function (v) { const x = +v; inp.value = fmtV(x).replace("−", "-"); pinta(x); });
+    inp.addEventListener("input", function () { const x = leer(inp.value); if (Number.isFinite(x)) pinta(x); });
+    pinta(Math.PI);
+  })();
+
+  // ===================================================================== 9 · RESUMEN
+  (function () {
+    const svg = $("rs-svg");
+    caja(svg, "0 0 1000 400");
+    const T = [
+      ["Paralelismo masivo", "Miles de núcleos para", "operaciones matriciales."],
+      ["Caudal y latencia", "GPU: caudal. CPU: latencia", "y gestión del sistema."],
+      ["CUDA y cuDNN", "El stack de software", "estándar de NVIDIA."],
+      ["Pocas transferencias", "Minimizar las copias", "entre host y device."],
+      ["Lote al máximo", "Tan grande como", "permita la VRAM."],
+      ["Hardware equilibrado", "SSD rápido y una CPU", "competente."]
+    ];
+    txt(svg, 14, 22, "CONCEPTOS CLAVE", { "font-size": 13.5, "font-weight": 800, fill: C.ink2, "letter-spacing": "0.06em" });
+    txt(svg, 14, 220, "FACTORES DE ÉXITO", { "font-size": 13.5, "font-weight": 800, fill: C.ink2, "letter-spacing": "0.06em" });
+    const vivos = {};
+    T.forEach(function (t, k) {
+      const col = k % 3, fil = Math.floor(k / 3), x = 10 + col * 330, y = fil ? 232 : 34, w = 316, h = 156;
+      rect(svg, x, y, w, h, { rx: 14, fill: "#fff", stroke: "#E4E7EB" });
+      rect(svg, x, y + 16, 5, h - 32, { rx: 2.5, fill: AC });
+      const ix = x + 22, iy = y + 33;
+      const g = S("g", {}, svg);
+      if (k === 0) { vivos.nuc = []; for (let a = 0; a < 6; a++) for (let b = 0; b < 6; b++) vivos.nuc.push(rect(g, ix + b * 13, iy + a * 13, 10, 10, { rx: 2, fill: "#DDF3EA" })); }
+      if (k === 1) {
+        for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) rect(g, ix + b * 19, iy + 6 + a * 19, 16, 16, { rx: 3, fill: C.s1 });
+        for (let a = 0; a < 5; a++) for (let b = 0; b < 4; b++) rect(g, ix + 48 + b * 8, iy + 2 + a * 9, 6, 6, { rx: 1, fill: C.s3 });
+      }
+      if (k === 2) [["Keras", "#CFD8DC"], ["cuDNN", AC], ["CUDA", AC], ["GPU", C.s3]].forEach(function (c, i) {
+        rect(g, ix, iy + i * 19, 76, 16, { rx: 4, fill: c[1] });
+        txt(g, ix + 38, iy + i * 19 + 12.5, c[0], { "font-size": 12, "font-weight": 800, fill: i ? "#fff" : C.ink, "text-anchor": "middle" });
+      });
+      if (k === 3) {
+        rect(g, ix, iy + 18, 26, 34, { rx: 4, fill: RN.mezcla("#ffffff", C.s1, 0.15), stroke: C.s1, "stroke-width": 2 });
+        rect(g, ix + 52, iy + 18, 26, 34, { rx: 4, fill: RN.mezcla("#ffffff", C.s3, 0.15), stroke: C.s3, "stroke-width": 2 });
+        S("line", { x1: ix + 28, y1: iy + 35, x2: ix + 50, y2: iy + 35, stroke: C.ink2, "stroke-width": 2 }, g);
+        vivos.paq = rect(g, ix + 30, iy + 30, 10, 10, { rx: 2, fill: C.s4 });
+        vivos.ix3 = ix;
+      }
+      if (k === 4) {
+        rect(g, ix, iy + 24, 78, 22, { rx: 5, fill: "#EEF1F4", stroke: C.ink2, "stroke-width": 1.5 });
+        vivos.barra = rect(g, ix + 2, iy + 26, 60, 18, { rx: 4, fill: C.s3 });
+        vivos.ix4 = ix;
+        S("line", { x1: ix + 72, y1: iy + 18, x2: ix + 72, y2: iy + 52, stroke: C.ink, "stroke-width": 2 }, g);
+      }
+      if (k === 5) {
+        S("path", { d: "M" + (ix + 39) + "," + (iy + 14) + " l-9,44 h18 z", fill: C.ink2 }, g);
+        S("line", { x1: ix + 4, y1: iy + 18, x2: ix + 74, y2: iy + 18, stroke: C.ink, "stroke-width": 3, "stroke-linecap": "round" }, g);
+        S("path", { d: "M" + (ix + 4) + "," + (iy + 18) + " l-6,16 h12 z M" + (ix + 74) + "," + (iy + 18) + " l-6,16 h12 z", fill: "none", stroke: C.ink, "stroke-width": 1.5 }, g);
+        rect(g, ix - 6, iy + 30, 20, 7, { rx: 2, fill: C.s4 }); rect(g, ix + 64, iy + 30, 20, 7, { rx: 2, fill: C.s1 });
+      }
+      txt(svg, x + 118, y + 48, t[0], { "font-size": 17, "font-weight": 800 });
+      txt(svg, x + 118, y + 76, t[1], { "font-size": 13.5, fill: C.ink2 });
+      txt(svg, x + 118, y + 96, t[2], { "font-size": 13.5, fill: C.ink2 });
+      txt(svg, x + 22, y + 138, String(k + 1), { "font-size": 26, "font-weight": 800, fill: RN.mezcla("#ffffff", AC, 0.35) });
+    });
+    ambiente(function (dt, t) {
+      vivos.nuc.forEach(function (r, i) { r.setAttribute("fill", RN.mezcla("#DDF3EA", C.s3, 0.35 + 0.65 * Math.max(0, Math.sin(t * 3 + i * 1.7)))); });
+      const u = (t * 0.6) % 1;
+      vivos.paq.setAttribute("x", (vivos.ix3 + 28 + u * 14).toFixed(1));
+      vivos.paq.setAttribute("opacity", (u < 0.15 ? u / 0.15 : u > 0.85 ? (1 - u) / 0.15 : 1).toFixed(2));
+      vivos.barra.setAttribute("width", (52 + 14 * (0.5 + 0.5 * Math.sin(t * 1.4))).toFixed(1));
+    }, svg, 1);
+  })();
+})();
+</script>
+</body>
+</html>

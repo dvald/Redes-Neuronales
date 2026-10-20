@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 5 · Cómo aprende la red — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  /* nueve pestañas en una sola fila a 1280 px */
+  .tabs .tab { padding-left: .74rem; padding-right: .74rem; }
+
+  /* ---- 1 · bucle de entrenamiento ---- */
+  .etapas { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: .75rem; margin: .2rem 0 1rem !important; padding: 0; counter-reset: et; }
+  .etapas li { counter-increment: et; position: relative; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: .5rem .7rem .5rem 2.55rem; margin: 0; transition: background .25s, border-color .25s, box-shadow .25s; }
+  .etapas li::before { content: counter(et); position: absolute; left: .65rem; top: 50%; transform: translateY(-50%); width: 1.45rem; height: 1.45rem; border-radius: 50%; background: #CFD8DC; color: #fff; font-weight: 800; font-size: .78rem; display: grid; place-items: center; transition: background .25s; }
+  .etapas li:not(.repite)::after { content: "›"; position: absolute; right: -.62rem; top: 50%; transform: translateY(-52%); color: var(--muted); font-weight: 800; font-size: 1.2rem; }
+  .etapas li b { display: block; font-size: .9rem; color: var(--ink); line-height: 1.25; }
+  .etapas li span { font-family: var(--mat); color: var(--ink2); font-size: 1rem; white-space: nowrap; }
+  .etapas li.on { background: var(--acento-l); border-color: var(--acento); box-shadow: 0 0 0 3px rgba(142, 36, 170, .12); }
+  .etapas li.on::before { background: var(--acento); }
+  .etapas.girando li { border-color: #d7b4e2; }
+  .etapas.girando li::before { background: var(--acento); }
+  .etapas li.repite { counter-increment: none; padding: .5rem .6rem; display: grid; place-items: center; border-style: dashed; color: var(--ink2); font-size: .82rem; font-weight: 700; text-align: center; line-height: 1.2; }
+  .etapas li.repite::before { display: none; }
+  .etapas li.repite i { font-style: normal; font-size: 1.35rem; display: block; color: var(--acento); }
+  .etapas.girando li.repite i { animation: girar 1s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .b-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 1rem; align-items: start; }
+  .b-grid .pie { text-align: center; }
+
+  /* ---- rejillas propias ---- */
+  .lado { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(250px, 1fr); gap: 1rem; align-items: start; }
+  .lado .kpis { margin-top: 0; }
+  .lado .kpi { min-width: 6.5rem; flex: 1; }
+  .kpi .v.peq { font-size: 1.2rem; }
+  .kpi.mal .v { color: var(--bad); }
+  .formula .lin { display: block; line-height: 1.75; }
+  .formula .gr { color: var(--acento); font-weight: 700; }
+  .formula small { font-family: system-ui, sans-serif; font-size: .8rem; color: var(--ink2); }
+  .formula.media { font-size: 1.1rem; }
+  .ctl.ancho input[type=range] { width: 14rem; }
+  .huecos { min-height: 1.6em; }
+  canvas.clic { cursor: crosshair; }
+  .aviso { display: inline-block; font-weight: 700; color: var(--bad); }
+  .estado-ok { color: var(--ok); font-weight: 700; }
+  .estado-mal { color: var(--bad); font-weight: 700; }
+
+  /* ---- 6 · retropropagación ---- */
+  .r-fases, .r-pasos { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); }
+  .r-fases span { text-align: center; font-size: .78rem; font-weight: 700; color: var(--ink2); border-bottom: 2px solid #CFD8DC; margin: 0 .6rem .35rem; padding-bottom: .1rem; }
+  .r-fases span.atras { color: var(--acento); border-color: #CE93D8; }
+  .r-pasos { position: relative; margin: 0 0 .8rem; }
+  .r-pasos::before { content: ""; position: absolute; left: 4.5%; right: 4.5%; top: 13px; height: 2px; background: #DDE3E7; }
+  .r-pasos button { position: relative; background: none; border: none; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: .25rem; padding: 0 .1rem; color: var(--ink2); font-size: .8rem; line-height: 1.2; text-align: center; }
+  .r-pasos button b { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2px solid #CFD8DC; display: grid; place-items: center; font-size: .76rem; color: var(--ink2); transition: all .2s; }
+  .r-pasos button.hecho b { background: var(--acento-l); border-color: var(--acento); color: var(--acento); }
+  .r-pasos button.activo b { background: var(--acento); border-color: var(--acento); color: #fff; transform: scale(1.12); }
+  .r-pasos button.activo { color: var(--ink); font-weight: 700; }
+  .r-pasos button:focus-visible { outline: 3px solid #90CAF9; outline-offset: 2px; border-radius: 6px; }
+  .r-form { min-height: 6.9rem; white-space: normal; }
+  .r-tit { font-family: system-ui, sans-serif; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--acento); margin-bottom: .15rem; }
+  .r-tabla th, .r-tabla td { text-align: right; }
+  .r-tabla th { text-transform: none; font-size: .9rem; letter-spacing: 0; color: var(--ink); }
+  .r-tabla th:first-child { text-align: left; }
+  .r-tabla td.marca { background: var(--acento-l); }
+  .r-tabla tr.g td { color: var(--acento); font-weight: 700; }
+  .r-tabla tr.nv td { font-weight: 700; }
+
+  /* ---- 5 · código con NumPy ---- */
+  pre.code.peq { font-size: .8rem; }
+  .c-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 1rem; align-items: start; }
+  pre.code .hl { display: inline; width: auto; }
+
+  @media (max-width: 900px) {
+    .b-grid, .lado, .c-grid { grid-template-columns: 1fr; }
+    .etapas { grid-template-columns: 1fr 1fr; }
+    .etapas li::after { display: none; }
+  }
+</style>
+</head>
+<body class="bloque-arq" data-pagina="05_entrenamiento.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 5</span>Cómo aprende la red</h1>
+  <p>Función de pérdida, descenso del gradiente y retropropagación (backpropagation): del error en la salida al ajuste de cada peso.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-bucle" aria-controls="p-bucle" aria-selected="true">1 · El bucle</button>
+  <button class="tab" role="tab" id="t-perdida" aria-controls="p-perdida" aria-selected="false">2 · Pérdida</button>
+  <button class="tab" role="tab" id="t-d1" aria-controls="p-d1" aria-selected="false">3 · Descenso 1D</button>
+  <button class="tab" role="tab" id="t-d2" aria-controls="p-d2" aria-selected="false">4 · Descenso 2D</button>
+  <button class="tab" role="tab" id="t-cadena" aria-controls="p-cadena" aria-selected="false">5 · Regla de la cadena</button>
+  <button class="tab" role="tab" id="t-retro" aria-controls="p-retro" aria-selected="false">6 · Retropropagación</button>
+  <button class="tab" role="tab" id="t-lotes" aria-controls="p-lotes" aria-selected="false">7 · Lotes</button>
+  <button class="tab" role="tab" id="t-desv" aria-controls="p-desv" aria-selected="false">8 · Desvanecimiento</button>
+  <button class="tab" role="tab" id="t-minimos" aria-controls="p-minimos" aria-selected="false">9 · Mínimos</button>
+</div>
+
+<main class="content">
+
+  <!-- =============================================================== 1 · BUCLE -->
+  <section id="p-bucle" class="panel">
+    <div class="card">
+      <h2>Aprender es ajustar los pesos</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Entrenar es repetir un bucle de cuatro pasos hasta que la pérdida deja de bajar. Aquí una red 2 → 4 → 1 aprende el XOR del tema 4, con pesos que empiezan al azar.</p>
+      <div class="controles">
+        <button class="btn" id="b-paso">Una vuelta, despacio</button>
+        <button class="btn" id="b-play">▶ Entrenar</button>
+        <button class="btn gris" id="b-reset">Reiniciar</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Época</div><div class="v" id="b-ep">0</div></div>
+          <div class="kpi"><div class="t">Pérdida</div><div class="v" id="b-loss">—</div></div>
+          <div class="kpi"><div class="t">Aciertos</div><div class="v" id="b-acc">—</div></div>
+        </div>
+      </div>
+      <ol class="etapas" id="b-etapas">
+        <li><b>Propagación hacia delante</b><span>ŷ = f(x; W)</span></li>
+        <li><b>Pérdida</b><span>L(ŷ, y)</span></li>
+        <li><b>Retropropagación</b><span>∂L/∂w de cada peso</span></li>
+        <li><b>Actualización</b><span>w ← w − η · ∂L/∂w</span></li>
+        <li class="repite"><i>↻</i>otra época</li>
+      </ol>
+      <div class="b-grid">
+        <div>
+          <div class="escena"><svg id="b-red" aria-label="Red 2-4-1 que se entrena: pesos, activaciones y pérdida"></svg></div>
+          <div class="leyenda"><span><i style="background:var(--pos)"></i>peso positivo</span><span><i style="background:var(--neg)"></i>peso negativo</span><span><i class="punto" style="background:var(--ink)"></i>señal hacia delante</span><span><i class="punto" style="background:var(--acento)"></i>gradiente hacia atrás</span></div>
+        </div>
+        <div>
+          <canvas id="b-front" class="lienzo" aria-label="Datos XOR y frontera de decisión de la red"></canvas>
+          <p class="pie">Probabilidad de la clase 1 en cada punto del plano. El círculo marca el ejemplo que recorre la red.</p>
+        </div>
+      </div>
+      <canvas id="b-curva" class="lienzo" aria-label="Pérdida por época"></canvas>
+      <ul>
+        <li><strong>Hacia delante:</strong> los datos atraviesan la red y salen predicciones ŷ.</li>
+        <li><strong>Pérdida:</strong> un único número que mide lo lejos que están ŷ de las etiquetas y (aquí, entropía cruzada binaria).</li>
+        <li><strong>Retropropagación:</strong> calcula de la salida hacia la entrada cuánto influye cada peso en la pérdida, ∂L/∂w.</li>
+        <li><strong>Actualización:</strong> cada peso da un paso cuesta abajo, de tamaño η (tasa de aprendizaje, aquí η = 1,5). Con todos los datos en un lote, cada vuelta es una época.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> los pesos y sesgos son lo único que cambia al entrenar; la arquitectura y las activaciones las elegimos nosotros. La red empieza con pesos aleatorios y el bucle los ajusta para minimizar la pérdida.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 2 · PÉRDIDA -->
+  <section id="p-perdida" class="panel">
+    <div class="card">
+      <h2>La función de pérdida: un número que mide el error</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Para ajustar los pesos hay que medir cuánto se equivoca la red. En regresión, el error cuadrático medio (ECM) es literalmente el área media de estos cuadrados.</p>
+      <div class="controles">
+        <div class="ctl"><label for="p-w">Peso w</label><input id="p-w" type="range" min="-0.5" max="4.5" step="0.05" value="0.2"><output id="p-wo">0,20</output></div>
+        <div class="ctl"><label for="p-b">Sesgo b</label><input id="p-b" type="range" min="-1" max="8" step="0.1" value="7.5"><output id="p-bo">7,5</output></div>
+        <button class="btn" id="p-ajusta">Ajustar la recta</button>
+        <button class="btn gris" id="p-ini">Recta inicial</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">ECM</div><div class="v" id="p-ecm">—</div></div>
+          <div class="kpi"><div class="t">Mínimo posible</div><div class="v" id="p-min">—</div></div>
+        </div>
+      </div>
+      <div class="lado">
+        <div>
+          <canvas id="p-cv" class="lienzo" aria-label="Datos, recta ajustada y residuos dibujados como cuadrados"></canvas>
+          <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>datos (y = 2x + 3 con ruido)</span><span><i style="background:var(--ink)"></i>recta ŷ = w·x + b</span><span><i style="background:var(--s2);height:10px;width:10px;opacity:.55"></i>residuo al cuadrado</span></div>
+        </div>
+        <div>
+          <canvas id="p-cv2" class="lienzo" aria-label="Pérdida en función del peso w"></canvas>
+          <p class="pie" id="p-pie2">ECM en función de w, con b fijo.</p>
+        </div>
+      </div>
+      <div class="formula media" id="p-form"></div>
+      <ul>
+        <li>Residuo de cada punto: y − ŷ. Al elevarlo al cuadrado siempre es positivo y castiga más los errores grandes.</li>
+        <li>ECM = media de los residuos al cuadrado: el mismo error con el que se ajusta la recta y = 2x + 3 del tema 3.</li>
+        <li>A la derecha, la misma pérdida vista como función del peso: una parábola con un mínimo. En clasificación se usa la entropía cruzada (tema 6), pero la idea es la misma.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> la pérdida convierte «lo mal que lo hace la red» en una función de los pesos, L(w, b). Entrenar es buscar el punto más bajo de esa función.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 3 · DESCENSO 1D -->
+  <section id="p-d1" class="panel">
+    <div class="card">
+      <h2>Descenso del gradiente en una dimensión</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">La derivada dice hacia dónde sube la pérdida; damos un paso en sentido contrario, proporcional a la tasa de aprendizaje η. Pulsa sobre la curva para cambiar el punto de partida.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Tasa de aprendizaje η</span>
+          <div class="seg" id="d1-seg">
+            <button type="button" data-v="0">Pequeña</button><button type="button" data-v="1" aria-pressed="true">Adecuada</button><button type="button" data-v="2">Grande</button><button type="button" data-v="3">Excesiva</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="d1-eta">η</label><input id="d1-eta" type="range" min="0.005" max="0.22" step="0.005" value="0.07"><output id="d1-etao">0,070</output></div>
+        <button class="btn" id="d1-paso">Un paso</button>
+        <button class="btn" id="d1-play">▶ Reproducir</button>
+        <button class="btn gris" id="d1-reset">Reiniciar</button>
+      </div>
+      <div class="lado">
+        <canvas id="d1-cv" class="lienzo clic" aria-label="Curva de pérdida L(w), punto actual, tangente y paso del descenso"></canvas>
+        <div>
+          <div class="kpis">
+            <div class="kpi"><div class="t">Iteración</div><div class="v" id="d1-it">0</div></div>
+            <div class="kpi"><div class="t">w</div><div class="v peq" id="d1-w">—</div></div>
+            <div class="kpi"><div class="t">dL/dw</div><div class="v peq" id="d1-g">—</div></div>
+          </div>
+          <canvas id="d1-hist" class="lienzo" aria-label="Pérdida por iteración en escala logarítmica para las cuatro tasas de aprendizaje"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>pequeña</span><span><i style="background:var(--s2)"></i>adecuada</span><span><i style="background:var(--s3)"></i>grande</span><span><i style="background:var(--s4)"></i>excesiva</span><span><i class="punto" style="background:var(--ink)"></i>tu recorrido</span></div>
+          <p class="pie" id="d1-estado">&nbsp;</p>
+        </div>
+      </div>
+      <div class="formula" id="d1-form"></div>
+      <div class="grid4">
+        <div class="box"><h3>Pequeña</h3>Cada paso es tan corto que hacen falta muchísimas iteraciones.</div>
+        <div class="box"><h3>Adecuada</h3>Llega al mínimo en pocos pasos sin pasarse.</div>
+        <div class="box"><h3>Grande</h3>Se pasa del mínimo en cada paso y oscila de un lado a otro, aunque acaba llegando.</div>
+        <div class="box"><h3>Excesiva</h3>Cada salto cae más arriba que el anterior: la pérdida crece y el entrenamiento diverge.</div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> w ← w − η · dL/dw. La pendiente da la dirección y η el tamaño del paso. Con η demasiado alta el algoritmo sobrepasa el mínimo, la pérdida se vuelve inestable y puede divergir.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 4 · DESCENSO 2D -->
+  <section id="p-d2" class="panel">
+    <div class="card">
+      <h2>Descenso del gradiente en dos dimensiones</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Con dos pesos, la pérdida es un paisaje. Cada curva de nivel une pesos con la misma pérdida; el gradiente es perpendicular a ellas y el descenso baja por la máxima pendiente. Pulsa en el mapa para elegir el punto de partida.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Entradas</span>
+          <div class="seg" id="d2-seg"><button type="button" data-v="1" aria-pressed="true">Normalizadas</button><button type="button" data-v="3">Sin normalizar</button></div>
+        </div>
+        <div class="ctl"><label for="d2-eta">Tasa de aprendizaje η</label><input id="d2-eta" type="range" min="0.01" max="1" step="0.01" value="0.08"><output id="d2-etao">0,08</output></div>
+        <label class="inline"><input type="checkbox" id="d2-campo"> Campo de gradientes</label>
+        <button class="btn" id="d2-paso">Un paso</button>
+        <button class="btn" id="d2-play">▶ Reproducir</button>
+        <button class="btn gris" id="d2-reset">Reiniciar</button>
+      </div>
+      <div class="lado">
+        <canvas id="d2-cv" class="lienzo clic" aria-label="Curvas de nivel de la pérdida en el plano de los pesos w1 y w2 con la trayectoria del descenso"></canvas>
+        <div>
+          <div class="kpis">
+            <div class="kpi"><div class="t">Iteración</div><div class="v" id="d2-it">0</div></div>
+            <div class="kpi"><div class="t">Pérdida</div><div class="v peq" id="d2-l">—</div></div>
+          </div>
+          <canvas id="d2-hist" class="lienzo" aria-label="Pérdida por iteración"></canvas>
+          <p class="pie" id="d2-estado">&nbsp;</p>
+          <ul>
+            <li>Modelo ŷ = w₁x₁ + w₂x₂ con ECM sobre 200 ejemplos.</li>
+            <li id="d2-txt">Con las entradas en la misma escala, las curvas son casi circunferencias: el gradiente apunta al mínimo.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> si una entrada tiene una escala mucho mayor (edad frente a ingresos), el paisaje se convierte en un valle estrecho: la η máxima la impone la dirección empinada, el descenso zigzaguea y avanza despacio por la otra. Normalizar las entradas redondea el paisaje (el problema de «datos no normalizados» del tema 4).</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 5 · CADENA -->
+  <section id="p-cadena" class="panel">
+    <div class="card">
+      <h2>La regla de la cadena</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Una neurona sigmoide es una cadena de operaciones. Hacia delante viajan los valores (arriba de cada arista); hacia atrás, los gradientes (abajo). En medio, la derivada local de cada operación.</p>
+      <div class="controles">
+        <div class="ctl"><label for="c-x">Entrada x</label><input id="c-x" type="range" min="-2" max="2" step="0.1" value="1.5"><output id="c-xo"></output></div>
+        <div class="ctl"><label for="c-w">Peso w</label><input id="c-w" type="range" min="-2" max="2" step="0.05" value="0.8"><output id="c-wo"></output></div>
+        <div class="ctl"><label for="c-b">Sesgo b</label><input id="c-b" type="range" min="-2" max="2" step="0.05" value="-0.4"><output id="c-bo"></output></div>
+        <div class="ctl"><label for="c-y">Objetivo y</label><input id="c-y" type="range" min="0" max="1" step="0.05" value="1"><output id="c-yo"></output></div>
+        <button class="btn" id="c-anim">▶ Delante y atrás</button>
+        <button class="btn gris" id="c-paso">Un paso de descenso (η = 1)</button>
+      </div>
+      <div class="escena"><svg id="c-svg" aria-label="Grafo de cómputo de una neurona sigmoide con valores hacia delante, derivadas locales y gradientes hacia atrás"></svg></div>
+      <div class="formula media" id="c-form"></div>
+      <div class="c-grid">
+        <div>
+          <ul>
+            <li>Cada operación solo necesita saber su derivada local: la de σ es σ(z)(1 − σ(z)); la de (a − y)² es 2(a − y).</li>
+            <li>El gradiente de un parámetro es el producto de las derivadas locales del camino que lo une con la pérdida.</li>
+            <li>La comprobación numérica (mover w una milésima y ver cuánto cambia L) da lo mismo: el cálculo es exacto.</li>
+          </ul>
+        </div>
+        <div>
+          <pre class="code peq"><span class="com"># La neurona sigmoide del tema 3 ya hacía esto. Allí L = ½(y − a)²,</span>
+<span class="com"># por eso no aparece el factor 2.</span>
+output = <span class="fn">sigmoid</span>(np.<span class="fn">dot</span>(X, weights) + bias)  <span class="com"># a = σ(z)</span>
+error = y - output                           <span class="com"># −∂L/∂a</span>
+<span class="com"># output * (1 - output) = a(1 − a) = σ'(z)</span>
+adjustment = np.<span class="fn">dot</span>(X.T, error * <span class="hl">(output * (<span class="num">1</span> - output))</span>)
+weights += adjustment * learning_rate        <span class="com"># w ← w − η·∂L/∂w</span></pre>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> hacia delante se calculan valores; hacia atrás se multiplican derivadas locales. La retropropagación no es más que la regla de la cadena aplicada con orden, reutilizando lo ya calculado.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 6 · RETROPROPAGACIÓN -->
+  <section id="p-retro" class="panel">
+    <div class="card">
+      <h2>Retropropagación paso a paso</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Una red 2 → 2 → 1 con sigmoides, un solo ejemplo y todos los números: propagación, pérdida, δ de cada neurona, gradiente de cada peso y actualización.</p>
+      <div class="controles">
+        <button class="btn gris" id="r-ant">◂ Anterior</button>
+        <button class="btn" id="r-sig">Siguiente ▸</button>
+        <button class="btn" id="r-play">▶ Reproducir</button>
+        <button class="btn gris" id="r-reset">Reiniciar</button>
+        <button class="btn gris" id="r-otra">↻ Repetir con los pesos nuevos</button>
+        <div class="ctl"><label for="r-eta">Tasa de aprendizaje η</label><input id="r-eta" type="range" min="0.1" max="2" step="0.1" value="0.5"><output id="r-etao">0,5</output></div>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Iteración</div><div class="v" id="r-iter">1</div></div>
+          <div class="kpi"><div class="t">Pérdida antes</div><div class="v peq" id="r-la">—</div></div>
+          <div class="kpi"><div class="t">Pérdida después</div><div class="v peq" id="r-ld">—</div></div>
+        </div>
+      </div>
+      <div class="r-fases" aria-hidden="true"><span style="grid-column: 2 / 5">→ hacia delante</span><span style="grid-column: 6 / 10" class="atras">← hacia atrás</span></div>
+      <div class="r-pasos" id="r-pasos" aria-label="Pasos del algoritmo"></div>
+      <div class="escena"><svg id="r-svg" aria-label="Red 2-2-1 con pesos, activaciones, deltas y gradientes"></svg></div>
+      <div class="formula r-form" id="r-form"></div>
+      <table class="tabla r-tabla" id="r-tabla" aria-label="Parámetros, gradientes y valores actualizados"></table>
+      <p class="pie">Se calcula con todos los decimales y se muestra redondeado. Los δ ocultos usan los pesos antiguos: los nueve parámetros se actualizan a la vez, al final.</p>
+      <div class="clave"><strong>Idea clave:</strong> el δ de una neurona es la suma de los δ de la capa siguiente, ponderados por sus pesos, multiplicada por la derivada de su activación. El gradiente de un peso es <em>δ de la neurona de llegada × activación de la neurona de origen</em>. Por eso basta un único recorrido hacia atrás para obtener todos los gradientes.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 7 · LOTES -->
+  <section id="p-lotes" class="panel">
+    <div class="card">
+      <h2>Época, lote e iteración</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">El gradiente se calcula con un trozo de los datos (un lote, batch). Cada lote produce una actualización de los pesos (una iteración); una época es una pasada completa por los N ejemplos.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq">Tamaño de lote</span>
+          <div class="seg" id="l-seg"><button type="button" data-v="1">1</button><button type="button" data-v="32" aria-pressed="true">32</button><button type="button" data-v="100">100</button><button type="button" data-v="250">250</button><button type="button" data-v="1000">1000</button></div>
+        </div>
+        <button class="btn" id="l-play">▶ Recorrer una época</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Iteración</div><div class="v" id="l-it">—</div></div>
+          <div class="kpi"><div class="t">Época</div><div class="v" id="l-ep">1</div></div>
+        </div>
+      </div>
+      <canvas id="l-tira" class="lienzo" aria-label="Los 1000 ejemplos troceados en lotes"></canvas>
+      <div class="formula" id="l-form"></div>
+    </div>
+
+    <div class="card">
+      <h2>Lote completo, mini-lote y estocástico</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Los tres parten del mismo punto con la misma η = 0,05 y dan el mismo número de pasos sobre 1000 ejemplos reales. Lo que cambia es cuántos ejemplos miran para calcular cada paso.</p>
+      <div class="controles">
+        <button class="btn" id="l-play2">▶ Reproducir</button>
+        <button class="btn gris" id="l-otra">Otro barajado</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Iteraciones</div><div class="v" id="l-k">—</div></div>
+          <div class="kpi"><div class="t">Épocas · lote completo</div><div class="v peq" id="l-e1">—</div></div>
+          <div class="kpi"><div class="t">Épocas · estocástico</div><div class="v peq" id="l-e3">—</div></div>
+          <div class="kpi"><div class="t">Épocas · mini-lote 32</div><div class="v peq" id="l-e2">—</div></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <canvas id="l-mapa" class="lienzo" aria-label="Trayectorias de los tres métodos sobre las curvas de nivel de la pérdida"></canvas>
+        <canvas id="l-curva" class="lienzo" aria-label="Pérdida con todos los datos en cada iteración para los tres métodos"></canvas>
+      </div>
+      <div class="leyenda"><span><i style="background:var(--s1)"></i>lote completo (1000 ejemplos por paso)</span><span><i style="background:var(--s2)"></i>estocástico (1 ejemplo por paso)</span><span><i style="background:var(--s3)"></i>mini-lote (32 ejemplos por paso)</span></div>
+      <ul>
+        <li><strong>Lote completo:</strong> gradiente exacto y camino suave, pero cada paso recorre todos los datos.</li>
+        <li><strong>Estocástico (SGD, lote = 1):</strong> pasos baratos y muy ruidosos; nunca se queda quieto en el mínimo.</li>
+        <li><strong>Mini-lote:</strong> el equilibrio que se usa en la práctica (<code>batch_size</code> en Keras, 32 por defecto): bastante preciso y aprovecha el paralelismo de la GPU.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> iteraciones por época = ⌈N / tamaño de lote⌉. Lote pequeño: más actualizaciones por época y más ruido (que a veces ayuda a escapar de mínimos locales). Lote grande: gradiente más preciso y estable, menos pasos por época.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 8 · DESVANECIMIENTO -->
+  <section id="p-desv" class="panel">
+    <div class="card">
+      <h2>Gradientes que se desvanecen o explotan</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">En una red profunda, el gradiente de las primeras capas es un producto de muchos factores, uno por capa. Si son menores que 1 se desvanece; si son mayores, explota.</p>
+      <div class="controles">
+        <div class="ctl"><label for="v-prof">Capas ocultas</label><input id="v-prof" type="range" min="1" max="15" step="1" value="10"><output id="v-profo">10</output></div>
+        <div class="ctl"><span class="etq">Activación e inicialización</span>
+          <div class="seg" id="v-seg"><button type="button" data-v="0" aria-pressed="true">Sigmoide</button><button type="button" data-v="1">ReLU</button><button type="button" data-v="2">ReLU con pesos grandes</button></div>
+        </div>
+        <button class="btn gris" id="v-semilla">Otra inicialización</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">|∂L/∂w| capa 1</div><div class="v peq" id="v-k1">—</div></div>
+          <div class="kpi"><div class="t">|∂L/∂w| última capa</div><div class="v peq" id="v-k2">—</div></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div>
+          <canvas id="v-barras" class="lienzo" aria-label="Gradiente medio de los pesos de cada capa en escala logarítmica"></canvas>
+          <p class="pie" id="v-pie1">Media de |∂L/∂w| en cada capa de pesos (escala logarítmica).</p>
+        </div>
+        <div>
+          <canvas id="v-prof-cv" class="lienzo" aria-label="Gradiente de la primera capa según la profundidad para las tres configuraciones"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>sigmoide (inicialización de Xavier)</span><span><i style="background:var(--s2)"></i>ReLU (inicialización de He)</span><span><i style="background:var(--s3)"></i>ReLU con pesos ×2</span></div>
+        </div>
+      </div>
+      <p class="pie">Red real 8 → 16 → … → 16 → 1 con salida sigmoide, gradiente medio sobre 64 ejemplos aleatorios, sin entrenar.</p>
+      <div class="grid3">
+        <div class="box acento"><h3>Desvanecimiento</h3>La derivada de la sigmoide vale como mucho 0,25. Con 10 capas, el producto puede ser del orden de 0,25¹⁰ ≈ 10⁻⁶: las primeras capas casi no aprenden.</div>
+        <div class="box acento"><h3>Explosión</h3>Con pesos iniciales demasiado grandes, cada capa multiplica la señal por más de 1: el gradiente crece de forma exponencial con la profundidad, los pasos son enormes y la pérdida acaba en NaN.</div>
+        <div class="box acento"><h3>Remedios</h3>ReLU en las ocultas, inicialización de He o de Xavier, BatchNormalization y recorte del gradiente (gradient clipping).</div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> la retropropagación multiplica una derivada por capa. Para que el gradiente llegue sano a las primeras capas, esos factores deben rondar 1: de ahí ReLU y las inicializaciones de He y Xavier.</div>
+    </div>
+  </section>
+
+  <!-- =============================================================== 9 · MÍNIMOS -->
+  <section id="p-minimos" class="panel">
+    <div class="card">
+      <h2>Mínimos locales, mesetas y puntos de silla</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">Curva de pérdida de juguete</span></div>
+      <p class="lead">La pérdida de una red real no es un cuenco perfecto. El descenso del gradiente solo ve la pendiente local: dónde acaba depende del punto de partida y de η. Pulsa sobre la curva para soltar la bola.</p>
+      <div class="controles">
+        <div class="ctl"><label for="m-w0">Punto de partida w₀</label><input id="m-w0" type="range" min="-2.9" max="2.9" step="0.05" value="-2.8"><output id="m-w0o"></output></div>
+        <div class="ctl"><label for="m-eta">Tasa de aprendizaje η</label><input id="m-eta" type="range" min="0.02" max="0.6" step="0.01" value="0.1"><output id="m-etao"></output></div>
+        <button class="btn" id="m-play">▶ Soltar la bola</button>
+        <button class="btn" id="m-varias">Soltar 13 a la vez</button>
+        <button class="btn gris" id="m-reset">Reiniciar</button>
+        <div class="kpis">
+          <div class="kpi"><div class="t">Iteración</div><div class="v" id="m-it">0</div></div>
+          <div class="kpi"><div class="t">dL/dw</div><div class="v peq" id="m-g">—</div></div>
+        </div>
+      </div>
+      <canvas id="m-cv" class="lienzo clic" aria-label="Curva de pérdida con mínimo global, mínimo local y meseta"></canvas>
+      <div class="leyenda"><span><i style="background:var(--s1);height:8px"></i>salidas que acaban en el mínimo global</span><span><i style="background:var(--s2);height:8px"></i>salidas que acaban en el mínimo local</span><span id="m-ley3"><i style="background:var(--s4);height:8px"></i>sin converger tras 300 iteraciones (meseta u oscilación)</span></div>
+      <p class="pie">La franja inferior colorea cada punto de partida según dónde termina con la η elegida (sus «cuencas de atracción»). Con η pequeña, la frontera es la cima entre los dos mínimos; con η grande, algunas salidas saltan la barrera y el resultado se vuelve muy sensible al punto de partida.</p>
+    </div>
+    <div class="card">
+      <h2>Punto de silla en dos dimensiones</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span><span class="tag illus">Superficie de juguete</span></div>
+      <div class="lado">
+        <div>
+          <div class="controles"><button class="btn" id="s-play">▶ Lanzar</button><span class="pie">o pulsa en el mapa para elegir la salida</span></div>
+          <canvas id="s-cv" class="lienzo clic" aria-label="Curvas de nivel de una superficie con un punto de silla y la trayectoria del descenso"></canvas>
+        </div>
+        <div>
+          <p>L(u, v) = u² − v² + v⁴/2: en el centro la superficie sube en una dirección y baja en la otra. El gradiente se anula, pero no es un mínimo.</p>
+          <p>Los puntos de la trayectoria se amontonan junto a la silla: el gradiente casi nulo frena el descenso durante muchas iteraciones antes de escapar hacia uno de los dos mínimos.</p>
+          <div class="kpis"><div class="kpi"><div class="t">Iteraciones junto a la silla</div><div class="v" id="s-n">—</div></div></div>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> con millones de pesos, la mayoría de los puntos donde el gradiente se anula son puntos de silla, no mínimos locales (Dauphin et al., 2014). El ruido de los mini-lotes y optimizadores como momento o Adam (tema 8) ayudan a atravesar mesetas y sillas.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/mlp.js"></script>
+<script>
+(function () {
+  "use strict";
+  const C = RN.color, S = RN.svg;
+  const fmt = (x, d) => RN.fmt(x, d).replace("-", "−");   // signo menos tipográfico
+  const $ = (id) => document.getElementById(id);
+  const GRAD = RN.acento() || C.arq;          // morado del bloque: gradientes y flujo hacia atrás
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  const SUP = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+  const pot10 = (v) => { const e = Math.round(Math.log10(v)); return e === 0 ? "1" : "10" + String(e).split("").map((c) => SUP[c]).join(""); };
+  const sci = (v) => { // 3,2·10⁻⁵
+    if (!Number.isFinite(v)) return "—";
+    if (v === 0) return "0";
+    const e = Math.floor(Math.log10(Math.abs(v)));
+    if (e >= -2 && e <= 3) return fmt(v, Math.max(0, 2 - e));
+    return fmt(v / Math.pow(10, e), 1) + "·" + pot10(Math.pow(10, e));
+  };
+  const sg = (v, d) => (v < 0 ? "(" + fmt(v, d) + ")" : fmt(v, d)); // número entre paréntesis si es negativo
+
+  // ---------------------------------------------------------------- utilidades de dibujo
+  function flecha(c, x1, y1, x2, y2, col, ancho, cab) {
+    const L = Math.hypot(x2 - x1, y2 - y1);
+    if (L < 2) return;
+    const ux = (x2 - x1) / L, uy = (y2 - y1) / L, h = Math.min(cab || 10, L * 0.7);
+    c.strokeStyle = col; c.fillStyle = col; c.lineWidth = ancho || 2; c.lineCap = "round";
+    c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2 - ux * h * 0.8, y2 - uy * h * 0.8); c.stroke();
+    c.beginPath(); c.moveTo(x2, y2);
+    c.lineTo(x2 - ux * h - uy * h * 0.45, y2 - uy * h + ux * h * 0.45);
+    c.lineTo(x2 - ux * h + uy * h * 0.45, y2 - uy * h - ux * h * 0.45);
+    c.closePath(); c.fill();
+  }
+  function bola(c, x, y, r, col) {
+    c.beginPath(); c.arc(x, y, r, 0, 2 * Math.PI);
+    c.fillStyle = col; c.fill(); c.lineWidth = 2; c.strokeStyle = "#fff"; c.stroke();
+  }
+  function etiqueta(c, txt, x, y, op) {
+    op = op || {};
+    c.font = (op.peso || "600") + " " + (op.tam || 13) + "px system-ui, sans-serif";
+    c.textAlign = op.alin || "center"; c.textBaseline = "middle";
+    if (op.halo !== false) { c.lineWidth = 4; c.strokeStyle = "rgba(252,252,251,.92)"; c.lineJoin = "round"; c.strokeText(txt, x, y); }
+    c.fillStyle = op.color || C.ink; c.fillText(txt, x, y);
+  }
+  // trayectoria con halo blanco para que se lea sobre cualquier fondo
+  function trayecto(c, P, col, op) {
+    op = op || {};
+    if (!P.length) return;
+    c.lineJoin = "round"; c.lineCap = "round";
+    c.beginPath(); P.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])));
+    c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = (op.ancho || 2) + 3; c.stroke();
+    c.strokeStyle = col; c.lineWidth = op.ancho || 2; c.stroke();
+    if (op.puntos) P.forEach((p) => { c.beginPath(); c.arc(p[0], p[1], op.puntos, 0, 7); c.fillStyle = col; c.fill(); c.lineWidth = 1.2; c.strokeStyle = "#fff"; c.stroke(); });
+  }
+  // botones segmentados
+  function segmento(cont, alElegir) {
+    const bs = Array.from(cont.querySelectorAll("button"));
+    bs.forEach((b) => { if (!b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", "false"); });
+    const marca = (b) => bs.forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    bs.forEach((b) => b.addEventListener("click", () => { marca(b); alElegir(b.dataset.v); }));
+    return { marcar: (v) => { const b = bs.find((x) => x.dataset.v === String(v)); if (b) marca(b); else marca(null); } };
+  }
+
+  // ---------------------------------------------------------------- mapa de curvas de nivel (canvas)
+  // op: { alto, dominio(w,h) → {x0,x1,y0,y1}, f(a,b), niveles() → [..] crecientes, ejes:[nombreX, nombreY] }
+  function Mapa(cv, op) {
+    const M = { cv: cv, cache: null, w: 0, h: 0 };
+    M.preparar = function () {
+      const L = RN.lienzo(cv, op.alto);
+      M.ctx = L.ctx; M.w = L.w; M.h = L.h;
+      M.dom = op.dominio(L.w, L.h);
+      M.cache = null;
+    };
+    M.sx = (a) => (a - M.dom.x0) / (M.dom.x1 - M.dom.x0) * M.w;
+    M.sy = (b) => (M.dom.y1 - b) / (M.dom.y1 - M.dom.y0) * M.h;
+    M.ix = (px) => M.dom.x0 + px / M.w * (M.dom.x1 - M.dom.x0);
+    M.iy = (py) => M.dom.y1 - py / M.h * (M.dom.y1 - M.dom.y0);
+    M.invalidar = () => { M.cache = null; };
+    M.fondo = function () {
+      if (!M.cache) M.cache = pintarFondo();
+      M.ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+      M.ctx.clearRect(0, 0, M.w, M.h);
+      M.ctx.drawImage(M.cache, 0, 0, M.w, M.h);
+    };
+    function pintarFondo() {
+      const dpr = window.devicePixelRatio || 1;
+      const W = Math.max(1, Math.round(M.w * dpr)), H = Math.max(1, Math.round(M.h * dpr));
+      const off = document.createElement("canvas"); off.width = W; off.height = H;
+      const oc = off.getContext("2d");
+      const niv = op.niveles();
+      const n = niv.length;
+      const cols = [];
+      for (let k = 0; k <= n; k++) {
+        const t = 1 - k / n;
+        const hx = RN.mezcla("#ffffff", "#5a7896", 0.03 + 0.30 * t * t);
+        cols.push([parseInt(hx.slice(1, 3), 16), parseInt(hx.slice(3, 5), 16), parseInt(hx.slice(5, 7), 16)]);
+      }
+      const img = oc.createImageData(W, H), d = img.data;
+      for (let py = 0; py < H; py++) {
+        const b = M.iy((py + 0.5) / dpr);
+        for (let px = 0; px < W; px++) {
+          const v = op.f(M.ix((px + 0.5) / dpr), b);
+          let k = 0; while (k < n && v > niv[k]) k++;
+          const c = cols[k], o = (py * W + px) * 4;
+          d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+        }
+      }
+      oc.putImageData(img, 0, 0);
+      oc.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const s = 3, nx = Math.ceil(M.w / s) + 1, ny = Math.ceil(M.h / s) + 1, G = new Float64Array(nx * ny);
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) G[j * nx + i] = op.f(M.ix(i * s), M.iy(j * s));
+      oc.beginPath();
+      niv.forEach((lv) => isolinea(oc, G, nx, ny, s, lv));
+      oc.strokeStyle = "rgba(82,96,109,.32)"; oc.lineWidth = 1; oc.stroke();
+      // ejes del plano de pesos
+      oc.strokeStyle = "rgba(82,96,109,.45)"; oc.lineWidth = 1;
+      if (M.dom.x0 < 0 && M.dom.x1 > 0) { const X = Math.round(M.sx(0)) + 0.5; oc.beginPath(); oc.moveTo(X, 0); oc.lineTo(X, M.h); oc.stroke(); }
+      if (M.dom.y0 < 0 && M.dom.y1 > 0) { const Y = Math.round(M.sy(0)) + 0.5; oc.beginPath(); oc.moveTo(0, Y); oc.lineTo(M.w, Y); oc.stroke(); }
+      if (op.ejes) {
+        etiqueta(oc, op.ejes[0], M.w - 8, M.sy(0) - 12, { alin: "right", color: C.ink2, tam: 14 });
+        etiqueta(oc, op.ejes[1], M.sx(0) + 10, 14, { alin: "left", color: C.ink2, tam: 14 });
+      }
+      return off;
+    }
+    return M;
+  }
+  function isolinea(c, G, nx, ny, s, lv) {
+    for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+      const a = G[j * nx + i], b = G[j * nx + i + 1], cc = G[(j + 1) * nx + i + 1], d = G[(j + 1) * nx + i];
+      const k = (a > lv ? 8 : 0) | (b > lv ? 4 : 0) | (cc > lv ? 2 : 0) | (d > lv ? 1 : 0);
+      if (k === 0 || k === 15) continue;
+      const x = i * s, y = j * s;
+      const T = () => [x + s * (lv - a) / (b - a), y], R = () => [x + s, y + s * (lv - b) / (cc - b)];
+      const B = () => [x + s * (lv - d) / (cc - d), y + s], L = () => [x, y + s * (lv - a) / (d - a)];
+      const seg = (p, q) => { c.moveTo(p[0], p[1]); c.lineTo(q[0], q[1]); };
+      switch (k) {
+        case 1: case 14: seg(L(), B()); break;
+        case 2: case 13: seg(B(), R()); break;
+        case 3: case 12: seg(L(), R()); break;
+        case 4: case 11: seg(T(), R()); break;
+        case 6: case 9: seg(T(), B()); break;
+        case 7: case 8: seg(L(), T()); break;
+        case 5: seg(L(), T()); seg(B(), R()); break;
+        case 10: seg(T(), R()); seg(L(), B()); break;
+      }
+    }
+  }
+
+  // ================================================================ 1 · EL BUCLE
+  (function () {
+    const datos = RNmlp.datos.clasif("xor", 120, 0.06, 3);
+    const ETA = 1.5, MAXEP = 300;
+    const k0 = datos.X.findIndex((x, k) => datos.y[k] === 1 && x[0] > 0.35 && x[1] > 0.35);
+    const svg = $("b-red");
+    const red = RN.red(svg, { capas: [2, 4, 1], ancho: 640, alto: 330, radio: 21, titulos: ["Entrada", "Capa oculta (tanh)", "Salida (sigmoide)"], etiquetas: [["x₁", "x₂"], null, ["ŷ"]] });
+    svg.setAttribute("viewBox", "0 0 800 330");
+    const salida = red.nodos[2][0];
+    S("line", { x1: salida.x + 23, y1: salida.y, x2: 668, y2: salida.y, stroke: "#9AA5B1", "stroke-width": 2 }, svg);
+    S("path", { d: "M668," + (salida.y - 5) + " L677," + salida.y + " L668," + (salida.y + 5) + "Z", fill: "#9AA5B1" }, svg);
+    S("text", { x: 732, y: 14, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#52606D", text: "Pérdida" }, svg);
+    const cajaL = S("rect", { x: 682, y: salida.y - 36, width: 104, height: 72, rx: 10, fill: "#fff", stroke: "#52606D", "stroke-width": 2 }, svg);
+    S("text", { x: 734, y: salida.y - 13, "text-anchor": "middle", "font-size": 13, fill: "#52606D", text: "L (media)" }, svg);
+    const txtL = S("text", { x: 734, y: salida.y + 14, "text-anchor": "middle", "font-size": 21, "font-weight": 800, fill: "#1F2933", text: "—" }, svg);
+    const vals = [[], [], []];   // textos con el valor de cada neurona para el ejemplo marcado
+    red.nodos.forEach((col, l) => col.forEach((nd, j) => {
+      vals[l][j] = S("text", { x: nd.x, y: nd.y + 36, "text-anchor": "middle", "font-size": 12.5, fill: "#52606D", text: "" }, svg);
+    }));
+
+    let m, ep, hist, ocupado = false, token = 0;
+    const etapas = Array.from($("b-etapas").querySelectorAll("li"));
+    const etapa = (k) => etapas.forEach((li, i) => li.classList.toggle("on", i === k));
+    const front = $("b-front");
+    const curva = RN.grafica($("b-curva"), { alto: 230, x: { min: -4, max: MAXEP, titulo: "época" }, y: { min: 0, max: 0.8, titulo: "pérdida" } });
+
+    function ejemplo() {
+      const T = m.traza(datos.X[k0]);
+      for (let l = 0; l < 3; l++) {
+        red.ponerActivaciones(l, T.a[l], 1);
+        T.a[l].forEach((v, j) => { vals[l][j].textContent = fmt(v, 2); });
+      }
+      return T;
+    }
+    function limpiaActivaciones() {
+      for (let l = 1; l < 3; l++) { red.ponerActivaciones(l, red.capas[l] === 1 ? [0] : [0, 0, 0, 0], 1); vals[l].forEach((t) => { t.textContent = ""; }); }
+    }
+    function pintaFrontera() {
+      const L = RN.lienzo(front, (w) => w);
+      const ctx = L.ctx, N = 64, cel = L.w / N;
+      const px = (v) => (v + 1.25) / 2.5 * L.w, py = (v) => (1.25 - v) / 2.5 * L.h;
+      for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) {
+        const p = m.forward([-1.25 + 2.5 * (a + 0.5) / N, 1.25 - 2.5 * (b + 0.5) / N])[0];
+        ctx.fillStyle = RN.mezcla(RN.mezcla("#ffffff", C.clase0, 0.38), RN.mezcla("#ffffff", C.clase1, 0.38), p);
+        ctx.fillRect(a * cel, b * cel, cel + 1, cel + 1);
+      }
+      datos.X.forEach((x, k) => {
+        ctx.beginPath(); ctx.arc(px(x[0]), py(x[1]), 4.5, 0, 7);
+        ctx.fillStyle = datos.y[k] ? C.clase1 : C.clase0; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+      });
+      const e = datos.X[k0];
+      ctx.beginPath(); ctx.arc(px(e[0]), py(e[1]), 11, 0, 7); ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5; ctx.stroke();
+    }
+    function pinta() {
+      pintaFrontera();
+      curva.dibujar([{ nombre: "pérdida", color: C.s1, puntos: hist }, { tipo: "puntos", color: C.s1, radio: 5, puntos: hist.slice(-1) }]);
+      const ev = m.evaluar(datos.X, datos.Y);
+      $("b-ep").textContent = ep;
+      $("b-loss").textContent = fmt(ev.perdida, 3);
+      $("b-acc").textContent = Math.round(ev.precision * 100) + " %";
+      txtL.textContent = fmt(ev.perdida, 3);
+    }
+    function reset() {
+      token++; ocupado = false;
+      if (anim) anim.parar();
+      m = new RNmlp.MLP({ capas: [2, 4, 1], activacion: "tanh", salida: "sigmoid", semilla: 11 });
+      ep = 0; hist = [[0, m.evaluar(datos.X, datos.Y).perdida]];
+      red.ponerPesos(m.W); red.limpiarResaltado(); cajaL.setAttribute("stroke", "#52606D");
+      etapa(-1); $("b-etapas").classList.remove("girando");
+      ejemplo(); pinta();
+    }
+    function unaEpoca() {
+      m.entrenarEpoca(datos.X, datos.Y, { lote: datos.X.length, lr: ETA, opt: "sgd", barajar: false });
+      ep++; hist.push([ep, m.evaluar(datos.X, datos.Y).perdida]);
+    }
+    const copiaW = (W) => W.map((Wl) => Wl.map((f) => f.slice()));
+    const mezclaW = (A, B, t) => A.map((Wl, l) => Wl.map((f, j) => f.map((v, i) => RN.lerp(v, B[l][j][i], t))));
+
+    async function vueltaLenta() {
+      if (ocupado || ep >= MAXEP) return;
+      anim.parar();
+      ocupado = true; const mio = ++token;
+      const vivo = () => mio === token;
+      $("b-etapas").classList.remove("girando");
+      // 1 · hacia delante
+      etapa(0); limpiaActivaciones(); red.limpiarResaltado(); cajaL.setAttribute("stroke", "#52606D"); txtL.textContent = "…";
+      const T = m.traza(datos.X[k0]);
+      red.ponerActivaciones(0, T.a[0], 1); T.a[0].forEach((v, j) => { vals[0][j].textContent = fmt(v, 2); });
+      for (let l = 0; l < 2; l++) {
+        await red.pulso(l, { ms: 650, color: C.ink, radio: 5.5 }); if (!vivo()) return;
+        red.ponerActivaciones(l + 1, T.a[l + 1], 1); T.a[l + 1].forEach((v, j) => { vals[l + 1][j].textContent = fmt(v, 2); });
+      }
+      await RN.espera(250); if (!vivo()) return;
+      // 2 · pérdida
+      etapa(1); cajaL.setAttribute("stroke", GRAD);
+      txtL.textContent = fmt(m.evaluar(datos.X, datos.Y).perdida, 3);
+      await RN.espera(900); if (!vivo()) return;
+      // 3 · hacia atrás
+      etapa(2);
+      for (let l = 1; l >= 0; l--) { await red.pulso(l, { ms: 650, color: GRAD, atras: true, radio: 5.5 }); if (!vivo()) return; }
+      // 4 · actualización
+      etapa(3);
+      const W0 = copiaW(m.W); unaEpoca(); const W1 = copiaW(m.W);
+      await RN.tween(800, (t) => red.ponerPesos(mezclaW(W0, W1, t))); if (!vivo()) return;
+      cajaL.setAttribute("stroke", "#52606D");
+      ejemplo(); pinta();
+      await RN.espera(350); if (!vivo()) return;
+      etapa(-1); ocupado = false;
+    }
+    const anim = RN.anima(function () {
+      if (ep < MAXEP) unaEpoca();
+      red.ponerPesos(m.W); ejemplo(); pinta();
+      if (ep >= MAXEP) { $("b-etapas").classList.remove("girando"); return false; }
+    }, front);
+    anim.onCambio = function (on) {
+      $("b-etapas").classList.toggle("girando", on);
+      if (on) { token++; ocupado = false; etapa(-1); cajaL.setAttribute("stroke", "#52606D"); }
+      if (ep >= MAXEP) $("b-etapas").classList.remove("girando");
+    };
+    RN.botonPlay($("b-play"), anim, ["▶ Entrenar", "⏸ Pausa"]);
+    $("b-paso").addEventListener("click", vueltaLenta);
+    $("b-reset").addEventListener("click", reset);
+    RN.alCambiarTam(front, pintaFrontera);
+    reset();
+  })();
+
+  // ================================================================ datos de regresión (pestañas 2 y 3)
+  const REG = (function () {
+    const r = RN.rng(21), X = [], Y = [];
+    for (let k = 0; k < 10; k++) {
+      const x = 0.35 + k * 0.4 + (r() - 0.5) * 0.2;
+      X.push(x); Y.push(2 * x + 3 + RN.normal(r) * 0.9);
+    }
+    const n = X.length, mx = X.reduce((a, b) => a + b) / n, my = Y.reduce((a, b) => a + b) / n;
+    let sxy = 0, sxx = 0;
+    X.forEach((x, k) => { sxy += (x - mx) * (Y[k] - my); sxx += (x - mx) * (x - mx); });
+    const wo = sxy / sxx, bo = my - wo * mx;
+    const ecm = (w, b) => { let s = 0; X.forEach((x, k) => { const e = Y[k] - (w * x + b); s += e * e; }); return s / n; };
+    const dw = (w, b) => { let s = 0; X.forEach((x, k) => { s += 2 * (w * x + b - Y[k]) * x; }); return s / n; };
+    const mx2 = X.reduce((a, x) => a + x * x, 0) / n;
+    return { X: X, Y: Y, n: n, wo: wo, bo: bo, ecm: ecm, dw: dw, curv: 2 * mx2 };
+  })();
+
+  // ================================================================ 2 · FUNCIÓN DE PÉRDIDA
+  (function () {
+    const sw = $("p-w"), sb = $("p-b");
+    let w = +sw.value, b = +sb.value;
+    const MARG = 170;
+    const g = RN.grafica($("p-cv"), {
+      alto: 360, hover: false, margen: { r: MARG }, x: { min: 0, max: 4.5, titulo: "x" }, y: { min: 0, max: 14, titulo: "y" },
+      extras: function (c, g) {
+        const x0 = g.m.l, x1 = g.w - g.m.r, y0 = g.m.t, y1 = g.h - g.m.b;
+        c.save(); c.beginPath(); c.rect(x0, y0, x1 - x0, y1 - y0); c.clip();
+        let suma = 0;
+        REG.X.forEach((x, k) => {
+          const yh = w * x + b, px = g.sx(x), pa = g.sy(REG.Y[k]), pb = g.sy(yh);
+          const lado = Math.abs(pa - pb);
+          suma += lado * lado;
+          const izq = px + lado > x1 - 4;
+          c.fillStyle = RN.rgba(C.s2, 0.17); c.strokeStyle = RN.rgba(C.s2, 0.75); c.lineWidth = 1.2;
+          c.beginPath(); c.rect(izq ? px - lado : px, Math.min(pa, pb), lado, lado); c.fill(); c.stroke();
+        });
+        // recta
+        c.strokeStyle = C.ink; c.lineWidth = 2.5;
+        c.beginPath(); c.moveTo(g.sx(0), g.sy(b)); c.lineTo(g.sx(4.5), g.sy(w * 4.5 + b)); c.stroke();
+        REG.X.forEach((x, k) => {
+          c.strokeStyle = C.s2; c.lineWidth = 2;
+          c.beginPath(); c.moveTo(g.sx(x), g.sy(REG.Y[k])); c.lineTo(g.sx(x), g.sy(w * x + b)); c.stroke();
+        });
+        REG.X.forEach((x, k) => bola(c, g.sx(x), g.sy(REG.Y[k]), 5, C.s1));
+        c.restore();
+        // cuadrado medio a la derecha
+        const ladoM = Math.sqrt(suma / REG.n);
+        const cx = g.w - MARG / 2 - 4, top = y0 + 46;
+        etiqueta(c, "ECM = área media", cx, y0 + 12, { tam: 13, color: C.ink2 });
+        etiqueta(c, fmt(REG.ecm(w, b), 2), cx, y0 + 31, { tam: 17, peso: "800" });
+        const lv = Math.min(ladoM, MARG - 30, y1 - top);
+        c.fillStyle = RN.rgba(C.s2, 0.22); c.strokeStyle = C.s2; c.lineWidth = 2;
+        c.beginPath(); c.rect(cx - lv / 2, top, lv, lv); c.fill(); c.stroke();
+        if (lv < ladoM) etiqueta(c, "(no cabe entero)", cx, top + lv + 14, { tam: 12, color: C.ink2 });
+      }
+    });
+    const g2 = RN.grafica($("p-cv2"), {
+      alto: 360, x: { min: -0.5, max: 4.5, titulo: "peso w" }, y: { min: 0, max: 30, titulo: "ECM" },
+      extras: function (c, g) {
+        const L = REG.ecm(w, b);
+        // mínimo de la parábola con este b: w* = Σx(y − b) / Σx²
+        let sxy = 0, sxx = 0; REG.X.forEach((x, k) => { sxy += x * (REG.Y[k] - b); sxx += x * x; });
+        const wm = sxy / sxx, Lm = REG.ecm(wm, b);
+        if (wm > -0.5 && wm < 4.5 && Lm < 30 && Math.abs(wm - w) > 0.12) {
+          c.beginPath(); c.arc(g.sx(wm), g.sy(Lm), 5, 0, 7); c.strokeStyle = C.s1; c.lineWidth = 2; c.fillStyle = "#fff"; c.fill(); c.stroke();
+          etiqueta(c, "mínimo", g.sx(wm), g.sy(Lm) + 16, { tam: 12, color: C.ink2 });
+        }
+        if (L <= 30) {
+          c.strokeStyle = RN.rgba(C.ink2, 0.5); c.lineWidth = 1;
+          c.beginPath(); c.moveTo(g.sx(w), g.sy(0)); c.lineTo(g.sx(w), g.sy(L)); c.stroke();
+          bola(c, g.sx(w), g.sy(L), 7, C.ink);
+          etiqueta(c, "w actual", g.sx(w), g.sy(L) - 18, { tam: 12.5, color: C.ink });
+        }
+      }
+    });
+    function pinta() {
+      $("p-wo").textContent = fmt(w, 2); $("p-bo").textContent = fmt(b, 1);
+      const L = REG.ecm(w, b);
+      $("p-ecm").textContent = fmt(L, 2);
+      $("p-min").textContent = fmt(REG.ecm(REG.wo, REG.bo), 2);
+      g.dibujar([]);
+      const P = []; for (let v = -0.5; v <= 4.5001; v += 0.025) P.push([v, REG.ecm(v, b)]);
+      g2.dibujar([{ nombre: "ECM", color: C.s1, puntos: P }]);
+      $("p-pie2").textContent = "ECM en función de w, con el sesgo fijo en b = " + fmt(b, 1) + ".";
+      let suma = 0; REG.X.forEach((x, k) => { const e = REG.Y[k] - (w * x + b); suma += e * e; });
+      $("p-form").innerHTML = "ECM = <sup>1</sup>⁄<sub>n</sub> Σ (yᵢ − ŷᵢ)² = <sup>1</sup>⁄<sub>10</sub> · " + fmt(suma, 2) + " = <b>" + fmt(L, 2) + "</b><span class=\"com\">ŷ = " + fmt(w, 2) + " · x + " + sg(b, 1) + "</span>";
+    }
+    sw.addEventListener("input", () => { w = +sw.value; pinta(); });
+    sb.addEventListener("input", () => { b = +sb.value; pinta(); });
+    function irA(wf, bf) {
+      const wi = w, bi = b;
+      RN.tween(1100, (t) => { w = RN.lerp(wi, wf, t); b = RN.lerp(bi, bf, t); sw.value = w; sb.value = b; pinta(); });
+    }
+    $("p-ajusta").addEventListener("click", () => irA(REG.wo, REG.bo));
+    $("p-ini").addEventListener("click", () => irA(0.2, 7.5));
+    pinta();
+  })();
+
+  // ================================================================ 3 · DESCENSO EN 1D
+  (function () {
+    const b = REG.bo, wo = REG.wo, h = REG.curv;
+    const L = (w) => REG.ecm(w, b), dL = (w) => REG.dw(w, b);
+    const redondea = (v) => Math.round(v * 200) / 200;  // múltiplos de 0,005
+    const PRE = [0.12, 0.8, 1.75, 2.15].map((k) => Math.max(0.005, redondea(k / h)));
+    const W0 = wo - 1.9, XMIN = wo - 2.5, XMAX = wo + 2.5, YMAX = L(XMIN) * 1.02;
+    const seta = $("d1-eta");
+    let eta = PRE[1], w, it, tray, anima = null, divergio;
+    const seg = segmento($("d1-seg"), (v) => { eta = PRE[+v]; seta.value = eta; reset(); });
+    seta.value = eta;
+    const g = RN.grafica($("d1-cv"), {
+      alto: 370, hover: false, x: { min: XMIN, max: XMAX, titulo: "peso w" }, y: { min: 0, max: YMAX, titulo: "pérdida L(w)" },
+      extras: function (c, g) {
+        c.save(); c.beginPath(); c.rect(g.m.l, g.m.t, g.w - g.m.l - g.m.r, g.h - g.m.t - g.m.b); c.clip();
+        // mínimo
+        c.strokeStyle = RN.rgba(C.ink2, 0.45); c.lineWidth = 1;
+        c.beginPath(); c.moveTo(g.sx(wo), g.sy(0)); c.lineTo(g.sx(wo), g.sy(L(wo))); c.stroke();
+        etiqueta(c, "mínimo", g.sx(wo), g.sy(L(wo)) + 16, { tam: 12, color: C.ink2 });
+        // recorrido
+        const P = tray.map((v) => [g.sx(v), g.sy(L(v))]);
+        if (P.length > 1) {
+          c.strokeStyle = RN.rgba(C.ink, 0.45); c.lineWidth = 1.5;
+          c.beginPath(); P.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.stroke();
+          P.slice(0, -1).forEach((p) => { c.beginPath(); c.arc(p[0], p[1], 4, 0, 7); c.fillStyle = RN.rgba(C.ink, 0.5); c.fill(); });
+        }
+        const wa = anima ? anima.w : w;
+        const ya = anima ? anima.y : L(w);
+        if (Number.isFinite(ya) && wa > XMIN - 1 && wa < XMAX + 1) {
+          // tangente
+          if (!anima) {
+            const gr = dL(w), d = 0.75;
+            c.strokeStyle = C.ink; c.lineWidth = 1.5;
+            c.beginPath(); c.moveTo(g.sx(w - d), g.sy(L(w) - gr * d)); c.lineTo(g.sx(w + d), g.sy(L(w) + gr * d)); c.stroke();
+            // paso propuesto sobre el eje
+            const wn = w - eta * gr, yb = g.h - g.m.b - 16;
+            if (Math.abs(wn - w) > 1e-3) {
+              flecha(c, g.sx(w), yb, g.sx(RN.limita(wn, XMIN - 0.2, XMAX + 0.2)), yb, GRAD, 2.5, 11);
+              etiqueta(c, "− η · dL/dw", (g.sx(w) + g.sx(RN.limita(wn, XMIN, XMAX))) / 2, yb - 14, { tam: 13, color: C.ink });
+            }
+            c.strokeStyle = RN.rgba(C.ink, 0.35); c.lineWidth = 1;
+            c.beginPath(); c.moveTo(g.sx(w), g.sy(L(w))); c.lineTo(g.sx(w), yb); c.stroke();
+          }
+          bola(c, g.sx(wa), g.sy(ya), 9, C.ink);
+        }
+        c.restore();
+        if (divergio) etiqueta(c, "¡Diverge! La pérdida crece en cada paso", g.m.l + (g.w - g.m.l - g.m.r) / 2, g.m.t + 18, { tam: 15, peso: "800", color: C.bad });
+      }
+    });
+    const gh = RN.grafica($("d1-hist"), { alto: 230, x: { min: 0, max: 30, titulo: "iteración" }, y: { min: 0.5, max: 1000, log: true, titulo: "pérdida", marcas: [1, 10, 100, 1000] } });
+    // recorridos de referencia con las cuatro tasas (mismo punto de partida)
+    let REFS = [];
+    const calcRefs = (w0) => { REFS = PRE.map((e) => { let v = w0; const out = [[0, L(v)]]; for (let k = 1; k <= 30; k++) { v -= e * dL(v); out.push([k, L(v)]); } return out; }); };
+    const NOMBRES = ["pequeña", "adecuada", "grande", "excesiva"], COLS4 = [C.s1, C.s2, C.s3, C.s4];
+    gh.op.y.fmt = pot10; gh.op.y.fmtTip = (v) => fmt(v, 2);
+    function pinta() {
+      const Pc = []; for (let v = XMIN; v <= XMAX + 1e-9; v += (XMAX - XMIN) / 200) Pc.push([v, L(v)]);
+      g.dibujar([{ nombre: "L(w)", color: C.s1, puntos: Pc, ancho: 2.5 }]);
+      gh.dibujar(REFS.map((r, i) => ({ nombre: NOMBRES[i] + " (η = " + fmt(PRE[i], 3) + ")", color: COLS4[i], puntos: r, ancho: 1.8 }))
+        .concat([{ tipo: "puntos", color: C.ink, radio: 4, puntos: tray.map((v, i) => [i, L(v)]).filter((p) => p[0] <= 30 && p[1] < 1e4) }]));
+      $("d1-etao").textContent = fmt(eta, 3);
+      $("d1-it").textContent = it;
+      $("d1-w").textContent = Number.isFinite(w) && Math.abs(w) < 1e4 ? fmt(w, 3) : "—";
+      $("d1-g").textContent = Number.isFinite(w) && Math.abs(w) < 1e4 ? fmt(dL(w), 2) : "—";
+      const gr = dL(w), wn = w - eta * gr;
+      $("d1-form").innerHTML = Math.abs(w) < 1e4
+        ? "w ← w − η · dL/dw = " + fmt(w, 3) + " − " + fmt(eta, 3) + " · " + sg(gr, 2) + " = <b>" + fmt(wn, 3) + "</b><span class=\"com\">L(w) = " + fmt(L(w), 2) + " → " + fmt(L(wn), 2) + "</span>"
+        : "w se ha ido al infinito: la tasa de aprendizaje es demasiado alta.";
+      const est = $("d1-estado");
+      const factor = 1 - eta * h;
+      est.innerHTML = divergio ? '<span class="estado-mal">✗ Diverge</span>: cada paso multiplica la distancia al mínimo por ' + fmt(Math.abs(factor), 2) + "."
+        : (Math.abs(w - wo) < 1e-3 && it > 0 ? '<span class="estado-ok">✓ Ha llegado al mínimo</span> en ' + it + " iteraciones." : "Cada paso multiplica la distancia al mínimo por " + fmt(factor, 2) + (factor < -1 ? " (cambia de lado y se aleja: diverge)." : factor < 0 ? " (cambia de lado: oscila)." : "."));
+    }
+    function reset(wi) {
+      if (play) play.parar();
+      anima = null;
+      w = wi === undefined ? W0 : wi; it = 0; tray = [w]; anima = null; divergio = false;
+      calcRefs(w);
+      seg.marcar(PRE.indexOf(eta)); pinta();
+    }
+    async function paso() {
+      if (anima || divergio) return;
+      const wi = w, wn = w - eta * dL(w);
+      const yi = L(wi), yn = L(wn);
+      const alto = Math.max(0.4, Math.abs(yi - yn) * 0.15 + YMAX * 0.04);
+      const an = { w: wi, y: yi };
+      anima = an;
+      await RN.tween(RN.reducirMovimiento ? 0 : 380, (t) => { if (anima !== an) return; an.w = RN.lerp(wi, wn, t); an.y = RN.lerp(yi, yn, t) + 4 * alto * t * (1 - t); g.dibujar(); }, (t) => t);
+      if (anima !== an) return;
+      anima = null; w = wn; it++; tray.push(w);
+      if (Math.abs(w - wo) > 40 || L(w) > YMAX * 3) divergio = true;   // ya fuera de la gráfica y alejándose
+      pinta();
+    }
+    let acum = 0;
+    const play = RN.anima(function (dt) {
+      if (divergio || it >= 60 || (it > 0 && Math.abs(w - wo) < 1e-3)) return false;
+      acum += dt;
+      if (!anima && acum > 0.12) { acum = 0; paso(); }
+    }, $("d1-cv"));
+    RN.botonPlay($("d1-play"), play);
+    $("d1-paso").addEventListener("click", () => { play.parar(); paso(); });
+    $("d1-reset").addEventListener("click", () => reset());
+    seta.addEventListener("input", () => { eta = +seta.value; reset(w === undefined ? W0 : tray[0]); });
+    $("d1-cv").addEventListener("click", (ev) => {
+      const r = ev.currentTarget.getBoundingClientRect();
+      const v = g.ix(ev.clientX - r.left);
+      if (v > XMIN && v < XMAX) reset(v);
+    });
+    reset();
+  })();
+
+  // ================================================================ 4 · DESCENSO EN 2D
+  // Regresión lineal sin sesgo con dos entradas: L(w) = wᵀAw − 2bᵀw + c (ECM exacto sobre los datos)
+  function problemaLineal(N, escala2, wv, ruido, semilla) {
+    const r = RN.rng(semilla), X = [], Y = [];
+    for (let k = 0; k < N; k++) {
+      const x1 = RN.normal(r), x2 = RN.normal(r) * escala2;
+      X.push([x1, x2]); Y.push(wv[0] * x1 + wv[1] * x2 + RN.normal(r) * ruido);
+    }
+    const A = [[0, 0], [0, 0]], bv = [0, 0]; let c = 0;
+    X.forEach((x, k) => { A[0][0] += x[0] * x[0]; A[0][1] += x[0] * x[1]; A[1][1] += x[1] * x[1]; bv[0] += x[0] * Y[k]; bv[1] += x[1] * Y[k]; c += Y[k] * Y[k]; });
+    A[0][0] /= N; A[0][1] /= N; A[1][1] /= N; A[1][0] = A[0][1]; bv[0] /= N; bv[1] /= N; c /= N;
+    const det = A[0][0] * A[1][1] - A[0][1] * A[0][1];
+    const opt = [(A[1][1] * bv[0] - A[0][1] * bv[1]) / det, (A[0][0] * bv[1] - A[0][1] * bv[0]) / det];
+    const L = (a, b) => A[0][0] * a * a + 2 * A[0][1] * a * b + A[1][1] * b * b - 2 * (bv[0] * a + bv[1] * b) + c;
+    const grad = (a, b) => [2 * (A[0][0] * a + A[0][1] * b - bv[0]), 2 * (A[0][1] * a + A[1][1] * b - bv[1])];
+    // gradiente con un subconjunto de ejemplos (para los lotes)
+    const gradLote = (a, b, idx) => {
+      let g0 = 0, g1 = 0;
+      idx.forEach((k) => { const e = a * X[k][0] + b * X[k][1] - Y[k]; g0 += 2 * e * X[k][0]; g1 += 2 * e * X[k][1]; });
+      return [g0 / idx.length, g1 / idx.length];
+    };
+    // mayor autovalor de la hessiana 2A: el descenso diverge si η > 2/λmax
+    const tr = A[0][0] + A[1][1], lmax = tr + Math.sqrt((A[0][0] - A[1][1]) * (A[0][0] - A[1][1]) + 4 * A[0][1] * A[0][1]);
+    return { X: X, Y: Y, A: A, L: L, grad: grad, gradLote: gradLote, opt: opt, Lmin: L(opt[0], opt[1]), etaMax: 2 / lmax };
+  }
+  function nivelesCuadraticos(P, M, n) {
+    const esq = [[M.dom.x0, M.dom.y0], [M.dom.x0, M.dom.y1], [M.dom.x1, M.dom.y0], [M.dom.x1, M.dom.y1]];
+    const Lmax = Math.max.apply(null, esq.map((e) => P.L(e[0], e[1])));
+    const out = [];
+    for (let k = 1; k <= n; k++) out.push(P.Lmin + (Lmax - P.Lmin) * Math.pow(k / n, 2) * 0.92);
+    return out;
+  }
+
+  (function () {
+    const PROB = { 1: problemaLineal(200, 1, [0.8, 0.4], 0.5, 8), 3: problemaLineal(200, 3, [0.8, 0.4], 0.5, 8) };
+    let esc = "1", P = PROB[esc], eta = 0.08, w, it, tray, divergio = false, campo = false, inicio = [-2.6, -1.0];
+    const cv = $("d2-cv");
+    const M = Mapa(cv, {
+      alto: (w) => Math.round(Math.min(470, Math.max(320, w * 0.68))),
+      dominio: (w, h) => { const cx = -0.6, cy = -0.25, hw = 3.2, hh = hw * h / w; return { x0: cx - hw, x1: cx + hw, y0: cy - hh, y1: cy + hh }; },
+      f: (a, b) => P.L(a, b),
+      niveles: () => nivelesCuadraticos(P, M, 13),
+      ejes: ["w₁", "w₂"]
+    });
+    const gh = RN.grafica($("d2-hist"), { alto: 210, x: { min: 0, max: 40, titulo: "iteración" }, y: { min: 0.1, max: 100, log: true, titulo: "pérdida" } });
+    gh.op.y.fmt = pot10; gh.op.y.fmtTip = (v) => fmt(v, 3);
+    function dibuja() {
+      if (!M.w) return;
+      M.fondo();
+      const c = M.ctx;
+      if (campo) {
+        const paso = 46;
+        for (let py = paso / 2; py < M.h; py += paso) for (let px = paso / 2; px < M.w; px += paso) {
+          const a = M.ix(px), b = M.iy(py), gr = P.grad(a, b);
+          const gx = -gr[0], gy = gr[1]; // en píxeles el eje vertical va al revés
+          const n = Math.hypot(gx, gy); if (n < 1e-9) continue;
+          const lg = Math.min(paso * 0.42, 6 + 5 * Math.log1p(n));
+          flecha(c, px - gx / n * lg / 2, py - gy / n * lg / 2, px + gx / n * lg / 2, py + gy / n * lg / 2, "rgba(82,96,109,.7)", 1.4, 6);
+        }
+      }
+      // mínimo
+      const ox = M.sx(P.opt[0]), oy = M.sy(P.opt[1]);
+      c.strokeStyle = C.ink; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(ox - 6, oy - 6); c.lineTo(ox + 6, oy + 6); c.moveTo(ox + 6, oy - 6); c.lineTo(ox - 6, oy + 6); c.stroke();
+      etiqueta(c, "mínimo", ox + 10, oy + 14, { alin: "left", tam: 12.5, color: C.ink2 });
+      const Pp = tray.map((p) => [M.sx(p[0]), M.sy(p[1])]);
+      trayecto(c, Pp, C.s2, { ancho: 2, puntos: 3.5 });
+      const ult = Pp[Pp.length - 1];
+      if (ult && Math.abs(ult[0]) < 1e5) {
+        const gr = P.grad(w[0], w[1]);
+        if (!divergio && Math.hypot(gr[0], gr[1]) > 1e-3) {
+          const fx = -gr[0] * eta, fy = -gr[1] * eta;
+          flecha(c, ult[0], ult[1], M.sx(w[0] + fx), M.sy(w[1] + fy), GRAD, 2.5, 10);
+        }
+        bola(c, ult[0], ult[1], 7.5, C.s2);
+      }
+      const s0 = Pp[0];
+      c.beginPath(); c.arc(s0[0], s0[1], 7, 0, 7); c.strokeStyle = C.ink; c.lineWidth = 2; c.stroke();
+      etiqueta(c, "salida", s0[0], s0[1] - 16, { tam: 12.5, color: C.ink });
+      if (divergio) etiqueta(c, "¡Diverge! Reduce η", M.w / 2, 22, { tam: 15, peso: "800", color: C.bad });
+    }
+    function pinta() {
+      dibuja();
+      const hl = tray.map((p, i) => [i, P.L(p[0], p[1])]);
+      gh.op.x.max = Math.max(40, Math.ceil(it / 10) * 10);
+      gh.dibujar([{ nombre: "pérdida", color: C.s2, puntos: hl }]);
+      $("d2-it").textContent = it;
+      $("d2-l").textContent = Number.isFinite(hl[hl.length - 1][1]) && hl[hl.length - 1][1] < 1e6 ? fmt(hl[hl.length - 1][1], 3) : "—";
+      $("d2-etao").textContent = fmt(eta, 2);
+      const gr = P.grad(w[0], w[1]);
+      const fin = Math.hypot(gr[0], gr[1]) < 2e-3;
+      $("d2-estado").innerHTML = divergio ? '<span class="estado-mal">✗ Diverge</span>: η demasiado alta para la dirección más empinada.'
+        : fin ? '<span class="estado-ok">✓ En el mínimo</span> tras ' + it + " iteraciones." : "Flecha morada: el próximo paso, −η·∇L.";
+      $("d2-txt").innerHTML = (esc === "1"
+        ? "Con las entradas en la misma escala, las curvas son casi circunferencias: el gradiente apunta hacia el mínimo."
+        : "x₂ tiene una escala 3 veces mayor: la pérdida es 9 veces más empinada en w₂ que en w₁. El valle se estrecha y el gradiente ya no apunta al mínimo.")
+        + " Aquí el descenso diverge si <b>η &gt; " + fmt(P.etaMax, 2) + "</b>.";
+    }
+    function reset(ini) {
+      if (play) play.parar();
+      if (ini) inicio = ini;
+      w = inicio.slice(); it = 0; tray = [w.slice()]; divergio = false;
+      pinta();
+    }
+    function paso() {
+      if (divergio) return false;
+      const gr = P.grad(w[0], w[1]);
+      if (Math.hypot(gr[0], gr[1]) < 2e-3) return false;
+      w = [w[0] - eta * gr[0], w[1] - eta * gr[1]]; it++; tray.push(w.slice());
+      if (Math.hypot(w[0], w[1]) > 60) divergio = true;
+      pinta();
+      return !divergio && it < 200;
+    }
+    let acum = 0;
+    const play = RN.anima(function (dt) { acum += dt; if (acum > 0.11) { acum = 0; return paso(); } }, cv);
+    RN.botonPlay($("d2-play"), play);
+    $("d2-paso").addEventListener("click", () => { play.parar(); paso(); });
+    $("d2-reset").addEventListener("click", () => reset());
+    segmento($("d2-seg"), (v) => { esc = v; P = PROB[v]; M.invalidar(); reset(); });
+    $("d2-eta").addEventListener("input", (e) => { eta = +e.target.value; reset(); });
+    $("d2-campo").addEventListener("change", (e) => { campo = e.target.checked; dibuja(); });
+    cv.addEventListener("click", (ev) => { const r = cv.getBoundingClientRect(); reset([M.ix(ev.clientX - r.left), M.iy(ev.clientY - r.top)]); play.iniciar(); });
+    RN.alCambiarTam(cv, () => { M.preparar(); dibuja(); });
+    // estado inicial: la trayectoria completa ya dibujada
+    reset();
+    while (paso()) { /* precálculo */ }
+  })();
+
+  // ================================================================ 5 · REGLA DE LA CADENA
+  (function () {
+    const svg = $("c-svg");
+    svg.setAttribute("viewBox", "0 0 1000 330");
+    const Y0 = 165;
+    const N = {
+      w: { x: 80, y: Y0, r: 32, n: "w" }, z: { x: 335, y: Y0, r: 34, n: "z" }, a: { x: 595, y: Y0, r: 34, n: "a" }, L: { x: 855, y: Y0, r: 36, n: "L" },
+      x: { x: 245, y: 56, r: 29, n: "x" }, b: { x: 245, y: 272, r: 29, n: "b" }, y: { x: 955, y: 268, r: 29, n: "y" }
+    };
+    const gA = S("g", {}, svg), gP = S("g", {}, svg), gN = S("g", {}, svg), gT = S("g", {}, svg);
+    function arista(p, q) {
+      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
+      const x1 = p.x + dx / d * p.r, y1 = p.y + dy / d * p.r, x2 = q.x - dx / d * (q.r + 4), y2 = q.y - dy / d * (q.r + 4);
+      S("line", { x1: x1, y1: y1, x2: x2, y2: y2, stroke: "#9AA5B1", "stroke-width": 2 }, gA);
+      const ux = dx / d, uy = dy / d;
+      S("path", { d: "M" + (q.x - ux * q.r) + "," + (q.y - uy * q.r) + " L" + (x2 - uy * 5 - ux * 4) + "," + (y2 + ux * 5 - uy * 4) + " L" + (x2 + uy * 5 - ux * 4) + "," + (y2 - ux * 5 - uy * 4) + "Z", fill: "#9AA5B1" }, gA);
+      return { x1: x1, y1: y1, x2: x2, y2: y2 };
+    }
+    const E = { wz: arista(N.w, N.z), za: arista(N.z, N.a), aL: arista(N.a, N.L), xz: arista(N.x, N.z), bz: arista(N.b, N.z), yL: arista(N.y, N.L) };
+    const T = {};
+    Object.keys(N).forEach((k) => {
+      const nd = N[k], esPar = k === "w" || k === "b", esDato = k === "x" || k === "y";
+      nd.c = S("circle", { cx: nd.x, cy: nd.y, r: nd.r, fill: esPar ? "#fff" : esDato ? "#F5F7FA" : "#fff", stroke: esPar ? C.ink : "#52606D", "stroke-width": esPar ? 2.5 : 2, "stroke-dasharray": esDato ? "4 3" : "none" }, gN);
+      S("text", { x: nd.x, y: nd.y - 8, "text-anchor": "middle", "font-size": 15, "font-weight": 700, fill: "#52606D", "font-style": "italic", text: nd.n }, gN);
+      T[k] = S("text", { x: nd.x, y: nd.y + 13, "text-anchor": "middle", "font-size": nd.r < 30 ? 14 : 15, "font-weight": 800, fill: "#1F2933", text: "" }, gN);
+    });
+    // fórmulas de cada operación
+    S("text", { x: N.z.x + 44, y: N.z.y - 44, "text-anchor": "start", "font-size": 14, fill: "#52606D", text: "z = w·x + b" }, gT);
+    S("text", { x: N.a.x, y: N.a.y - 50, "text-anchor": "middle", "font-size": 14, fill: "#52606D", text: "a = σ(z)" }, gT);
+    S("text", { x: N.L.x, y: N.L.y - 52, "text-anchor": "middle", "font-size": 14, fill: "#52606D", text: "L = (a − y)²" }, gT);
+    // tres rótulos por arista principal: valor (arriba), derivada local (sobre la línea), gradiente (abajo)
+    function rotulos(e, ancho) {
+      const mx = (e.x1 + e.x2) / 2, my = (e.y1 + e.y2) / 2;
+      const val = S("text", { x: mx, y: my - 16, "text-anchor": "middle", "font-size": 14.5, "font-weight": 700, fill: "#1F2933", text: "" }, gT);
+      const chipR = S("rect", { x: mx - ancho / 2, y: my - 12, width: ancho, height: 24, rx: 12, fill: "#fff", stroke: "#9AA5B1", "stroke-width": 1.2 }, gT);
+      const chip = S("text", { x: mx, y: my + 4.5, "text-anchor": "middle", "font-size": 13, fill: "#1F2933", text: "" }, gT);
+      const gra = S("text", { x: mx, y: my + 32, "text-anchor": "middle", "font-size": 14.5, "font-weight": 700, fill: GRAD, text: "" }, gT);
+      return { val: val, chip: chip, chipR: chipR, gra: gra, mx: mx, my: my };
+    }
+    const R = { wz: rotulos(E.wz, 150), za: rotulos(E.za, 180), aL: rotulos(E.aL, 180) };
+    // arista b → z: derivada local y gradiente de b
+    const bmx = (E.bz.x1 + E.bz.x2) / 2, bmy = (E.bz.y1 + E.bz.y2) / 2;
+    S("rect", { x: bmx + 8, y: bmy - 12, width: 90, height: 24, rx: 12, fill: "#fff", stroke: "#9AA5B1", "stroke-width": 1.2 }, gT);
+    S("text", { x: bmx + 53, y: bmy + 4.5, "text-anchor": "middle", "font-size": 13, fill: "#1F2933", text: "∂z/∂b = 1" }, gT);
+    const graB = S("text", { x: N.b.x + 36, y: N.b.y + 30, "text-anchor": "start", "font-size": 14.5, "font-weight": 700, fill: GRAD, text: "" }, gT);
+    const graL = S("text", { x: N.L.x, y: N.L.y + 56, "text-anchor": "middle", "font-size": 14.5, "font-weight": 700, fill: GRAD, text: "∂L/∂L = 1" }, gT);
+    S("text", { x: 20, y: 322, "font-size": 12.5, fill: "#52606D", text: "Arriba de cada arista: valor hacia delante · en el óvalo: derivada local · abajo, en morado: gradiente ∂L/∂(·) hacia atrás" }, gT);
+
+    const sl = { x: $("c-x"), w: $("c-w"), b: $("c-b"), y: $("c-y") };
+    let V = {};
+    function calcula() {
+      const x = +sl.x.value, w = +sl.w.value, b = +sl.b.value, y = +sl.y.value;
+      const z = w * x + b, a = sig(z), L = (a - y) * (a - y);
+      const dLa = 2 * (a - y), daz = a * (1 - a), dLz = dLa * daz, dLw = dLz * x, dLb = dLz;
+      const h = 1e-3, Lf = (ww) => { const aa = sig(ww * x + b); return (aa - y) * (aa - y); };
+      V = { x: x, w: w, b: b, y: y, z: z, a: a, L: L, dLa: dLa, daz: daz, dLz: dLz, dLw: dLw, dLb: dLb, num: (Lf(w + h) - Lf(w - h)) / (2 * h) };
+    }
+    // vis: 0 nada calculado, 1..3 valores hacia delante, 4 pérdida, 5..7 gradientes hacia atrás
+    function pinta(vis) {
+      if (vis === undefined) vis = 9;
+      ["x", "w", "b", "y"].forEach((k) => { $("c-" + k + "o").textContent = fmt(V[k], 2); T[k].textContent = fmt(V[k], 2); });
+      T.z.textContent = vis >= 1 ? fmt(V.z, 3) : "";
+      T.a.textContent = vis >= 2 ? fmt(V.a, 3) : "";
+      T.L.textContent = vis >= 3 ? fmt(V.L, 3) : "";
+      R.wz.val.textContent = "w = " + fmt(V.w, 2);
+      R.za.val.textContent = vis >= 1 ? "z = " + fmt(V.z, 3) : "";
+      R.aL.val.textContent = vis >= 2 ? "a = " + fmt(V.a, 3) : "";
+      R.aL.chip.textContent = "∂L/∂a = 2(a − y)" + (vis >= 4 ? " = " + fmt(V.dLa, 3) : "");
+      R.za.chip.textContent = "∂a/∂z = a(1 − a)" + (vis >= 5 ? " = " + fmt(V.daz, 3) : "");
+      R.wz.chip.textContent = "∂z/∂w = x" + (vis >= 6 ? " = " + fmt(V.x, 2) : "");
+      R.aL.gra.textContent = vis >= 4 ? "∂L/∂a = " + fmt(V.dLa, 3) : "";
+      R.za.gra.textContent = vis >= 5 ? "∂L/∂z = " + fmt(V.dLz, 3) : "";
+      R.wz.gra.textContent = vis >= 6 ? "∂L/∂w = " + fmt(V.dLw, 3) : "";
+      graB.textContent = vis >= 6 ? "∂L/∂b = " + fmt(V.dLb, 3) : "";
+      graL.style.opacity = vis >= 4 ? 1 : 0;
+      [["aL", 4], ["za", 5], ["wz", 6]].forEach((p) => { R[p[0]].chipR.setAttribute("stroke", vis === p[1] ? GRAD : "#9AA5B1"); R[p[0]].chipR.setAttribute("stroke-width", vis === p[1] ? 2.5 : 1.2); });
+      const ok = Math.abs(V.num - V.dLw) < 1e-5;
+      $("c-form").innerHTML = vis < 6 ? '<span class="lin">∂L/∂w = ∂L/∂a · ∂a/∂z · ∂z/∂w = …</span><span class="lin">&nbsp;</span><span class="lin">&nbsp;</span>' :
+        '<span class="lin">∂L/∂w = ∂L/∂a · ∂a/∂z · ∂z/∂w = 2(a − y) · a(1 − a) · x = ' + sg(V.dLa, 3) + " · " + fmt(V.daz, 3) + " · " + sg(V.x, 2) + ' = <span class="gr">' + fmt(V.dLw, 3) + "</span></span>" +
+        '<span class="lin">∂L/∂b = ∂L/∂a · ∂a/∂z · ∂z/∂b = ' + sg(V.dLa, 3) + " · " + fmt(V.daz, 3) + ' · 1 = <span class="gr">' + fmt(V.dLb, 3) + "</span></span>" +
+        '<span class="lin"><small>Comprobación numérica:</small> [L(w + 0,001) − L(w − 0,001)] / 0,002 = ' + fmt(V.num, 3) + (ok ? ' <span class="estado-ok">✓ coincide</span>' : "") + "</span>";
+    }
+    function pulso(e, atras, ms) {
+      const p = S("circle", { r: 6, fill: atras ? GRAD : C.ink }, gP);
+      const ax = atras ? e.x2 : e.x1, ay = atras ? e.y2 + 0 : e.y1, bx = atras ? e.x1 : e.x2, by = atras ? e.y1 : e.y2;
+      const off = atras ? 22 : -2;
+      return RN.tween(ms, (t) => { p.setAttribute("cx", RN.lerp(ax, bx, t)); p.setAttribute("cy", RN.lerp(ay, by, t) + off); }, (t) => t).then(() => p.remove());
+    }
+    let tok = 0;
+    async function animar() {
+      const mio = ++tok, vivo = () => mio === tok;
+      const ms = 700;
+      pinta(0);
+      await RN.espera(300); if (!vivo()) return;
+      await Promise.all([pulso(E.wz, false, ms), pulso(E.xz, false, ms), pulso(E.bz, false, ms)]); if (!vivo()) return; pinta(1);
+      await pulso(E.za, false, ms); if (!vivo()) return; pinta(2);
+      await Promise.all([pulso(E.aL, false, ms), pulso(E.yL, false, ms)]); if (!vivo()) return; pinta(3);
+      await RN.espera(500); if (!vivo()) return; pinta(4);
+      await RN.espera(400); if (!vivo()) return;
+      await pulso(E.aL, true, ms); if (!vivo()) return; pinta(5);
+      await RN.espera(300); if (!vivo()) return;
+      await pulso(E.za, true, ms); if (!vivo()) return; pinta(6);
+      await RN.espera(300); if (!vivo()) return;
+      await Promise.all([pulso(E.wz, true, ms), pulso(E.bz, true, ms)]); if (!vivo()) return; pinta(7);
+      await RN.espera(600); if (!vivo()) return; pinta();
+    }
+    Object.keys(sl).forEach((k) => sl[k].addEventListener("input", () => { tok++; calcula(); pinta(); }));
+    $("c-anim").addEventListener("click", animar);
+    $("c-paso").addEventListener("click", () => {
+      tok++;
+      sl.w.value = RN.limita(V.w - V.dLw, -2, 2); sl.b.value = RN.limita(V.b - V.dLb, -2, 2);
+      const Lant = V.L; calcula(); pinta();
+      $("c-form").insertAdjacentHTML("beforeend", '<span class="lin"><small>Tras el paso:</small> L = ' + fmt(Lant, 3) + " → " + fmt(V.L, 3) + "</span>");
+    });
+    calcula(); pinta();
+  })();
+
+  // ================================================================ 6 · RETROPROPAGACIÓN PASO A PASO
+  (function () {
+    const svg = $("r-svg");
+    svg.setAttribute("viewBox", "0 0 1040 420");
+    const INI = { w1: 0.5, w2: -0.4, w3: 0.3, w4: 0.8, w5: 0.9, w6: -0.6, b1: 0.1, b2: -0.2, b3: 0.2 };
+    const X1 = 1.0, X2 = 0.5, YOBJ = 1;
+    const NOM = { w1: "w₁", w2: "w₂", w3: "w₃", w4: "w₄", w5: "w₅", w6: "w₆", b1: "b₁", b2: "b₂", b3: "b₃" };
+    const ORDEN = ["w1", "w2", "w3", "w4", "b1", "b2", "w5", "w6", "b3"];
+    let P = Object.assign({}, INI), eta = 0.5, paso = 0, iter = 1, F, G, D, Pn, Fn;
+    const fw = (Q) => {
+      const z1 = Q.w1 * X1 + Q.w2 * X2 + Q.b1, h1 = sig(z1), z2 = Q.w3 * X1 + Q.w4 * X2 + Q.b2, h2 = sig(z2);
+      const z3 = Q.w5 * h1 + Q.w6 * h2 + Q.b3, o = sig(z3);
+      return { z1: z1, h1: h1, z2: z2, h2: h2, z3: z3, o: o, L: (o - YOBJ) * (o - YOBJ) };
+    };
+    function calcula() {
+      F = fw(P);
+      const d3 = 2 * (F.o - YOBJ) * F.o * (1 - F.o);
+      const d1 = d3 * P.w5 * F.h1 * (1 - F.h1), d2 = d3 * P.w6 * F.h2 * (1 - F.h2);
+      D = { d1: d1, d2: d2, d3: d3 };
+      G = { w5: d3 * F.h1, w6: d3 * F.h2, b3: d3, w1: d1 * X1, w2: d1 * X2, b1: d1, w3: d2 * X1, w4: d2 * X2, b2: d2 };
+      Pn = {}; ORDEN.forEach((k) => { Pn[k] = P[k] - eta * G[k]; });
+      Fn = fw(Pn);
+    }
+    // ---- dibujo
+    const NX = {
+      x1: { x: 95, y: 115, r: 32, n: "x₁" }, x2: { x: 95, y: 305, r: 32, n: "x₂" },
+      h1: { x: 470, y: 115, r: 38, n: "h₁" }, h2: { x: 470, y: 305, r: 38, n: "h₂" },
+      o: { x: 790, y: 210, r: 38, n: "ŷ" }
+    };
+    const ARI = { w1: ["x1", "h1"], w2: ["x2", "h1"], w3: ["x1", "h2"], w4: ["x2", "h2"], w5: ["h1", "o"], w6: ["h2", "o"] };
+    const TPILL = { w1: 0.5, w4: 0.5, w2: 0.66, w3: 0.66, w5: 0.5, w6: 0.5 };
+    const gA = S("g", {}, svg), gPul = S("g", {}, svg), gN = S("g", {}, svg), gPi = S("g", {}, svg);
+    const ar = {}, pill = {};
+    Object.keys(ARI).forEach((k) => {
+      const p = NX[ARI[k][0]], q = NX[ARI[k][1]];
+      ar[k] = S("line", { x1: p.x, y1: p.y, x2: q.x, y2: q.y, stroke: "#c9d1d9", "stroke-width": 2, "stroke-linecap": "round" }, gA);
+    });
+    // salida → pérdida
+    S("line", { x1: NX.o.x + NX.o.r, y1: NX.o.y, x2: 893, y2: NX.o.y, stroke: "#9AA5B1", "stroke-width": 2 }, gA);
+    S("path", { d: "M893,204 L902,210 L893,216Z", fill: "#9AA5B1" }, gA);
+    const cajaL = S("rect", { x: 905, y: 150, width: 125, height: 120, rx: 12, fill: "#fff", stroke: "#52606D", "stroke-width": 2 }, gN);
+    S("text", { x: 967, y: 176, "text-anchor": "middle", "font-size": 14, fill: "#52606D", text: "L = (ŷ − y)²" }, gN);
+    S("text", { x: 967, y: 200, "text-anchor": "middle", "font-size": 14, fill: "#52606D", text: "y = 1" }, gN);
+    const tL = S("text", { x: 967, y: 236, "text-anchor": "middle", "font-size": 22, "font-weight": 800, fill: "#1F2933", text: "" }, gN);
+    const tLn = S("text", { x: 967, y: 258, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#1B7A1B", text: "" }, gN);
+    const nd = {};
+    Object.keys(NX).forEach((k) => {
+      const n = NX[k], entrada = k[0] === "x";
+      nd[k] = {
+        c: S("circle", { cx: n.x, cy: n.y, r: n.r, fill: entrada ? "#F5F7FA" : "#fff", stroke: "#52606D", "stroke-width": 2 }, gN),
+        nom: S("text", { x: n.x, y: n.y - 9, "text-anchor": "middle", "font-size": 15, "font-weight": 700, fill: "#52606D", text: n.n }, gN),
+        val: S("text", { x: n.x, y: n.y + 14, "text-anchor": "middle", "font-size": 16, "font-weight": 800, fill: "#1F2933", text: "" }, gN)
+      };
+    });
+    // rótulos z y δ de las neuronas
+    const sub = {
+      h1: { z: S("text", { x: 470, y: 177, "text-anchor": "middle", "font-size": 13.5, fill: "#52606D", text: "" }, gN), d: S("text", { x: 470, y: 196, "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: GRAD, text: "" }, gN) },
+      h2: { z: S("text", { x: 470, y: 234, "text-anchor": "middle", "font-size": 13.5, fill: "#52606D", text: "" }, gN), d: S("text", { x: 470, y: 253, "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: GRAD, text: "" }, gN) },
+      o: { z: S("text", { x: 790, y: 272, "text-anchor": "middle", "font-size": 13.5, fill: "#52606D", text: "" }, gN), d: S("text", { x: 790, y: 291, "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: GRAD, text: "" }, gN) }
+    };
+    function hazPill(k, x, y) {
+      const g = S("g", {}, gPi);
+      const r = S("rect", { x: x - 70, y: y - 14, width: 140, height: 28, rx: 9, fill: "#fff", stroke: "#B0BAC4", "stroke-width": 1.3 }, g);
+      const t1 = S("text", { x: x, y: y + 5, "text-anchor": "middle", "font-size": 14, "font-weight": 700, fill: "#1F2933", text: "" }, g);
+      const t2 = S("text", { x: x, y: y + 25, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: GRAD, text: "" }, g);
+      return { g: g, r: r, t1: t1, t2: t2, y: y };
+    }
+    Object.keys(ARI).forEach((k) => {
+      const p = NX[ARI[k][0]], q = NX[ARI[k][1]], t = TPILL[k];
+      pill[k] = hazPill(k, RN.lerp(p.x, q.x, t), RN.lerp(p.y, q.y, t));
+    });
+    pill.b1 = hazPill("b1", 470, 38); pill.b2 = hazPill("b2", 470, 375); pill.b3 = hazPill("b3", 790, 128);
+    S("text", { x: NX.x1.x, y: 40, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#52606D", text: "Entrada" }, gN);
+    S("text", { x: 790, y: 40, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#52606D", text: "Salida" }, gN);
+    S("text", { x: 630, y: 40, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: "#52606D", text: "" }, gN);
+
+    function grosor(v) { return (1.2 + 5 * Math.min(1, Math.abs(v) / 1.2)).toFixed(2); }
+    function pintaAristas(Q) {
+      Object.keys(ARI).forEach((k) => { ar[k].setAttribute("stroke", RN.colorPeso(Q[k], 1.2)); ar[k].setAttribute("stroke-width", grosor(Q[k])); });
+    }
+    // ---- pasos
+    const PASOS = [
+      { c: "Inicio", t: "Punto de partida" },
+      { c: "h₁", t: "Hacia delante: neurona oculta h₁" }, { c: "h₂", t: "Hacia delante: neurona oculta h₂" }, { c: "ŷ", t: "Hacia delante: salida ŷ" },
+      { c: "Pérdida", t: "Pérdida" },
+      { c: "δ₃", t: "δ de la neurona de salida" },
+      { c: "∂w₅ ∂w₆ ∂b₃", t: "Gradientes de la capa de salida" },
+      { c: "δ₁ δ₂", t: "δ de la capa oculta" },
+      { c: "∂w₁ … ∂b₂", t: "Gradientes de la capa oculta" },
+      { c: "Actualizar", t: "Actualización de los nueve parámetros" },
+      { c: "Comprobar", t: "Comprobación: la pérdida baja" }
+    ];
+    const lis = PASOS.map((p, i) => {
+      const b = RN.el("button", { type: "button", title: p.t }, $("r-pasos"));
+      b.innerHTML = "<b>" + (i + 1) + "</b>" + p.c;
+      b.addEventListener("click", () => { tok++; reproduce.parar(); paso = i; pinta(); });
+      return b;
+    });
+    const tabla = $("r-tabla");
+    const cab = RN.el("tr", {}, RN.el("thead", {}, tabla));
+    RN.el("th", {}, cab, "Parámetro");
+    const celdasCab = {};
+    ORDEN.forEach((k) => { celdasCab[k] = RN.el("th", {}, cab, NOM[k]); });
+    const tb = RN.el("tbody", {}, tabla);
+    const filas = {};
+    [["v", "Valor"], ["g", "∂L/∂(·)"], ["nv", "Nuevo valor"]].forEach((f) => {
+      const tr = RN.el("tr", { class: f[0] }, tb);
+      RN.el("th", { scope: "row" }, tr, f[1]);
+      filas[f[0]] = {};
+      ORDEN.forEach((k) => { filas[f[0]][k] = RN.el("td", { class: "n" }, tr); });
+    });
+    const f3 = (v) => fmt(v, 3), f4 = (v) => fmt(v, 4);
+    function formula(i) {
+      const L = [];
+      const ln = (s) => L.push('<span class="lin">' + s + "</span>");
+      if (i === 0) { ln("Entrada x = (" + fmt(X1, 1) + "; " + fmt(X2, 1) + "), objetivo y = " + YOBJ + ", tasa de aprendizaje η = " + fmt(eta, 1) + "."); ln("Activación sigmoide σ(z) = 1 / (1 + e<sup>−z</sup>) en las tres neuronas. Pérdida L = (ŷ − y)²."); }
+      if (i === 1) { ln("z₁ = w₁·x₁ + w₂·x₂ + b₁ = " + f3(P.w1) + " · " + fmt(X1, 1) + " + " + sg(P.w2, 3) + " · " + fmt(X2, 1) + " + " + sg(P.b1, 3) + " = <b>" + f3(F.z1) + "</b>"); ln("h₁ = σ(z₁) = σ(" + f3(F.z1) + ") = <b>" + f3(F.h1) + "</b>"); }
+      if (i === 2) { ln("z₂ = w₃·x₁ + w₄·x₂ + b₂ = " + f3(P.w3) + " · " + fmt(X1, 1) + " + " + sg(P.w4, 3) + " · " + fmt(X2, 1) + " + " + sg(P.b2, 3) + " = <b>" + f3(F.z2) + "</b>"); ln("h₂ = σ(z₂) = σ(" + f3(F.z2) + ") = <b>" + f3(F.h2) + "</b>"); }
+      if (i === 3) { ln("z₃ = w₅·h₁ + w₆·h₂ + b₃ = " + f3(P.w5) + " · " + f3(F.h1) + " + " + sg(P.w6, 3) + " · " + f3(F.h2) + " + " + sg(P.b3, 3) + " = <b>" + f3(F.z3) + "</b>"); ln("ŷ = σ(z₃) = σ(" + f3(F.z3) + ") = <b>" + f3(F.o) + "</b>"); }
+      if (i === 4) { ln("L = (ŷ − y)² = (" + f3(F.o) + " − " + YOBJ + ")² = <b>" + f4(F.L) + "</b>"); ln("<small>La red ha dicho " + f3(F.o) + " y debía decir " + YOBJ + ": hay que subir ŷ.</small>"); }
+      if (i === 5) { ln("δ₃ = ∂L/∂z₃ = ∂L/∂ŷ · σ'(z₃) = 2(ŷ − y) · ŷ(1 − ŷ)"); ln("= 2 · " + sg(F.o - YOBJ, 3) + " · " + f3(F.o * (1 - F.o)) + ' = <span class="gr">' + f4(D.d3) + "</span>"); }
+      if (i === 6) { ln("∂L/∂w₅ = δ₃ · h₁ = " + sg(D.d3, 4) + " · " + f3(F.h1) + ' = <span class="gr">' + f4(G.w5) + "</span>"); ln("∂L/∂w₆ = δ₃ · h₂ = " + sg(D.d3, 4) + " · " + f3(F.h2) + ' = <span class="gr">' + f4(G.w6) + "</span>"); ln("∂L/∂b₃ = δ₃ · 1 = " + '<span class="gr">' + f4(G.b3) + "</span>"); }
+      if (i === 7) { ln("δ₁ = δ₃ · w₅ · h₁(1 − h₁) = " + sg(D.d3, 4) + " · " + sg(P.w5, 3) + " · " + f3(F.h1 * (1 - F.h1)) + ' = <span class="gr">' + f4(D.d1) + "</span>"); ln("δ₂ = δ₃ · w₆ · h₂(1 − h₂) = " + sg(D.d3, 4) + " · " + sg(P.w6, 3) + " · " + f3(F.h2 * (1 - F.h2)) + ' = <span class="gr">' + f4(D.d2) + "</span>"); }
+      if (i === 8) { ln("∂L/∂w₁ = δ₁·x₁ = " + '<span class="gr">' + f4(G.w1) + "</span> · ∂L/∂w₂ = δ₁·x₂ = " + '<span class="gr">' + f4(G.w2) + "</span> · ∂L/∂b₁ = δ₁ = " + '<span class="gr">' + f4(G.b1) + "</span>"); ln("∂L/∂w₃ = δ₂·x₁ = " + '<span class="gr">' + f4(G.w3) + "</span> · ∂L/∂w₄ = δ₂·x₂ = " + '<span class="gr">' + f4(G.w4) + "</span> · ∂L/∂b₂ = δ₂ = " + '<span class="gr">' + f4(G.b2) + "</span>"); }
+      if (i === 9) { ln("w ← w − η · ∂L/∂w, con η = " + fmt(eta, 1) + ". Los nueve parámetros a la vez; por ejemplo:"); ln("w₅ = " + f3(P.w5) + " − " + fmt(eta, 1) + " · " + sg(G.w5, 4) + " = <b>" + f3(Pn.w5) + "</b>  ·  w₆ = " + f3(P.w6) + " − " + fmt(eta, 1) + " · " + sg(G.w6, 4) + " = <b>" + f3(Pn.w6) + "</b>"); }
+      if (i === 10) { ln("Nueva propagación con los pesos actualizados: ŷ = " + f3(F.o) + " → <b>" + f3(Fn.o) + "</b>"); ln("L = " + f4(F.L) + " → <b>" + f4(Fn.L) + "</b> (" + fmt((Fn.L / F.L - 1) * 100, 1) + " %). Un paso más cerca del objetivo."); }
+      return L.join("");
+    }
+    function pinta() {
+      calcula();
+      const i = paso;
+      lis.forEach((li, k) => { li.classList.toggle("activo", k === i); li.classList.toggle("hecho", k < i); });
+      // nodos
+      nd.x1.val.textContent = fmt(X1, 1); nd.x2.val.textContent = fmt(X2, 1);
+      const Fv = i >= 10 ? Fn : F;
+      nd.h1.val.textContent = i >= 1 ? f3(Fv.h1) : "?";
+      nd.h2.val.textContent = i >= 2 ? f3(Fv.h2) : "?";
+      nd.o.val.textContent = i >= 3 ? f3(Fv.o) : "?";
+      sub.h1.z.textContent = i >= 1 ? "z₁ = " + f3(Fv.z1) : ""; sub.h2.z.textContent = i >= 2 ? "z₂ = " + f3(Fv.z2) : ""; sub.o.z.textContent = i >= 3 ? "z₃ = " + f3(Fv.z3) : "";
+      sub.o.d.textContent = i >= 5 && i < 10 ? "δ₃ = " + f4(D.d3) : "";
+      sub.h1.d.textContent = i >= 7 && i < 10 ? "δ₁ = " + f4(D.d1) : "";
+      sub.h2.d.textContent = i >= 7 && i < 10 ? "δ₂ = " + f4(D.d2) : "";
+      tL.textContent = i >= 4 ? f4(i >= 10 ? Fn.L : F.L) : "?";
+      tLn.textContent = i >= 10 ? "antes " + f4(F.L) : "";
+      // aristas y píldoras
+      pintaAristas(i >= 9 ? Pn : P);
+      const conGrad = { w5: 6, w6: 6, b3: 6, w1: 8, w2: 8, w3: 8, w4: 8, b1: 8, b2: 8 };
+      ORDEN.forEach((k) => {
+        const p = pill[k], tieneG = i >= conGrad[k];
+        p.t1.textContent = NOM[k] + " = " + (i >= 9 ? f3(Pn[k]) : f3(P[k]));
+        p.t2.textContent = tieneG ? "∂L/∂" + NOM[k] + " = " + f4(G[k]) : "";
+        p.r.setAttribute("height", tieneG ? 46 : 28);
+        p.r.setAttribute("stroke", tieneG ? GRAD : "#B0BAC4");
+        const usado = (i === 1 && /^(w1|w2|b1)$/.test(k)) || (i === 2 && /^(w3|w4|b2)$/.test(k)) || (i === 3 && /^(w5|w6|b3)$/.test(k)) || (i === 7 && /^(w5|w6)$/.test(k)) || (i === conGrad[k]) || i === 9;
+        p.r.setAttribute("stroke-width", usado ? 2.8 : 1.3);
+        p.r.setAttribute("fill", i === 9 ? "#F3E5F5" : "#fff");
+      });
+      // resaltado de neuronas
+      Object.keys(nd).forEach((k) => { nd[k].c.setAttribute("stroke", "#52606D"); nd[k].c.setAttribute("stroke-width", 2); });
+      const act = { 1: ["h1"], 2: ["h2"], 3: ["o"], 5: ["o"], 7: ["h1", "h2"] }[i] || [];
+      act.forEach((k) => { nd[k].c.setAttribute("stroke", i >= 5 ? GRAD : C.ink); nd[k].c.setAttribute("stroke-width", 4); });
+      const fondoNodo = (k, v) => { nd[k].c.setAttribute("fill", v === null ? "#fff" : RN.mezcla("#ffffff", C.pos, 0.15 + 0.5 * v)); };
+      fondoNodo("h1", i >= 1 ? Fv.h1 : null); fondoNodo("h2", i >= 2 ? Fv.h2 : null); fondoNodo("o", i >= 3 ? Fv.o : null);
+      cajaL.setAttribute("stroke", i === 4 || i === 10 ? GRAD : "#52606D"); cajaL.setAttribute("stroke-width", i === 4 || i === 10 ? 3.5 : 2);
+      // fórmula, tabla y kpis
+      $("r-form").innerHTML = '<div class="r-tit">Paso ' + (i + 1) + " de " + PASOS.length + " · " + PASOS[i].t + "</div>" + formula(i);
+      ORDEN.forEach((k) => {
+        filas.v[k].textContent = f3(P[k]);
+        filas.g[k].textContent = i >= conGrad[k] ? f4(G[k]) : "";
+        filas.nv[k].textContent = i >= 9 ? f3(Pn[k]) : "";
+        const marca = i === conGrad[k] || i === 9 || (i === 1 && /^(w1|w2|b1)$/.test(k)) || (i === 2 && /^(w3|w4|b2)$/.test(k)) || (i === 3 && /^(w5|w6|b3)$/.test(k));
+        ["v", "g", "nv"].forEach((f) => filas[f][k].classList.toggle("marca", marca));
+      });
+      $("r-la").textContent = i >= 4 ? f4(F.L) : "—";
+      $("r-ld").textContent = i >= 10 ? f4(Fn.L) : "—";
+      $("r-iter").textContent = iter;
+      $("r-etao").textContent = fmt(eta, 1);
+      $("r-ant").disabled = i === 0; $("r-sig").disabled = i === PASOS.length - 1;
+      $("r-otra").disabled = i < PASOS.length - 1;
+    }
+    // animación de cada transición
+    let tok = 0;
+    function pulsoArista(k, atras, ms) {
+      const p = NX[ARI[k][atras ? 1 : 0]], q = NX[ARI[k][atras ? 0 : 1]];
+      const c = S("circle", { r: 6, fill: atras ? GRAD : C.ink }, gPul);
+      return RN.tween(ms, (t) => { c.setAttribute("cx", RN.lerp(p.x, q.x, t)); c.setAttribute("cy", RN.lerp(p.y, q.y, t)); }, (t) => t).then(() => c.remove());
+    }
+    const FLUJO = { 1: [["w1", "w2"], false], 2: [["w3", "w4"], false], 3: [["w5", "w6"], false], 7: [["w5", "w6"], true], 8: [["w1", "w2", "w3", "w4"], true] };
+    async function avanza() {
+      if (paso >= PASOS.length - 1) return false;
+      const mio = ++tok;
+      const sig2 = paso + 1, fl = FLUJO[sig2];
+      if (fl && !RN.reducirMovimiento) { await Promise.all(fl[0].map((k) => pulsoArista(k, fl[1], 600))); if (mio !== tok) return false; }
+      if (sig2 === 9 && !RN.reducirMovimiento) {
+        paso = 9; pinta();
+        const Q0 = Object.assign({}, P);
+        await RN.tween(700, (t) => { const Q = {}; ORDEN.forEach((k) => { Q[k] = RN.lerp(Q0[k], Pn[k], t); }); pintaAristas(Q); });
+        return mio === tok;
+      }
+      paso = sig2; pinta();
+      return true;
+    }
+    let espera = 0;
+    const reproduce = RN.anima(function (dt) {
+      espera += dt;
+      if (espera > 1.7) { espera = 0; if (paso >= PASOS.length - 1) return false; avanza(); }
+    }, svg);
+    reproduce.onCambio = (on) => { if (on) { espera = 1.7; if (paso >= PASOS.length - 1) { paso = 0; pinta(); } } };
+    RN.botonPlay($("r-play"), reproduce);
+    $("r-sig").addEventListener("click", () => { reproduce.parar(); avanza(); });
+    $("r-ant").addEventListener("click", () => { tok++; reproduce.parar(); paso = Math.max(0, paso - 1); pinta(); });
+    $("r-reset").addEventListener("click", () => { tok++; reproduce.parar(); P = Object.assign({}, INI); iter = 1; paso = 0; pinta(); });
+    $("r-otra").addEventListener("click", () => { tok++; reproduce.parar(); calcula(); P = Object.assign({}, Pn); iter++; paso = 0; pinta(); });
+    $("r-eta").addEventListener("input", (e) => { eta = +e.target.value; pinta(); });
+    pinta();
+  })();
+
+  // ================================================================ 7 · LOTES
+  (function () {
+    const NTOT = 1000;
+    let lote = 32, it = -1, ep = 1, acum = 0;
+    const tira = $("l-tira");
+    const COLS = 100;
+    function dibujaTira() {
+      const L = RN.lienzo(tira, (w) => Math.round(Math.min(150, (w - 20) / COLS * 10 + 34)));
+      const c = L.ctx, cel = (L.w - 20) / COLS, filas = NTOT / COLS;
+      c.clearRect(0, 0, L.w, L.h);
+      const nIt = Math.ceil(NTOT / lote);
+      for (let k = 0; k < NTOT; k++) {
+        const bq = Math.floor(k / lote);
+        const x = 10 + (k % COLS) * cel, y = 10 + Math.floor(k / COLS) * cel;
+        let col;
+        if (bq === it) col = GRAD;
+        else if (it >= 0 && bq < it) col = "#D5DBE1";
+        else col = RN.mezcla("#ffffff", GRAD, bq % 2 ? 0.42 : 0.14);
+        c.fillStyle = col; c.fillRect(x + 0.6, y + 0.6, cel - 1.2, cel - 1.2);
+      }
+      const ytxt = 10 + filas * cel + 14;
+      etiqueta(c, "1000 ejemplos, en el orden barajado de esta época · cada bloque de color es un lote", 10, ytxt, { alin: "left", tam: 13, color: C.ink2, halo: false, peso: "500" });
+      etiqueta(c, it >= 0 ? "procesando el lote " + (it + 1) + " de " + nIt : nIt + " lotes", L.w - 10, ytxt, { alin: "right", tam: 13, color: C.ink, halo: false, peso: "700" });
+    }
+    function textoLotes() {
+      const nIt = Math.ceil(NTOT / lote), q = Math.floor(NTOT / lote), r = NTOT - q * lote;
+      const desc = r === 0 ? (q === 1 ? "un lote de " + lote : q + " lotes de " + lote) : q + " lotes de " + lote + " y uno de " + r;
+      $("l-form").innerHTML = "iteraciones por época = ⌈N / lote⌉ = ⌈1000 / " + lote + "⌉ = <b>" + nIt + "</b><span class=\"com\">(" + desc + ")</span>";
+      $("l-it").textContent = (it >= 0 ? it + 1 : 0) + " / " + nIt;
+      $("l-ep").textContent = ep;
+    }
+    function pintaTira() { dibujaTira(); textoLotes(); }
+    const animT = RN.anima(function (dt) {
+      const nIt = Math.ceil(NTOT / lote);
+      const vel = RN.limita(nIt / 5, 1.6, 400);   // iteraciones por segundo: una época en ~5 s
+      acum += dt * vel;
+      let cambio = false;
+      while (acum >= 1) {
+        acum -= 1; it++; cambio = true;
+        if (it >= nIt) { it = nIt - 1; pintaTira(); return false; }
+      }
+      if (cambio) pintaTira();
+    }, tira);
+    animT.onCambio = (on) => { if (on && it >= Math.ceil(NTOT / lote) - 1) { it = -1; acum = 1; } };
+    RN.botonPlay($("l-play"), animT, ["▶ Recorrer una época", "⏸ Pausa"]);
+    segmento($("l-seg"), (v) => { animT.parar(); lote = +v; it = -1; pintaTira(); });
+    RN.alCambiarTam(tira, pintaTira);
+    textoLotes();
+
+    // ---- trayectorias de los tres métodos
+    const P = problemaLineal(NTOT, 1.25, [1.5, -1.0], 1.0, 5);
+    const ETA = 0.05, K = 150, INI = [-1.9, 1.4];
+    let semilla = 3, T = null, k = K;
+    const MET = [{ n: "lote completo", lote: NTOT, col: C.s1 }, { n: "estocástico (1)", lote: 1, col: C.s2 }, { n: "mini-lote (32)", lote: 32, col: C.s3 }];
+    function simula() {
+      const r = RN.rng(semilla);
+      T = MET.map((m) => {
+        let w = INI.slice(), orden = [], pos = NTOT;
+        const out = [w.slice()];
+        for (let s = 0; s < K; s++) {
+          let idx;
+          if (m.lote === NTOT) idx = null;
+          else {
+            if (pos + m.lote > NTOT) { orden = []; for (let q = 0; q < NTOT; q++) orden.push(q); for (let q = NTOT - 1; q > 0; q--) { const j = Math.floor(r() * (q + 1)); const t = orden[q]; orden[q] = orden[j]; orden[j] = t; } pos = 0; }
+            idx = orden.slice(pos, pos + m.lote); pos += m.lote;
+          }
+          const g = idx ? P.gradLote(w[0], w[1], idx) : P.grad(w[0], w[1]);
+          w = [w[0] - ETA * g[0], w[1] - ETA * g[1]];
+          out.push(w.slice());
+        }
+        return out;
+      });
+    }
+    const cvM = $("l-mapa");
+    const M = Mapa(cvM, {
+      alto: 360,
+      dominio: (w, h) => { const cx = -0.1, cy = 0.1, hw = 2.6, hh = hw * h / w; return { x0: cx - hw, x1: cx + hw, y0: cy - hh, y1: cy + hh }; },
+      f: (a, b) => P.L(a, b),
+      niveles: () => nivelesCuadraticos(P, M, 12),
+      ejes: ["w₁", "w₂"]
+    });
+    const gC = RN.grafica($("l-curva"), { alto: 360, x: { min: 0, max: K, titulo: "iteración (actualizaciones de los pesos)" }, y: { min: 0, max: Math.ceil(P.L(INI[0], INI[1]) + 1), titulo: "pérdida con los 1000 ejemplos" } });
+    function dibujaMapa() {
+      if (!M.w) return;
+      M.fondo();
+      const c = M.ctx;
+      const ox = M.sx(P.opt[0]), oy = M.sy(P.opt[1]);
+      [1, 2, 0].forEach((i) => {
+        const m = MET[i];
+        const Pp = T[i].slice(0, k + 1).map((p) => [M.sx(p[0]), M.sy(p[1])]);
+        trayecto(c, Pp, m.col, { ancho: m.lote === 1 ? 1.5 : 2.2 });
+        const u = Pp[Pp.length - 1]; bola(c, u[0], u[1], 6, m.col);
+      });
+      c.strokeStyle = C.ink; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(ox - 6, oy - 6); c.lineTo(ox + 6, oy + 6); c.moveTo(ox + 6, oy - 6); c.lineTo(ox - 6, oy + 6); c.stroke();
+      const s0x = M.sx(INI[0]), s0y = M.sy(INI[1]);
+      c.beginPath(); c.arc(s0x, s0y, 7, 0, 7); c.strokeStyle = C.ink; c.lineWidth = 2; c.stroke();
+      etiqueta(c, "salida", s0x, s0y - 16, { tam: 12.5 });
+    }
+    function pinta() {
+      dibujaMapa();
+      gC.dibujar(MET.map((m, i) => ({ nombre: m.n, color: m.col, ancho: m.lote === 1 ? 1.5 : 2, puntos: T[i].slice(0, k + 1).map((p, s) => [s, P.L(p[0], p[1])]) })));
+      $("l-k").textContent = k;
+      $("l-e1").textContent = fmt(k, 0);
+      $("l-e2").textContent = fmt(k * 32 / NTOT, 2);
+      $("l-e3").textContent = fmt(k / NTOT, 3);
+    }
+    let acum2 = 0;
+    const anim2 = RN.anima(function (dt) {
+      acum2 += dt * 14;
+      let c = false;
+      while (acum2 >= 1) { acum2 -= 1; if (k < K) { k++; c = true; } }
+      if (c) pinta();
+      if (k >= K) return false;
+    }, cvM);
+    anim2.onCambio = (on) => { if (on && k >= K) { k = 0; acum2 = 0; pinta(); } };
+    RN.botonPlay($("l-play2"), anim2);
+    $("l-otra").addEventListener("click", () => { semilla++; simula(); pinta(); });
+    RN.alCambiarTam(cvM, () => { M.preparar(); dibujaMapa(); });
+    simula(); pinta();
+  })();
+
+  // ================================================================ 8 · DESVANECIMIENTO Y EXPLOSIÓN
+  (function () {
+    const CONF = [
+      { n: "sigmoide", act: "sigmoid", esc: 1, col: C.s1 },
+      { n: "ReLU", act: "relu", esc: 1, col: C.s2 },
+      { n: "ReLU con pesos ×2", act: "relu", esc: 2, col: C.s3 }
+    ];
+    let conf = 0, prof = 10, semilla = 3;
+    const r = RN.rng(5), X = [], Y = [];
+    for (let k = 0; k < 64; k++) { const x = []; for (let i = 0; i < 8; i++) x.push(RN.normal(r)); X.push(x); Y.push([r() < 0.5 ? 1 : 0]); }
+    function gradCapas(c, D) {
+      const capas = [8]; for (let i = 0; i < D; i++) capas.push(16); capas.push(1);
+      const m = new RNmlp.MLP({ capas: capas, activacion: CONF[c].act, salida: "sigmoid", semilla: semilla, escalaInit: CONF[c].esc });
+      const g = m.gradiente(X, Y);
+      return g.W.map((Wl) => { let s = 0, n = 0; Wl.forEach((f) => f.forEach((v) => { s += Math.abs(v); n++; })); return s / n; });
+    }
+    let tabla;
+    function precalcula() { tabla = CONF.map((c, i) => { const out = []; for (let D = 1; D <= 15; D++) out.push([D, gradCapas(i, D)[0]]); return out; }); }
+    const YMIN = 1e-13, YMAX = 1e4, MARCAS = [1e-12, 1e-9, 1e-6, 1e-3, 1, 1e3];
+    const gB = RN.grafica($("v-barras"), { alto: 340, hover: false, x: { min: 0.3, max: 16.7, titulo: "capa de pesos (1 = junto a la entrada)", marcas: [1, 4, 8, 12, 16] }, y: { min: YMIN, max: YMAX, log: true, titulo: "|∂L/∂w| medio", marcas: MARCAS, fmt: pot10 } });
+    let barras = [];
+    gB.op.extras = function (c, g) {
+      if (!barras.length) return;
+      const pri = barras[0], ult = barras[barras.length - 1];
+      etiqueta(c, sci(pri[1]), g.sx(pri[0]), Math.max(g.m.t + 10, g.sy(pri[1]) - 12), { tam: 12.5, peso: "700" });
+      etiqueta(c, sci(ult[1]), g.sx(ult[0]), Math.max(g.m.t + 10, g.sy(ult[1]) - 12), { tam: 12.5, peso: "700" });
+    };
+    const gP = RN.grafica($("v-prof-cv"), {
+      alto: 340, x: { min: 0.5, max: 15.5, titulo: "capas ocultas", marcas: [1, 3, 5, 7, 9, 11, 13, 15] }, y: { min: YMIN, max: YMAX, log: true, titulo: "|∂L/∂w| medio en la capa 1", marcas: MARCAS, fmt: pot10, fmtTip: sci },
+      extras: function (c, g) {
+        c.strokeStyle = RN.rgba(C.ink, 0.35); c.lineWidth = 1;
+        c.beginPath(); c.moveTo(Math.round(g.sx(prof)) + 0.5, g.m.t); c.lineTo(Math.round(g.sx(prof)) + 0.5, g.h - g.m.b); c.stroke();
+        const v = tabla[conf][prof - 1][1];
+        bola(c, g.sx(prof), g.sy(v), 7.5, CONF[conf].col);
+      }
+    });
+    gP.op.x.fmtTip = (v) => fmt(v, 0);
+    function pinta() {
+      $("v-profo").textContent = prof;
+      const v = gradCapas(conf, prof);
+      barras = v.map((g, i) => [i + 1, g]);
+      gB.op.x.max = Math.max(4.7, prof + 1.7);
+      gB.op.x.marcas = null;
+      const nb = prof + 1;
+      gB.op.x.marcas = nb <= 8 ? barras.map((b) => b[0]) : [1].concat(barras.filter((b) => b[0] % 3 === 0).map((b) => b[0])).concat(nb % 3 ? [nb] : []);
+      gB.op.x.fmt = (x) => fmt(x, 0);
+      const anchoB = Math.max(6, Math.min(44, (($("v-barras").clientWidth || 500) - 80) / (gB.op.x.max - gB.op.x.min) * 0.62));
+      gB.dibujar([{ tipo: "barras", color: CONF[conf].col, puntos: barras, anchoBarra: anchoB }]);
+      gP.dibujar(CONF.map((c, i) => ({ nombre: c.n, color: c.col, puntos: tabla[i] })).concat(CONF.map((c, i) => ({ tipo: "puntos", color: c.col, radio: 3.5, puntos: tabla[i] }))));
+      $("v-k1").textContent = sci(v[0]);
+      $("v-k2").textContent = sci(v[v.length - 1]);
+      $("v-pie1").textContent = "Media de |∂L/∂w| en cada una de las " + (prof + 1) + " capas de pesos (" + CONF[conf].n + ", escala logarítmica). De la capa 1 a la última hay un factor " + sci(v[v.length - 1] / v[0]) + ".";
+    }
+    segmento($("v-seg"), (vv) => { conf = +vv; pinta(); });
+    $("v-prof").addEventListener("input", (e) => { prof = +e.target.value; pinta(); });
+    $("v-semilla").addEventListener("click", () => { semilla++; precalcula(); pinta(); });
+    RN.alCambiarTam($("v-barras"), pinta);
+    precalcula(); pinta();
+  })();
+
+  // ================================================================ 9 · MÍNIMOS LOCALES Y SILLAS
+  (function () {
+    // curva de juguete: cuenco (mínimo global en w = 1) + pozo estrecho (mínimo local) + escalón suave que crea una meseta
+    const sgm = (z) => 1 / (1 + Math.exp(-z));
+    const PA = { a: 0.25, g: 1.0, d: 0.75, c: -1.45, s: 0.33, q: 1.41, p: -2.35, r: 0.2 };
+    function f(w) {
+      const P = PA, e = Math.exp(-((w - P.c) * (w - P.c)) / (2 * P.s * P.s));
+      return P.a * (w - P.g) * (w - P.g) - P.d * e + P.q * (sgm((w - P.p) / P.r) - 1);
+    }
+    function df(w) {
+      const P = PA, e = Math.exp(-((w - P.c) * (w - P.c)) / (2 * P.s * P.s)), sv = sgm((w - P.p) / P.r);
+      return 2 * P.a * (w - P.g) + P.d * (w - P.c) / (P.s * P.s) * e + P.q * sv * (1 - sv) / P.r;
+    }
+    // mínimos, máximo y meseta, calculados una vez
+    const MINS = [], MAXS = [];
+    for (let w = -3; w < 3; w += 0.001) { const a = df(w), b = df(w + 0.001); if (a < 0 && b >= 0) MINS.push(w + 0.0005); if (a > 0 && b <= 0) MAXS.push(w + 0.0005); }
+    const WLOC = MINS[0], WGLO = MINS[MINS.length - 1];
+    let WMES = -2.4, pmin = 9;
+    for (let w = -2.8; w < -1.9; w += 0.001) if (Math.abs(df(w)) < pmin) { pmin = Math.abs(df(w)); WMES = w; }
+    const MAXIT = 300;
+    function destino(w0, eta) {
+      let w = w0;
+      for (let k = 0; k < MAXIT; k++) { const wn = w - eta * df(w); if (Math.abs(wn - w) < 1e-6) { w = wn; break; } w = wn; if (Math.abs(w) > 20) return -1; }
+      return clase(w);
+    }
+    const clase = (w) => (Math.abs(w - WGLO) < 0.05 ? 0 : Math.abs(w - WLOC) < 0.05 ? 1 : 2);
+    const COLD = [C.s1, C.s2, C.s4];
+    const sw0 = $("m-w0"), seta = $("m-eta");
+    let eta = +seta.value, bolas = [], it = 0, cuencas = [];
+    function calcCuencas() { cuencas = []; for (let k = 0; k <= 240; k++) { const w0 = -2.95 + 5.9 * k / 240; cuencas.push([w0, destino(w0, eta)]); } $("m-ley3").style.display = cuencas.some((c) => c[1] === 2) ? "" : "none"; }
+    const g = RN.grafica($("m-cv"), {
+      alto: 380, hover: false, x: { min: -3, max: 3, titulo: "peso w" }, y: { min: -0.45, max: 2.85, titulo: "pérdida L(w)", marcas: [0, 1, 2] },
+      extras: function (c, g) {
+        const yb = g.sy(-0.45) - 10;
+        // franja de cuencas
+        for (let k = 0; k < cuencas.length - 1; k++) {
+          const d = cuencas[k][1]; if (d < 0) continue;
+          c.fillStyle = COLD[d]; c.fillRect(g.sx(cuencas[k][0]), yb - 7, g.sx(cuencas[k + 1][0]) - g.sx(cuencas[k][0]) + 0.6, 14);
+        }
+        etiqueta(c, "dónde acaba cada salida", g.sx(-3) + 6, yb - 18, { alin: "left", tam: 12, color: C.ink2 });
+        // rótulos directos
+        etiqueta(c, "mínimo global", g.sx(WGLO), g.sy(f(WGLO)) + 22, { tam: 13, peso: "700" });
+        etiqueta(c, "mínimo local", g.sx(WLOC), g.sy(f(WLOC)) + 22, { tam: 13, peso: "700" });
+        etiqueta(c, "meseta", g.sx(WMES) - 6, g.sy(f(WMES)) + 24, { tam: 13, peso: "700" });
+        etiqueta(c, "(pendiente casi nula)", g.sx(WMES) - 6, g.sy(f(WMES)) + 40, { tam: 12, color: C.ink2 });
+        c.save(); c.beginPath(); c.rect(g.m.l, g.m.t, g.w - g.m.l - g.m.r, g.h - g.m.t - g.m.b); c.clip();
+        bolas.forEach((b) => {
+          if (b.tray.length > 1) {
+            c.strokeStyle = RN.rgba(b.col, 0.45); c.lineWidth = 1.4;
+            c.beginPath(); b.tray.forEach((w, i) => (i ? c.lineTo(g.sx(w), g.sy(f(w))) : c.moveTo(g.sx(w), g.sy(f(w))))); c.stroke();
+          }
+          bola(c, g.sx(b.w), g.sy(f(b.w)), bolas.length > 1 ? 7 : 9, b.col);
+        });
+        c.restore();
+      }
+    });
+    function pintaCurva() {
+      const P = []; for (let w = -3; w <= 3.0001; w += 0.02) P.push([w, f(w)]);
+      g.dibujar([{ nombre: "L(w)", color: C.ink2, puntos: P, ancho: 2.5 }]);
+      $("m-w0o").textContent = fmt(+sw0.value, 2);
+      $("m-etao").textContent = fmt(eta, 2);
+      $("m-it").textContent = it;
+      $("m-g").textContent = bolas.length === 1 ? fmt(df(bolas[0].w), 3) : "—";
+    }
+    function reset(varias) {
+      play.parar(); it = 0;
+      if (varias) { bolas = []; for (let k = 0; k < 13; k++) { const w0 = -2.85 + 5.7 * k / 12; bolas.push({ w: w0, tray: [w0], col: C.ink }); } }
+      else bolas = [{ w: +sw0.value, tray: [+sw0.value], col: C.ink }];
+      pintaCurva();
+    }
+    let acum = 0;
+    const play = RN.anima(function (dt) {
+      acum += dt * 15;
+      let fin = true;
+      while (acum >= 1) {
+        acum -= 1; it++;
+        bolas.forEach((b) => { const wn = b.w - eta * df(b.w); if (Math.abs(wn - b.w) > 1e-5) { b.w = RN.limita(wn, -6, 6); b.tray.push(b.w); } });
+      }
+      bolas.forEach((b) => { if (Math.abs(eta * df(b.w)) > 1e-5) fin = false; });
+      if (it >= MAXIT || fin) {
+        bolas.forEach((b) => { b.col = COLD[clase(b.w)]; });
+        pintaCurva(); return false;
+      }
+      pintaCurva();
+    }, $("m-cv"));
+    play.onCambio = (on) => { if (on) acum = 0; };
+    RN.botonPlay($("m-play"), play, ["▶ Soltar la bola", "⏸ Pausa"]);
+    $("m-play").addEventListener("click", () => { if (!play.activo && (it >= MAXIT || bolas.length > 1 || bolas.every((b) => b.tray.length > 1 && Math.abs(eta * df(b.w)) <= 1e-5))) reset(false); }, true);
+    $("m-varias").addEventListener("click", () => { reset(true); play.iniciar(); });
+    $("m-reset").addEventListener("click", () => reset(false));
+    sw0.addEventListener("input", () => reset(false));
+    seta.addEventListener("input", () => { eta = +seta.value; calcCuencas(); reset(false); });
+    $("m-cv").addEventListener("click", (ev) => {
+      const rr = ev.currentTarget.getBoundingClientRect(), w = g.ix(ev.clientX - rr.left);
+      if (w > -2.95 && w < 2.95) { sw0.value = w; reset(false); play.iniciar(); }
+    });
+    calcCuencas(); reset(false);
+
+    // ---- punto de silla en 2D: L(u, v) = u² − v² + v⁴/2
+    const Ls = (u, v) => u * u - v * v + v * v * v * v / 2, gs = (u, v) => [2 * u, -2 * v + 2 * v * v * v];
+    const ETAS = 0.08;
+    let ini = [-2.6, 0.002], tray = [], kk = 0;
+    const cvS = $("s-cv");
+    const M = Mapa(cvS, {
+      alto: 330,
+      dominio: (w, h) => { const hh = 1.5, hw = hh * w / h; return { x0: -hw, x1: hw, y0: -hh, y1: hh }; },
+      f: Ls,
+      niveles: () => { const o = []; for (let v = -0.4; v < 3.3; v += 0.4) o.push(v); return o; },
+      ejes: ["u", "v"]
+    });
+    function simulaS() { tray = [ini.slice()]; let p = ini.slice(); for (let s = 0; s < 110; s++) { const gr = gs(p[0], p[1]); p = [p[0] - ETAS * gr[0], p[1] - ETAS * gr[1]]; tray.push(p); } }
+    function dibujaS() {
+      if (!M.w) return;
+      M.fondo();
+      const c = M.ctx;
+      const sx = M.sx(0), sy = M.sy(0);
+      etiqueta(c, "punto de silla", sx + 10, sy - 14, { alin: "left", tam: 13, peso: "700" });
+      [[0, 1], [0, -1]].forEach((p) => { const x = M.sx(p[0]), y = M.sy(p[1]); c.strokeStyle = C.ink; c.lineWidth = 2; c.beginPath(); c.moveTo(x - 5, y - 5); c.lineTo(x + 5, y + 5); c.moveTo(x + 5, y - 5); c.lineTo(x - 5, y + 5); c.stroke(); etiqueta(c, "mínimo", x + 9, y, { alin: "left", tam: 12.5, color: C.ink2 }); });
+      const Pp = tray.slice(0, kk + 1).map((p) => [M.sx(p[0]), M.sy(p[1])]);
+      trayecto(c, Pp, C.s2, { ancho: 1.8, puntos: 3.2 });
+      const u = Pp[Pp.length - 1]; bola(c, u[0], u[1], 7, C.s2);
+      const n = tray.slice(0, kk + 1).filter((p) => Math.hypot(p[0], p[1]) < 0.3).length;
+      $("s-n").textContent = n;
+    }
+    let acS = 0;
+    const animS = RN.anima(function (dt) { acS += dt * 12; let c = false; while (acS >= 1) { acS -= 1; if (kk < tray.length - 1) { kk++; c = true; } } if (c) dibujaS(); if (kk >= tray.length - 1) return false; }, cvS);
+    animS.onCambio = (on) => { if (on && kk >= tray.length - 1) { kk = 0; acS = 0; dibujaS(); } };
+    RN.botonPlay($("s-play"), animS, ["▶ Lanzar", "⏸ Pausa"]);
+    cvS.addEventListener("click", (ev) => { const rr = cvS.getBoundingClientRect(); ini = [M.ix(ev.clientX - rr.left), M.iy(ev.clientY - rr.top)]; simulaS(); kk = 0; animS.iniciar(); });
+    RN.alCambiarTam(cvS, () => { M.preparar(); dibujaS(); });
+    simulaS(); kk = tray.length - 1;
+  })();
+})();
+</script>
+</body>
+</html>

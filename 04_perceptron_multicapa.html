@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es-ES">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tema 4 · Perceptrón multicapa — Redes Neuronales</title>
+<link rel="icon" href="assets/icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/estilo.css">
+<style>
+  /* ---------- comunes de la página ---------- */
+  .fila { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; }
+  .seg[role="group"] { flex-wrap: wrap; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .mini { font-size: .84rem; color: var(--ink2); }
+  .ok-t { color: var(--ok); font-weight: 700; }
+  .bad-t { color: var(--bad); font-weight: 700; }
+  .lado { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+  .lado.igual { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  @media (max-width: 900px) { .lado, .lado.igual { grid-template-columns: 1fr; } }
+  .explica { margin-top: .9rem; }
+  .card .explica li { margin-bottom: .35rem; }
+  .tit-col { font-size: .88rem; font-weight: 800; color: var(--ink2); margin: 0 0 .35rem; }
+  .vacio-svg { width: 100%; display: block; }
+
+  /* ---------- 1 · XOR ---------- */
+  #x-red { width: 100%; display: block; max-height: 250px; }
+  #x-tabla td, #x-tabla th { text-align: center; }
+  #x-tabla th { text-transform: none; font-size: .9rem; }
+  #x-tabla td.mal-fila { background: var(--bad-l); }
+  #x-texto { font-size: .95rem; margin-top: .5rem; }
+
+  /* ---------- 2 · capas ---------- */
+  .tipos-capa .box h3 { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+  .tipos-capa .box .cuanto { font-size: .78rem; font-weight: 800; color: #fff; background: var(--ink2); border-radius: 999px; padding: .08rem .55rem; white-space: nowrap; }
+  .tipos-capa .box.oc .cuanto { background: var(--acento); }
+  .tipos-capa dl { display: grid; grid-template-columns: auto 1fr; gap: .15rem .6rem; font-size: .92rem; }
+  .tipos-capa dt { font-weight: 700; color: var(--ink2); }
+  .tipos-capa dd { color: var(--ink); }
+  #c-texto { min-height: 1.6em; font-weight: 600; color: var(--ink); text-align: center; margin: .5rem 0 0; }
+  .cuenta { font-family: var(--mat); font-size: 1.15rem; }
+
+  /* ---------- 3 · pesos ---------- */
+  #p-ecu .t { padding: 0 .1rem; }
+  .sig-tabla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; margin: .8rem 0; }
+  .sig-tabla > div { border: 1px solid var(--line); border-radius: 10px; padding: .6rem .8rem; background: var(--soft); display: flex; gap: .7rem; align-items: center; }
+  .sig-tabla svg { flex: none; }
+  .sig-tabla b { display: block; font-size: 1rem; }
+  @media (max-width: 760px) { .sig-tabla { grid-template-columns: 1fr; } }
+
+  /* ---------- 4 · no linealidad ---------- */
+  .act-tit { display: flex; align-items: center; gap: .5rem; font-weight: 800; margin-bottom: .3rem; }
+  .act-tit i { width: 16px; height: 4px; border-radius: 2px; display: inline-block; }
+  .act-res { font-size: .9rem; color: var(--ink2); margin-top: .35rem; min-height: 2.6em; }
+
+  /* ---------- 5 · jerarquía ---------- */
+  .jer { display: grid; grid-template-columns: auto 34px minmax(0, 1fr) 34px auto 34px minmax(0, 1fr); gap: .3rem; align-items: start; }
+  .jer .flecha { align-self: center; color: var(--muted); font-size: 1.6rem; text-align: center; }
+  .jer .col h3 { font-size: .9rem; color: var(--ink); margin: 0 0 .4rem; }
+  .jer .col h3 small { display: block; font-weight: 600; color: var(--ink2); font-size: .8rem; }
+  #j-dib { width: 252px; height: 252px; touch-action: none; cursor: crosshair; border: 1px solid var(--line); border-radius: 8px; display: block; background: #fff; }
+  .mapas { display: grid; gap: .45rem; }
+  .mapas.dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mapas figure { margin: 0; text-align: center; }
+  .mapas canvas { width: 100%; max-width: 112px; aspect-ratio: 1 / 1; border: 1px solid var(--line); border-radius: 6px; display: block; margin: 0 auto; image-rendering: pixelated; }
+  .mapas figcaption { font-size: .8rem; color: var(--ink2); line-height: 1.25; margin-top: .15rem; }
+  .mapas.una canvas { max-width: 92px; }
+  #j-dig { width: 100%; display: block; }
+  @media (max-width: 1000px) { .jer { grid-template-columns: 1fr; } .jer .flecha { transform: rotate(90deg); } }
+
+  /* ---------- 6 · hacia delante ---------- */
+  #f-svg { width: 100%; display: block; max-height: 380px; }
+  .calc { list-style: none; margin: 0 !important; padding: 0; font-family: var(--mat); font-size: 1.05rem; }
+  .calc li { padding: .35rem .6rem; border-radius: 6px; margin-bottom: .2rem; color: var(--ink); }
+  .calc li .q { font-family: system-ui, sans-serif; font-weight: 700; font-size: .82rem; color: var(--ink2); display: block; }
+  .calc li.act { background: var(--acento-l); }
+  .calc li.fin { background: var(--soft); border: 1px solid var(--line); }
+  .matriz-vista { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; font-family: var(--mat); font-size: 1.05rem; margin-top: .4rem; min-height: 5.5rem; }
+  .mx { display: inline-grid; gap: 1px 0; border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); border-radius: 5px; padding: 2px 3px; font-family: var(--mono); font-size: .88rem; }
+  .mx span { padding: .12rem .45rem; text-align: right; border-radius: 3px; }
+  .mx span.on { background: var(--acento-l); color: var(--dark); font-weight: 800; box-shadow: inset 0 0 0 1.5px var(--acento); }
+  .mx-et { text-align: center; font-size: .78rem; color: var(--ink2); font-family: system-ui, sans-serif; }
+  .mx-blq { display: inline-flex; flex-direction: column; align-items: center; gap: .15rem; }
+
+  /* ---------- 7 · salida ---------- */
+  #s-arbol { width: 100%; display: block; max-height: 230px; }
+  #s-arbol .hoja { cursor: pointer; }
+  #s-arbol .hoja:focus { outline: none; }
+  #s-arbol .hoja:focus-visible rect { stroke: #90CAF9; stroke-width: 3; }
+  .sm-tabla td { vertical-align: middle; }
+  .barra { position: relative; height: 22px; background: var(--soft); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; min-width: 120px; }
+  .barra > i { position: absolute; top: 0; bottom: 0; left: 0; background: var(--s1); border-radius: 4px 0 0 4px; transition: width .15s; }
+  .barra > i.neg { background: var(--s2); }
+  .barra > i.cero { left: 50%; }
+  .barra > b { position: absolute; right: .4rem; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-size: .8rem; color: var(--ink); }
+  .barra .umbral { position: absolute; top: -2px; bottom: -2px; left: 50%; width: 2px; background: var(--ink); opacity: .55; }
+  .apilada { display: flex; height: 38px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); margin: .5rem 0 .2rem; }
+  .apilada > div { display: grid; place-items: center; color: #fff; font-weight: 700; font-size: .85rem; white-space: nowrap; overflow: hidden; transition: flex-basis .2s; }
+  .gran-lectura { font-size: 1.45rem; font-weight: 800; color: var(--ink); line-height: 1.25; }
+  .gran-lectura small { display: block; font-size: .92rem; font-weight: 600; color: var(--ink2); }
+  .sm-tabla input[type=range] { width: 9rem; }
+  .sm-tabla th { text-transform: none; font-size: .88rem; letter-spacing: 0; }
+  #s-ecalc, #s-mcalc { white-space: normal; line-height: 1.6; }
+
+  /* ---------- 8 · parámetros ---------- */
+  .capas-ed { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+  .capas-ed .capa { display: flex; flex-direction: column; align-items: center; gap: .1rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: .3rem .4rem; }
+  .capas-ed .capa span { font-size: .78rem; font-weight: 700; color: var(--ink2); }
+  .capas-ed .capa input { width: 5.2rem; text-align: center; font-family: var(--mono); font-weight: 700; padding: .25rem .3rem; }
+  .capas-ed .capa button { font: inherit; font-size: .72rem; border: none; background: none; color: var(--bad); cursor: pointer; padding: 0; }
+  .capas-ed .flechita { color: var(--muted); font-weight: 800; }
+  #a-svg { width: 100%; display: block; max-height: 300px; }
+  #a-barra { width: 100%; display: block; }
+  .tabla tr.total td { font-weight: 800; border-top: 2px solid var(--ink2); background: var(--acento-l); }
+
+  /* ---------- 9 · laboratorio ---------- */
+  .lab-barra { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; padding: .7rem 1rem; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 1rem; }
+  .lab-play { width: 54px; height: 54px; border-radius: 50%; border: none; background: var(--acento); color: #fff; font-size: 1.35rem; cursor: pointer; display: grid; place-items: center; box-shadow: 0 2px 8px rgba(142,36,170,.35); }
+  .lab-play:hover { filter: brightness(.92); }
+  .lab-play:focus-visible { outline: 3px solid #90CAF9; outline-offset: 2px; }
+  .lab-ico { width: 38px; height: 38px; border-radius: 50%; border: 1px solid #CFD8DC; background: #fff; color: var(--ink2); font-size: 1.05rem; cursor: pointer; }
+  .lab-ico:hover { background: #ECEFF1; }
+  .lab-ep { font-family: var(--mono); font-size: 1.5rem; font-weight: 800; color: var(--ink); min-width: 4.5ch; }
+  .lab-ep small { display: block; font-family: system-ui, sans-serif; font-size: .8rem; font-weight: 700; color: var(--ink2); }
+  .lab-barra .ctl { min-width: 0; }
+  .lab { display: grid; grid-template-columns: 196px minmax(0, 1fr) minmax(300px, 360px); gap: 1.1rem; align-items: start; }
+  @media (max-width: 1050px) { .lab { grid-template-columns: 1fr; } }
+  .lab h3 { font-size: .95rem !important; color: var(--ink); margin: 0 0 .5rem !important; }
+  .lab-ds { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; margin-bottom: .7rem; }
+  .lab-ds button { border: 2px solid var(--line); border-radius: 8px; background: #fff; padding: 2px; cursor: pointer; display: flex; flex-direction: column; align-items: center; font: inherit; font-size: .68rem; color: var(--ink2); }
+  .lab-ds button canvas { width: 100%; aspect-ratio: 1 / 1; display: block; border-radius: 5px; }
+  .lab-ds button[aria-pressed="true"] { border-color: var(--acento); color: var(--ink); font-weight: 700; }
+  .lab-col .ctl { margin-bottom: .55rem; }
+  .lab-col input[type=range] { width: 100%; }
+  .lab-esc { display: grid; gap: .4rem; }
+  .lab-esc .btn { text-align: left; font-size: .84rem; padding: .45rem .7rem; }
+  .lab-red { position: relative; }
+  .lab-cab { position: relative; height: 54px; }
+  .lab-cab > div { position: absolute; top: 0; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+  .lab-cab .nom { font-size: .74rem; font-weight: 700; color: var(--ink2); }
+  .lab-cab .pm { display: inline-flex; align-items: center; gap: .25rem; }
+  .lab-cab .pm button { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #CFD8DC; background: #fff; color: var(--ink); font-weight: 800; cursor: pointer; line-height: 1; padding: 0; }
+  .lab-cab .pm button:hover { background: #ECEFF1; }
+  .lab-cab .pm button:disabled { opacity: .35; cursor: default; }
+  .lab-cab .pm span { font-family: var(--mono); font-size: .8rem; font-weight: 700; min-width: 1.6em; }
+  .lab-capas { display: flex; align-items: center; justify-content: center; gap: .5rem; font-size: .85rem; font-weight: 700; color: var(--ink2); margin-bottom: .3rem; }
+  .lab-capas button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #CFD8DC; background: #fff; font-weight: 800; cursor: pointer; }
+  .lab-capas button:disabled { opacity: .35; cursor: default; }
+  #l-red { width: 100%; display: block; }
+  #l-sal { width: 100%; aspect-ratio: 1 / 1; display: block; border: 1px solid var(--line); border-radius: 10px; }
+  .lab-diag { margin-top: .9rem; }
+  .lab-diag .box { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem 1.2rem; }
+  .lab-diag .box h4 { font-size: .92rem; color: var(--ink2); margin-bottom: .2rem; }
+  .lab-diag .box ul { margin: 0 0 0 1.1rem; font-size: .92rem; }
+  @media (max-width: 760px) { .lab-diag .box { grid-template-columns: 1fr; } }
+
+  /* ---------- 10 · flujo ---------- */
+  #w-svg { width: 100%; display: block; max-height: 330px; }
+  #w-svg .paso { cursor: pointer; }
+  #w-svg .paso:focus { outline: none; }
+  #w-svg .paso:focus-visible rect { stroke: #90CAF9; stroke-width: 3; }
+  .w-det { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem; margin-top: 1rem; }
+  @media (max-width: 900px) { .w-det { grid-template-columns: 1fr; } }
+  .w-det h3 { margin-top: 0 !important; }
+  #w-norm { width: 100%; display: block; }
+</style>
+</head>
+<body class="bloque-arq" data-pagina="04_perceptron_multicapa.html">
+
+<header class="header">
+  <nav class="migas" aria-label="Navegación entre temas"></nav>
+  <h1><span class="num-tema">TEMA 4</span>Perceptrón multicapa</h1>
+  <p>Por qué unas capas de neuronas resuelven lo que una sola no puede, cómo fluye la señal hacia delante y cómo se diseña la red según el problema.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Pestañas del tema">
+  <button class="tab" role="tab" id="t-xor" aria-controls="p-xor" aria-selected="true">1 · Del perceptrón al MLP</button>
+  <button class="tab" role="tab" id="t-capas" aria-controls="p-capas" aria-selected="false">2 · Capas</button>
+  <button class="tab" role="tab" id="t-pesos" aria-controls="p-pesos" aria-selected="false">3 · Pesos</button>
+  <button class="tab" role="tab" id="t-nolin" aria-controls="p-nolin" aria-selected="false">4 · No linealidad</button>
+  <button class="tab" role="tab" id="t-jer" aria-controls="p-jer" aria-selected="false">5 · Capas ocultas</button>
+  <button class="tab" role="tab" id="t-fwd" aria-controls="p-fwd" aria-selected="false">6 · Hacia delante</button>
+  <button class="tab" role="tab" id="t-sal" aria-controls="p-sal" aria-selected="false">7 · Salida</button>
+  <button class="tab" role="tab" id="t-arq" aria-controls="p-arq" aria-selected="false">8 · Parámetros</button>
+  <button class="tab" role="tab" id="t-lab" aria-controls="p-lab" aria-selected="false">9 · Laboratorio</button>
+  <button class="tab" role="tab" id="t-flujo" aria-controls="p-flujo" aria-selected="false">10 · Flujo de trabajo</button>
+</div>
+
+<main class="content">
+
+  <!-- ============================================================ 1 · XOR -->
+  <section id="p-xor" class="panel">
+    <div class="card">
+      <h2>Del perceptrón al MLP: la capa oculta dobla el plano</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Ninguna recta separa los puntos de XOR. La capa oculta transforma el plano y, en el espacio que crea, una sola recta basta.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq" id="x-etapa-e">Etapa</span>
+          <div class="seg" id="x-etapa" role="group" aria-labelledby="x-etapa-e"><button data-v="0" aria-pressed="true">① Entrada</button><button data-v="1" aria-pressed="false">② z = W·x + b</button><button data-v="2" aria-pressed="false">③ Activación</button><button data-v="3" aria-pressed="false">④ Recta de salida</button></div></div>
+        <button class="btn" id="x-play">▶ Transformar</button>
+        <div class="ctl"><span class="etq" id="x-pesos-e">Pesos</span>
+          <div class="seg" id="x-pesos" role="group" aria-labelledby="x-pesos-e"><button data-v="relu" aria-pressed="true">Pesos de ejemplo (ReLU)</button><button data-v="tanh" aria-pressed="false">Red entrenada (tanh)</button></div></div>
+      </div>
+      <div class="lado">
+        <div>
+          <canvas id="x-cv" class="lienzo" aria-label="Los cuatro puntos de XOR y la cuadrícula del plano de entrada transformándose en el espacio de la capa oculta"></canvas>
+          <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>XOR = 1</span><span><i class="punto" style="background:var(--s2)"></i>XOR = 0</span><span><i style="background:#d6e6f8;height:11px"></i>la red predice 1</span><span><i style="background:#fbe0d4;height:11px"></i>la red predice 0</span><span><i style="background:var(--ink2)"></i>cuadrado [0, 1]² de la entrada</span></div>
+        </div>
+        <div>
+          <p class="tit-col">La red 2 → 2 → 1</p>
+          <svg id="x-red" viewBox="0 0 380 240" aria-label="Red 2-2-1 con sus pesos y sesgos"></svg>
+          <table class="tabla" id="x-tabla" aria-label="Las cuatro entradas de XOR a través de la red"></table>
+          <p id="x-texto"></p>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><b>① Entrada.</b> Los azules (0, 1) y (1, 0) están en esquinas opuestas a los naranjas (0, 0) y (1, 1): ninguna recta los separa.</li>
+        <li><b>② y ③ Capa oculta.</b> Cada neurona hace lo mismo que el perceptrón: suma ponderada z = w·x + b y activación. Juntas mueven, aplastan y doblan el plano.</li>
+        <li><b>④ Salida.</b> En el espacio oculto (h₁, h₂) a la neurona de salida le basta una recta. Vista desde la entrada, esa recta es una franja.</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> el MLP no es magia; son perceptrones organizados en capas. La capa oculta cambia la representación de los datos hasta que el problema se vuelve linealmente separable.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 2 · CAPAS -->
+  <section id="p-capas" class="panel">
+    <div class="card">
+      <h2>Entrada, ocultas y salida: la salida de una capa es la entrada de la siguiente</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Cada neurona hace lo mismo que el perceptrón del tema anterior. Lo nuevo es que sus entradas son las salidas de otras neuronas.</p>
+      <div class="grid3 tipos-capa">
+        <div class="box"><h3>Entrada <span class="cuanto">1 siempre</span></h3>
+          <dl><dt>Función</dt><dd>Recibe los datos</dd><dt>Proceso</dt><dd>Ninguno: solo pasa los datos</dd><dt>Neuronas</dt><dd>Una por característica</dd></dl></div>
+        <div class="box acento oc"><h3>Ocultas <span class="cuanto">1 o más</span></h3>
+          <dl><dt>Función</dt><dd>Procesan los datos</dd><dt>Proceso</dt><dd>Suma ponderada + activación no lineal</dd><dt>Neuronas</dt><dd>Las que elijamos: aquí está la potencia</dd></dl></div>
+        <div class="box"><h3>Salida <span class="cuanto">1 siempre</span></h3>
+          <dl><dt>Función</dt><dd>Genera la predicción</dd><dt>Proceso</dt><dd>Según el tipo de problema</dd><dt>Neuronas</dt><dd>Las que pida el problema</dd></dl></div>
+      </div>
+      <div class="controles">
+        <div class="ctl"><label for="c-ent">Entradas (características)</label><input id="c-ent" type="range" min="1" max="6" step="1" value="3"><output id="c-ent-o">3</output></div>
+        <div class="ctl"><label for="c-noc">Capas ocultas</label><input id="c-noc" type="range" min="1" max="3" step="1" value="1"><output id="c-noc-o">1</output></div>
+        <div class="ctl"><label for="c-nn">Neuronas por capa oculta</label><input id="c-nn" type="range" min="1" max="8" step="1" value="2"><output id="c-nn-o">2</output></div>
+        <div class="ctl"><label for="c-sal">Neuronas de salida</label><input id="c-sal" type="range" min="1" max="4" step="1" value="1"><output id="c-sal-o">1</output></div>
+        <button class="btn" id="c-play">▶ Propagar</button>
+      </div>
+      <div class="escena"><svg id="c-svg" aria-label="Red por capas con los valores que pasa cada capa a la siguiente"></svg></div>
+      <p id="c-texto"></p>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Pesos</div><div class="v" id="c-pesos">8</div></div>
+        <div class="kpi"><div class="t">Sesgos</div><div class="v" id="c-sesgos">3</div></div>
+        <div class="kpi"><div class="t">Parámetros</div><div class="v" id="c-total">11</div></div>
+        <div class="kpi" style="flex:1;min-width:16rem"><div class="t">Cuenta</div><div class="v cuenta" id="c-cuenta">3×2 + 2×1 = 8 pesos</div></div>
+      </div>
+      <p class="mini">La red de partida, 3 → 2 → 1, tiene 3×2 + 2×1 = 8 pesos (y 2 + 1 = 3 sesgos).</p>
+      <div class="clave"><strong>Idea clave:</strong> una sola capa de entrada y una sola de salida; las ocultas pueden ser varias, y en ellas ocurre la transformación no lineal.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 3 · PESOS -->
+  <section id="p-pesos" class="panel">
+    <div class="card">
+      <h2>Los pesos: refuerzan, casi ignoran o inhiben</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Una red que detecta si hay un gato en una foto. Cada rasgo detectado llega a la neurona «gato» multiplicado por su peso: el grosor de la línea es |w| y el color, su signo.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq" id="g-pre-e">Foto de ejemplo</span>
+          <div class="seg" id="g-pre" role="group" aria-labelledby="g-pre-e"><button data-v="gato" aria-pressed="true">Gato</button><button data-v="pato" aria-pressed="false">Pato</button><button data-v="duda" aria-pressed="false">Dudosa</button></div></div>
+        <div class="ctl"><label for="g-a0">Orejas triangulares</label><input id="g-a0" type="range" min="0" max="1" step="0.05" value="0.9"><output id="g-a0-o"></output></div>
+        <div class="ctl"><label for="g-a1">Bigotes</label><input id="g-a1" type="range" min="0" max="1" step="0.05" value="0.8"><output id="g-a1-o"></output></div>
+        <div class="ctl"><label for="g-a2">Hierba de fondo</label><input id="g-a2" type="range" min="0" max="1" step="0.05" value="0.6"><output id="g-a2-o"></output></div>
+        <div class="ctl"><label for="g-a3">Pico de pato</label><input id="g-a3" type="range" min="0" max="1" step="0.05" value="0"><output id="g-a3-o"></output></div>
+      </div>
+      <div class="escena"><svg id="g-svg" aria-label="Cuatro neuronas de rasgos conectadas a la neurona de salida gato con pesos de distinto signo y grosor"></svg></div>
+      <div class="formula" id="g-ecu" aria-live="polite"></div>
+      <div class="sig-tabla" aria-label="Significado de los pesos">
+        <div><svg width="64" height="20" aria-hidden="true"><line x1="2" y1="10" x2="62" y2="10" stroke="#2a78d6" stroke-width="6" stroke-linecap="round"/></svg><span><b>w &gt; 0</b>Conexión positiva: refuerza</span></div>
+        <div><svg width="64" height="20" aria-hidden="true"><line x1="2" y1="10" x2="62" y2="10" stroke="#d5d8dc" stroke-width="1.2" stroke-linecap="round"/></svg><span><b>w ≈ 0</b>Conexión débil: casi ignora</span></div>
+        <div><svg width="64" height="20" aria-hidden="true"><line x1="2" y1="10" x2="62" y2="10" stroke="#eb6834" stroke-width="6" stroke-linecap="round"/></svg><span><b>w &lt; 0</b>Conexión negativa: inhibe</span></div>
+      </div>
+      <ul class="explica">
+        <li>Un peso positivo grande de «orejas triangulares» a «gato» tiene sentido; uno negativo de «pico de pato» a «gato», también.</li>
+        <li>Mueve la hierba de fondo: con w ≈ 0, la salida apenas cambia. La red ha aprendido a ignorarla.</li>
+        <li>Los pesos de esta red son de ejemplo. Aquí suponemos que ya están ajustados; cómo se ajustan se verá en el Tema 5 (retropropagación).</li>
+      </ul>
+      <div class="clave"><strong>Idea clave:</strong> los pesos y los sesgos son los <em>únicos</em> parámetros que cambian durante el entrenamiento. La arquitectura y las funciones de activación las elegimos nosotros al diseñar la red.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 4 · NO LINEALIDAD -->
+  <section id="p-nolin" class="panel">
+    <div class="card">
+      <h2>¿Por qué activaciones no lineales?</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">La misma red de una entrada y una salida, con los mismos pesos, calculada con tres activaciones distintas en sus capas ocultas.</p>
+      <div class="controles">
+        <div class="ctl"><label for="n-capas">Capas ocultas</label><input id="n-capas" type="range" min="1" max="6" step="1" value="3"><output id="n-capas-o">3</output></div>
+        <div class="ctl"><label for="n-neu">Neuronas por capa</label><input id="n-neu" type="range" min="2" max="8" step="1" value="4"><output id="n-neu-o">4</output></div>
+        <button class="btn gris" id="n-otros">↻ Otros pesos</button>
+      </div>
+      <div class="escena"><svg id="n-svg" aria-label="Red de una entrada y una salida con sus capas ocultas y pesos"></svg></div>
+      <div class="grid3" style="margin-top:1rem">
+        <div><div class="act-tit"><i style="background:var(--s3)"></i>Sin activación (lineal)</div><canvas id="n-cv-lin" class="lienzo" aria-label="Función que calcula la red con activación lineal"></canvas><div class="act-res" id="n-res-lin"></div></div>
+        <div><div class="act-tit"><i style="background:var(--s1)"></i>ReLU</div><canvas id="n-cv-relu" class="lienzo" aria-label="Función que calcula la red con activación ReLU"></canvas><div class="act-res" id="n-res-relu"></div></div>
+        <div><div class="act-tit"><i style="background:var(--s2)"></i>tanh</div><canvas id="n-cv-tanh" class="lienzo" aria-label="Función que calcula la red con activación tanh"></canvas><div class="act-res" id="n-res-tanh"></div></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> sin activación no lineal, cien capas equivalen a una sola neurona lineal: una suma de sumas ponderadas sigue siendo una suma ponderada, y XOR seguiría sin resolverse. Con ReLU o tanh, cada capa añade capacidad de expresión.</div>
+      <h3>Guía práctica de elección</h3>
+      <div class="grid2">
+        <div class="box acento"><h3>Capas ocultas</h3><ul>
+          <li><b>ReLU</b>: la opción por defecto (≈ 95 % de los casos). Rápida y simple.</li>
+          <li><b>Leaky ReLU o ELU</b>: si hay muchas neuronas «muertas»; mantienen gradiente en los negativos.</li>
+          <li><b>tanh</b>: modelos pequeños o cuando interesa una salida acotada y centrada en 0.</li>
+          <li><b>Lineal</b>: nunca en ocultas. <b>Softmax</b>: técnicamente funciona, pero no se recomienda: normaliza entre todas las neuronas y complica el aprendizaje.</li></ul></div>
+        <div class="box acento"><h3>Capa de salida</h3><ul>
+          <li>Clasificación binaria → <b>sigmoide</b> (1 neurona; p. ej., ¿llueve?).</li>
+          <li>Multiclase → <b>softmax</b> (K neuronas; llovizna, lluvia o tormenta).</li>
+          <li>Multietiqueta → <b>sigmoide</b> en cada neurona.</li>
+          <li>Regresión → <b>lineal</b>.</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 5 · JERARQUÍA -->
+  <section id="p-jer" class="panel">
+    <div class="card">
+      <h2>Las capas ocultas aprenden representaciones cada vez más abstractas</h2>
+      <div class="meta"><span class="tag real">Bordes: cálculo real</span><span class="tag illus">Formas y dígito: ilustrativo</span></div>
+      <p class="lead">Un dígito de 28 × 28 = 784 píxeles entra en la red. La primera capa ve trazos; la segunda los combina en formas; la tercera, en dígitos.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq" id="j-pre-e">Dígito de ejemplo</span>
+          <div class="seg" id="j-pre" role="group" aria-labelledby="j-pre-e"><button data-v="0" aria-pressed="false">0</button><button data-v="1" aria-pressed="false">1</button><button data-v="2" aria-pressed="false">2</button><button data-v="3" aria-pressed="false">3</button><button data-v="4" aria-pressed="false">4</button><button data-v="5" aria-pressed="false">5</button><button data-v="6" aria-pressed="false">6</button><button data-v="7" aria-pressed="true">7</button><button data-v="8" aria-pressed="false">8</button><button data-v="9" aria-pressed="false">9</button></div></div>
+        <button class="btn gris" id="j-borrar">Borrar y dibujar</button>
+        <span class="mini">Se puede dibujar encima con el ratón o el dedo.</span>
+      </div>
+      <div class="jer">
+        <div class="col"><h3>Entrada<small>28 × 28 = 784 entradas</small></h3><canvas id="j-dib" aria-label="Cuadrícula de 28 por 28 píxeles donde se dibuja el dígito"></canvas></div>
+        <div class="flecha" aria-hidden="true">→</div>
+        <div class="col"><h3>Capa oculta 1 · trazos<small>bordes detectados con filtros de Sobel</small></h3>
+          <div class="mapas dos" id="j-c1"></div></div>
+        <div class="flecha" aria-hidden="true">→</div>
+        <div class="col"><h3>Capa oculta 2 · formas<small>combina trazos</small></h3>
+          <div class="mapas una" id="j-c2"></div></div>
+        <div class="flecha" aria-hidden="true">→</div>
+        <div class="col"><h3>Capa 3 y salida · dígito<small>combina formas; softmax de 10</small></h3>
+          <svg id="j-dig" viewBox="0 0 260 300" aria-label="Probabilidad de cada dígito del 0 al 9"></svg></div>
+      </div>
+      <p class="nota">Los mapas de la capa 1 se calculan de verdad sobre el dibujo. Los de la capa 2 y la decisión final son combinaciones hechas a mano para ilustrar la idea (la salida compara el patrón de formas con el de cada dígito de ejemplo): una red real aprende sola sus filtros.</p>
+      <div class="lado igual">
+        <div>
+          <h3>Complejidad según el número de capas ocultas</h3>
+          <table class="tabla" id="j-tabla">
+            <thead><tr><th>Capas ocultas</th><th>Complejidad</th><th>Caso de uso</th></tr></thead>
+            <tbody>
+              <tr><td class="n">0</td><td>Muy simple (no es MLP)</td><td>Problemas lineales (perceptrón)</td></tr>
+              <tr><td class="n">1</td><td>Simple</td><td>Problemas moderadamente no lineales</td></tr>
+              <tr><td class="n">2</td><td>Media</td><td>La mayoría de las aplicaciones prácticas</td></tr>
+              <tr><td class="n">3-4</td><td>Compleja</td><td>Problemas muy complejos</td></tr>
+              <tr><td class="n">5+</td><td>Muy compleja</td><td>Aprendizaje profundo (redes muy profundas)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Cada capa, una pregunta más específica</h3>
+          <ul>
+            <li><b>Capa 1:</b> «¿hay un trazo horizontal aquí?» → líneas y bordes.</li>
+            <li><b>Capa 2:</b> «¿hay una esquina, una curva, un lazo cerrado?» → formas.</li>
+            <li><b>Capa 3:</b> «¿qué combinación de formas es esta?» → el dígito.</li>
+            <li><b>Salida:</b> softmax con 10 neuronas, una por dígito.</li>
+          </ul>
+          <p class="mini">Regla práctica: empieza con 1 capa oculta; si hay subajuste, añade otra.</p>
+        </div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> ninguna capa intermedia «ve» el dígito. Cada una transforma los datos en una representación más útil para la siguiente: datos crudos → transformación no lineal → representación aprendida.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 6 · HACIA DELANTE -->
+  <section id="p-fwd" class="panel">
+    <div class="card">
+      <h2>Propagación hacia delante, neurona a neurona</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">Calcular la salida a partir de una entrada: en cada capa, suma ponderada, activación y el resultado pasa a la siguiente capa.</p>
+      <div class="controles">
+        <div class="ctl"><span class="etq" id="f-red-e">Red</span>
+          <div class="seg" id="f-red" role="group" aria-labelledby="f-red-e"><button data-v="xor" aria-pressed="true">XOR: 2 → 2 → 1</button><button data-v="332" aria-pressed="false">3 → 3 → 2</button></div></div>
+        <div class="ctl"><span class="etq" id="f-x-e">Entrada</span><div class="seg" id="f-x" role="group" aria-labelledby="f-x-e"></div></div>
+        <button class="btn" id="f-paso">Paso ▸</button>
+        <button class="btn gris" id="f-play">▶ Reproducir</button>
+        <button class="btn gris" id="f-reset">↺ Reiniciar</button>
+      </div>
+      <div class="lado">
+        <div>
+          <div class="escena"><svg id="f-svg" viewBox="0 0 640 360" aria-label="Red con sus pesos; la neurona que se está calculando aparece resaltada"></svg></div>
+          <div class="formula">a⁽ˡ⁾ = f( W⁽ˡ⁾ · a⁽ˡ⁻¹⁾ + b⁽ˡ⁾ )<span class="com">la salida de cada capa es la entrada de la siguiente</span></div>
+          <div class="matriz-vista" id="f-mat" aria-live="polite"></div>
+        </div>
+        <div>
+          <p class="tit-col">Cálculo</p>
+          <ol class="calc" id="f-calc" aria-live="polite"></ol>
+        </div>
+      </div>
+      <p class="nota" id="f-nota"></p>
+      <div class="clave"><strong>Idea clave:</strong> es determinista: con los mismos pesos, la misma entrada da siempre la misma salida. Propagar hacia delante es <em>calcular</em>; entrenar es <em>ajustar</em> los pesos (próximo tema).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 7 · SALIDA -->
+  <section id="p-sal" class="panel">
+    <div class="card">
+      <h2>La capa de salida la decide el problema</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">El número de neuronas de salida y su activación no se eligen al gusto: los dicta lo que queremos predecir.</p>
+      <svg id="s-arbol" viewBox="0 0 1000 215" aria-label="Árbol de decisión: tipo de problema, neuronas y activación de salida"></svg>
+      <div class="controles">
+        <div class="ctl"><span class="etq" id="s-tipo-e">Problema</span>
+          <div class="seg" id="s-tipo" role="group" aria-labelledby="s-tipo-e"><button data-v="bin" aria-pressed="true">Binaria</button><button data-v="multi" aria-pressed="false">Multiclase</button><button data-v="etiq" aria-pressed="false">Multietiqueta</button><button data-v="reg" aria-pressed="false">Regresión</button></div></div>
+      </div>
+
+      <div id="s-bin" class="s-sub">
+        <div class="lado">
+          <div><canvas id="s-bin-cv" class="lienzo" aria-label="Curva sigmoide con la probabilidad de hueso roto"></canvas></div>
+          <div>
+            <p class="tit-col">¿La radiografía muestra un hueso roto?</p>
+            <p>Entrada: 256 píxeles. Salida: <b>1 neurona sigmoide</b>, que da la probabilidad de la clase «roto».</p>
+            <div class="controles"><div class="ctl"><label for="s-z">Suma ponderada z de la neurona de salida</label><input id="s-z" type="range" min="-6" max="6" step="0.01" value="0.85"><output id="s-z-o"></output></div></div>
+            <div class="gran-lectura" id="s-bin-lec"></div>
+            <p class="mini" style="margin-top:.6rem">También valdrían 2 neuronas con softmax: funciona, pero es menos eficiente.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="s-multi" class="s-sub" hidden>
+        <div class="controles">
+          <div class="ctl"><span class="etq" id="s-mpre-e">Ejemplo</span>
+            <div class="seg" id="s-mpre" role="group" aria-labelledby="s-mpre-e"><button data-v="animales" aria-pressed="true">Gato, perro, pájaro, reptil</button><button data-v="contam" aria-pressed="false">Contaminación</button><button data-v="iguales" aria-pressed="false">z iguales</button><button data-v="peq" aria-pressed="false">z = [0,1; 0,2; 0,3]</button><button data-v="gra" aria-pressed="false">z = [1; 2; 3]</button></div></div>
+        </div>
+        <table class="tabla sm-tabla" id="s-mtabla"></table>
+        <div class="apilada" id="s-apilada" aria-label="Probabilidades apiladas: suman 1"></div>
+        <p class="formula" id="s-mcalc"></p>
+        <p id="s-mpred" class="gran-lectura"></p>
+        <p class="mini" id="s-mnota"></p>
+      </div>
+
+      <div id="s-etiq" class="s-sub" hidden>
+        <p>Un artículo puede ser de <b>Tecnología</b> y de <b>Viajes</b> a la vez: las clases no se excluyen. Cada neurona lleva su propia sigmoide y se decide con umbral 0,5.</p>
+        <table class="tabla sm-tabla" id="s-etabla"></table>
+        <p class="formula" id="s-ecalc"></p>
+      </div>
+
+      <div id="s-reg" class="s-sub" hidden>
+        <div class="lado">
+          <div><canvas id="s-reg-cv" class="lienzo" aria-label="Precio real frente a precio predicho con salida lineal y con salida sigmoide"></canvas>
+            <div class="leyenda"><span><i class="punto" style="background:var(--s1)"></i>salida lineal</span><span><i class="punto" style="background:var(--s2)"></i>salida sigmoide</span><span><i style="background:var(--axis)"></i>predicción perfecta</span></div></div>
+          <div>
+            <p class="tit-col">Precio de una vivienda: 4 → 8 (ReLU) → 1</p>
+            <p>Entradas: 120 m², 3 habitaciones, 15 años, 5 km al centro. Salida: precio en euros, sin límite superior ni inferior.</p>
+            <div class="gran-lectura" id="s-reg-lec"></div>
+            <p class="mini" id="s-reg-nota"></p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Clasificación frente a regresión</h3>
+      <table class="tabla">
+        <thead><tr><th>Aspecto</th><th>Clasificación</th><th>Regresión</th></tr></thead>
+        <tbody>
+          <tr><td>Salida de la neurona</td><td>Probabilidad ∈ [0, 1]</td><td>Valor ∈ (−∞, +∞)</td></tr>
+          <tr><td>Activación de salida</td><td>Sigmoide / softmax</td><td>Lineal</td></tr>
+          <tr><td>Interpretación</td><td>«Pertenencia a la clase»</td><td>«Valor predicho»</td></tr>
+          <tr><td>Un error grande</td><td>0,9 frente a 0,1: equivocado</td><td>250.000 frente a 280.000: 30.000 € de error</td></tr>
+        </tbody>
+      </table>
+      <div class="clave"><strong>Idea clave:</strong> binaria → 1 neurona sigmoide; K clases excluyentes → K neuronas softmax; varias etiquetas a la vez → K sigmoides; regresión → 1 neurona lineal. En las ocultas, ReLU.</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 8 · PARÁMETROS -->
+  <section id="p-arq" class="panel">
+    <div class="card">
+      <h2>Diseñar la arquitectura y contar parámetros</h2>
+      <div class="meta"><span class="tag real">Cálculo real en el navegador</span></div>
+      <p class="lead">La entrada la fija el tamaño de los datos; la salida, el tipo de problema; las ocultas, el equilibrio entre complejidad y datos disponibles.</p>
+      <div class="controles">
+        <div class="ctl"><label for="a-pre">Ejemplo</label>
+          <select id="a-pre">
+            <option value="rx">Radiografía (binaria): 256 → 128 → 64 → 1</option>
+            <option value="viv">Vivienda, problema simple: 4 → 8 → 1</option>
+            <option value="vivc">Vivienda, problema complejo: 4 → 16 → 8 → 4 → 1</option>
+            <option value="ani">Animales (multiclase): 784 → 256 → 128 → 64 → 4</option>
+            <option value="piz">Red pequeña: 3 → 2 → 1</option>
+            <option value="keras">Código Keras de los recursos: 784 → 64 → 32 → 10</option>
+            <option value="diez">¿Y con 10 capas ocultas de 256?</option>
+          </select></div>
+        <div class="ctl"><label for="a-act">Activación de salida</label>
+          <select id="a-act"><option value="sigmoide">Sigmoide</option><option value="softmax">Softmax</option><option value="lineal">Lineal</option></select></div>
+        <div class="ctl"><span class="etq">Capas (editables)</span><div class="capas-ed" id="a-capas"></div></div>
+      </div>
+      <div class="escena"><svg id="a-svg" aria-label="Dibujo de la red con el número de neuronas de cada capa"></svg></div>
+      <div class="kpis">
+        <div class="kpi"><div class="t">Pesos</div><div class="v" id="a-pesos"></div></div>
+        <div class="kpi"><div class="t">Sesgos</div><div class="v" id="a-sesgos"></div></div>
+        <div class="kpi" style="border-color:var(--acento)"><div class="t">Parámetros a aprender</div><div class="v" id="a-total"></div></div>
+      </div>
+      <svg id="a-barra" viewBox="0 0 1000 96" aria-label="Barra apilada: parámetros de cada capa sobre el total"></svg>
+      <div class="lado igual">
+        <table class="tabla" id="a-tabla"></table>
+        <div>
+          <p id="a-nota"></p>
+          <div class="clave"><strong>Idea clave:</strong> cada neurona tiene un peso por cada neurona de la capa anterior y un sesgo. Parámetros = Σ (nₗ₋₁ × nₗ + nₗ). Casi todos se concentran en la primera conexión, y cuantos más parámetros, más datos hacen falta para entrenarlos.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9 · LABORATORIO -->
+  <section id="p-lab" class="panel">
+    <div class="card">
+      <h2>Laboratorio de fronteras</h2>
+      <div class="meta"><span class="tag real">Entrenamiento real en el navegador</span></div>
+      <p class="lead">Una red de verdad aprende a separar dos clases. Cambia los datos y la arquitectura y observa la frontera de decisión, los pesos y las curvas de pérdida.</p>
+      <div class="lab-barra">
+        <button class="lab-ico" id="l-reset" title="Reiniciar los pesos" aria-label="Reiniciar los pesos">↺</button>
+        <button class="lab-play" id="l-play" aria-label="Entrenar">▶</button>
+        <button class="lab-ico" id="l-paso" title="Una época" aria-label="Entrenar una época">⏭</button>
+        <div class="lab-ep"><small>Época</small><span id="l-ep">0</span></div>
+        <div class="ctl"><label for="l-act">Activación</label><select id="l-act"><option value="relu">ReLU</option><option value="tanh" selected>tanh</option><option value="sigmoid">Sigmoide</option><option value="lineal">Lineal</option></select></div>
+        <div class="ctl"><label for="l-lr">Tasa de aprendizaje</label><select id="l-lr"><option value="0.001">0,001</option><option value="0.003">0,003</option><option value="0.01">0,01</option><option value="0.03" selected>0,03</option><option value="0.1">0,1</option><option value="0.3">0,3</option><option value="1">1</option></select></div>
+        <div class="ctl"><label for="l-opt">Optimizador</label><select id="l-opt"><option value="adam" selected>Adam</option><option value="sgd">SGD</option></select></div>
+        <div class="kpis" style="margin:0 0 0 auto">
+          <div class="kpi"><div class="t">Pérdida entrenamiento</div><div class="v num" id="l-ptr" style="color:var(--ink)">—</div></div>
+          <div class="kpi"><div class="t">Pérdida prueba</div><div class="v num" id="l-pte">—</div></div>
+        </div>
+      </div>
+      <div class="lab">
+        <div class="lab-col">
+          <h3>Datos</h3>
+          <div class="lab-ds" id="l-ds" role="group" aria-label="Conjunto de datos"></div>
+          <div class="ctl"><label for="l-ruido">Ruido</label><input id="l-ruido" type="range" min="0" max="0.5" step="0.05" value="0.15"><output id="l-ruido-o"></output></div>
+          <div class="ctl"><label for="l-n">Puntos</label><input id="l-n" type="range" min="40" max="500" step="20" value="400"><output id="l-n-o"></output></div>
+          <div class="ctl"><label for="l-frac">Para entrenar</label><input id="l-frac" type="range" min="0.2" max="0.8" step="0.1" value="0.5"><output id="l-frac-o"></output></div>
+          <button class="btn gris" id="l-regen" style="width:100%;margin-bottom:1rem">↻ Otros datos</button>
+          <h3>Problemas comunes</h3>
+          <div class="lab-esc">
+            <button class="btn gris" id="l-esc-sub" data-esc="sub">Arquitectura muy simple</button>
+            <button class="btn gris" id="l-esc-sobre" data-esc="sobre">Muy compleja, pocos datos con ruido</button>
+            <button class="btn gris" id="l-esc-bien" data-esc="bien">Buen ajuste</button>
+          </div>
+        </div>
+        <div class="lab-red">
+          <div class="lab-capas"><button id="l-menos-capa" aria-label="Quitar una capa oculta">−</button><span id="l-ncapas">1 capa oculta</span><button id="l-mas-capa" aria-label="Añadir una capa oculta">+</button></div>
+          <div class="lab-cab" id="l-cab"></div>
+          <canvas id="l-red" aria-label="Red neuronal: cada neurona muestra en miniatura lo que calcula sobre el plano; las líneas son los pesos"></canvas>
+          <p class="mini" style="text-align:center;margin-top:.3rem">Pasa el ratón por una neurona para ver su mapa en grande. Azul: peso o valor positivo; naranja: negativo.</p>
+        </div>
+        <div>
+          <h3>Salida</h3>
+          <canvas id="l-sal" aria-label="Frontera de decisión de la red con los puntos de entrenamiento y de prueba"></canvas>
+          <div class="leyenda"><span><i class="punto" style="background:var(--s1);box-shadow:0 0 0 1.5px #fff,0 0 0 2.5px var(--line)"></i>clase 1</span><span><i class="punto" style="background:var(--s2)"></i>clase 0</span><span><i class="punto" style="background:#fff;border:2px solid var(--ink)"></i>aro oscuro: prueba</span><label class="inline"><input type="checkbox" id="l-verte"> ver prueba</label></div>
+          <canvas id="l-curva" class="lienzo" aria-label="Pérdida de entrenamiento y de prueba por época"></canvas>
+          <div class="leyenda"><span><i style="background:var(--s1)"></i>entrenamiento</span><span><i style="background:var(--s2)"></i>prueba</span></div>
+        </div>
+      </div>
+      <div class="lab-diag" id="l-diag"></div>
+      <div class="clave"><strong>Idea clave:</strong> si la pérdida de entrenamiento se queda alta, falta capacidad (subajuste). Si la de entrenamiento baja y la de prueba sube, la red memoriza en lugar de aprender (sobreajuste).</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 10 · FLUJO -->
+  <section id="p-flujo" class="panel">
+    <div class="card">
+      <h2>Flujo de trabajo: del problema al modelo</h2>
+      <div class="meta"><span class="tag illus">Animación ilustrativa</span></div>
+      <p class="lead">Siete pasos, pero no en línea recta: del 3 al 6 se itera hasta que el diagnóstico es bueno.</p>
+      <div class="controles">
+        <button class="btn" id="w-play">▶ Reproducir</button>
+        <button class="btn gris" id="w-paso">Paso ▸</button>
+        <div class="ctl"><span class="etq" id="w-diag-e">Diagnóstico en el paso 6</span>
+          <div class="seg" id="w-diag" role="group" aria-labelledby="w-diag-e"><button data-v="alto" aria-pressed="false">Error alto</button><button data-v="sobre" aria-pressed="false">Sobreajuste</button><button data-v="sub" aria-pressed="false">Subajuste</button><button data-v="bien" aria-pressed="false">Todo bien</button></div></div>
+      </div>
+      <div class="escena"><svg id="w-svg" viewBox="0 0 1100 320" aria-label="Diagrama de los siete pasos del flujo de trabajo con la vuelta del paso 6 al paso 3"></svg></div>
+      <div class="w-det">
+        <div id="w-texto"></div>
+        <div id="w-extra"></div>
+      </div>
+      <div class="clave"><strong>Idea clave:</strong> la normalización no es opcional, y la primera arquitectura casi nunca es la última: diseñar, entrenar, evaluar y volver al paso 3 tantas veces como haga falta.</div>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">Redes Neuronales · Grado en Ciencia de Datos · UNIR</footer>
+
+<script src="assets/comun.js"></script>
+<script src="assets/mlp.js"></script>
+<script src="assets/04_perceptron_multicapa.js"></script>
+</body>
+</html>
